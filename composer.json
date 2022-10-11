@@ -1,0 +1,64 @@
+{
+    "name": "blitz-php/database",
+    "description": "A simple database layer for easy development",
+    "keywords": ["database", "blitz php", "query builder", "orm"],
+    "license": "MIT",
+    "type": "library",
+    "support": {
+        "issues": "https://github.com/blitz-php/database/issues",
+        "source": "https://github.com/blitz-php/database"
+    },
+    "authors": [
+        {
+            "name": "Dimitri Sitchet Tomkeu",
+            "email": "devcode.dst@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.4",
+        "blitz-php/traits": "^1.0"
+    },
+    "require-dev": {
+        "blitz-php/coding-standard": "^1.0",
+        "phpstan/phpstan": "^1.4.7",
+        "scrutinizer/ocular": "^1.8.1",
+        "kahlan/kahlan": "^5.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "BlitzPHP\\Database\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BlitzPHP\\Database\\Spec\\": "spec/_support/"
+        }
+    },
+    "scripts": {
+        "analyze": "phpstan analyse",
+        "test": "kahlan",
+        "test-coverage": "kahlan --coverage=3 --reporter=verbose --clover=clover.xml",
+        "cs": [
+            "php-cs-fixer fix --ansi --verbose --dry-run --diff"
+        ],
+        "cs-fix": [
+            "php-cs-fixer fix --ansi --verbose --diff"
+        ]
+    },
+    "scripts-descriptions": {
+        "analyze": "Lance l'analyse statique du code du framework",
+        "test": "Execute les tests unitaires",
+        "cs": "Vérifie les normes de codage",
+        "cs-fix": "Fix the coding style"
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.x-dev"
+        }
+    },
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true
+    }
+}
