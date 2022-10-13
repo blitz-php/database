@@ -11,8 +11,8 @@
 
 namespace BlitzPHP\Database;
 
-use BlitzPHP\Contracts\Database\ConnectionInterface;
-use BlitzPHP\Contracts\Database\ResultInterface;
+use BlitzPHP\Database\Contracts\ConnectionInterface;
+use BlitzPHP\Database\Contracts\ResultInterface;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 
 /**

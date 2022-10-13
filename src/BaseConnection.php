@@ -11,10 +11,8 @@
 
 namespace BlitzPHP\Database;
 
-use BlitzPHP\Contracts\Database\ConnectionInterface;
-use BlitzPHP\Contracts\Event\EventManagerInterface;
+use BlitzPHP\Database\Contracts\ConnectionInterface;
 use BlitzPHP\Database\Exceptions\DatabaseException;
-use BlitzPHP\Utilities\Helpers;
 use Closure;
 use Exception;
 use PDO;
@@ -373,15 +371,15 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Gestionnaire d'evenement
-     *
-     * @var EventManagerInterface|null
+     * 
+     * @var object|null
      */
     protected $event;
 
     /**
      * Saves our connection settings.
      */
-    public function __construct(array $params, ?LoggerInterface $logger = null, ?EventManagerInterface $event = null)
+    public function __construct(array $params, ?LoggerInterface $logger = null, ?object $event = null)
     {
         $this->logger = $logger;
         $this->event  = $event;
@@ -816,7 +814,12 @@ abstract class BaseConnection implements ConnectionInterface
 
                 // Let others do something with this query.
                 if ($this->event) {
-                    $this->event->trigger('db.query', $query);
+                    if (method_exists($this->event, 'trigger')) {
+                        $this->event->trigger('db.query', $query);
+                    }
+                    if (method_exists($this->event, 'dispatch')) {
+                        $this->event->dispatch($query);
+                    }
                 }
 
                 if ($exception !== null) {
@@ -828,7 +831,12 @@ abstract class BaseConnection implements ConnectionInterface
 
             // Let others do something with this query.
             if ($this->event) {
-                $this->event->trigger('db.query', $query);
+                if (method_exists($this->event, 'trigger')) {
+                    $this->event->trigger('db.query', $query);
+                }
+                if (method_exists($this->event, 'dispatch')) {
+                    $this->event->dispatch($query);
+                }
             }
 
             return false;
@@ -838,7 +846,12 @@ abstract class BaseConnection implements ConnectionInterface
 
         // Let others do something with this query
         if ($this->event) {
-            $this->event->trigger('db.query', $query);
+            if (method_exists($this->event, 'trigger')) {
+                $this->event->trigger('db.query', $query);
+            }
+            if (method_exists($this->event, 'dispatch')) {
+                $this->event->dispatch($query);
+            }
         }
 
         // resultID is not false, so it must be successful
@@ -1458,12 +1471,12 @@ abstract class BaseConnection implements ConnectionInterface
      */
     protected function _escapeString(string $str): string
     {
-        return str_replace("'", "''", Helpers::removeInvisibleCharacters($str, false));
+        return str_replace("'", "''", Utils::removeInvisibleCharacters($str, false));
     }
 
     /**
-     * This function enables you to call PHP database functions that are not natively included
-     * in CodeIgniter, in a platform independent manner.
+     * Cette fonction vous permet d'appeler des fonctions de base de données PHP qui ne sont pas nativement incluses
+     * dans Blitz PHP, de manière indépendante de la plateforme.
      *
      * @param array ...$params
      *
@@ -1478,7 +1491,7 @@ abstract class BaseConnection implements ConnectionInterface
         }
 
         if (! function_exists($functionName)) {
-            if ($this->DBDebug) {
+            if ($this->debug) {
                 throw new DatabaseException('This feature is not available for the database you are using.');
             }
 

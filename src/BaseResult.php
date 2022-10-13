@@ -11,7 +11,7 @@
 
 namespace BlitzPHP\Database;
 
-use BlitzPHP\Contracts\Database\ResultInterface;
+use BlitzPHP\Database\Contracts\ResultInterface;
 use PDO;
 
 abstract class BaseResult implements ResultInterface

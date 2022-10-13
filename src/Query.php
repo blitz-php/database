@@ -11,8 +11,7 @@
 
 namespace BlitzPHP\Database;
 
-use BlitzPHP\Contracts\Database\ConnectionInterface;
-use BlitzPHP\Utilities\Helpers;
+use BlitzPHP\Database\Contracts\ConnectionInterface;
 
 /**
  * Query builder
@@ -411,7 +410,7 @@ class Query
             'WHERE',
         ];
 
-        $sql = Helpers::h($this->getQuery());
+        $sql = htmlspecialchars($this->getQuery(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', true);
 
         /**
          * @see https://stackoverflow.com/a/20767160

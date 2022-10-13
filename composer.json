@@ -16,8 +16,7 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "php": ">=7.4",
-        "blitz-php/traits": "^1.0"
+        "php": ">=7.4"
     },
     "require-dev": {
         "blitz-php/coding-standard": "^1.0",

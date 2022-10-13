@@ -11,8 +11,7 @@
 
 namespace BlitzPHP\Database;
 
-use BlitzPHP\Contracts\Database\ConnectionInterface;
-use BlitzPHP\Traits\SingletonTrait;
+use BlitzPHP\Database\Contracts\ConnectionInterface;
 use InvalidArgumentException;
 
 /**
@@ -22,7 +21,28 @@ use InvalidArgumentException;
  */
 class Database
 {
-    use SingletonTrait;
+    /**
+     * La seule instance d'utilisation de la classe
+     *
+     * @var object
+     */
+    protected static $_instance;
+
+    /**
+     * Vérifie, instancie et renvoie la seule instance de la classe appelée.
+	 *
+	 * @return static
+     */
+    public static function instance()
+    {
+        if (! (static::$_instance instanceof static)) {
+            $params            = func_get_args();
+            static::$_instance = new static(...$params);
+        }
+
+        return static::$_instance;
+    }
+
 
     /**
      * Maintient un tableau des instances de toutes les connexions qui ont été créé.

@@ -12,11 +12,8 @@
 namespace BlitzPHP\Database;
 
 use BadMethodCallException;
-use BlitzPHP\Contracts\Database\ConnectionInterface;
+use BlitzPHP\Database\Contracts\ConnectionInterface;
 use BlitzPHP\Database\Exceptions\DatabaseException;
-use BlitzPHP\Traits\SingletonTrait;
-use BlitzPHP\Utilities\Arr;
-use BlitzPHP\Utilities\Str;
 use InvalidArgumentException;
 use PDO;
 
@@ -26,8 +23,6 @@ use PDO;
  */
 class BaseBuilder
 {
-    use SingletonTrait;
-
     /**
      * État du mode de test du générateur.
      *
@@ -139,7 +134,7 @@ class BaseBuilder
         if (in_array($name, Database::allowedFacadeMethods, true)) {
             return call_user_func_array([$this->db, $name], $arguments);
         }
-        if (Str::startsWith($name, 'where')) {
+        if (Utils::strStartsWith($name, 'where')) {
             return $this->dynamicWhere($name, $arguments);
         }
 
@@ -1560,7 +1555,7 @@ class BaseBuilder
      */
     final public function bulckInsert(array $data, ?string $table = null): array
     {
-        if (2 !== Arr::maxDimensions($data)) {
+        if (2 !== Utils::maxDimensions($data)) {
             throw new BadMethodCallException('Mauvaise utilisation de la méthode ' . __METHOD__);
         }
 
@@ -1598,16 +1593,20 @@ class BaseBuilder
      */
     protected function addDynamic(string $segment, string $connector, array $parameters, int $index)
     {
-        $field = Str::toSnake($segment);
+        if (! ctype_lower($segment)) {
+            $segment = preg_replace('/\s+/u', '', ucwords($segment));
+
+            $segment = mb_strtolower(preg_replace('/(.)(?=[A-Z])/u', '$1'.'_', $segment), 'UTF-8');
+        }
 
         // Once we have parsed out the columns and formatted the boolean operators we
         // are ready to add it to this query as a where clause just like any other
         // clause on the query. Then we'll increment the parameter index values.
 
         if ('or' === strtolower($connector)) {
-            $this->orWhere($field, $parameters[$index]);
+            $this->orWhere($segment, $parameters[$index]);
         } else {
-            $this->where($field, $parameters[$index]);
+            $this->where($segment, $parameters[$index]);
         }
     }
 
