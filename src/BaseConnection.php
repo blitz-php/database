@@ -959,7 +959,7 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
-     * Begin Transaction
+     * Demarre la transaction
      */
     public function transBegin(bool $testMode = false): bool
     {
@@ -993,7 +993,7 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
-     * Commit Transaction
+     * Valide la transaction
      */
     public function transCommit(): bool
     {
@@ -1012,7 +1012,7 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
-     * Rollback Transaction
+     * Annule la transaction
      */
     public function transRollback(): bool
     {
@@ -1031,22 +1031,22 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
-     * Begin Transaction
+     * Demarre la transaction
      */
     abstract protected function _transBegin(): bool;
 
     /**
-     * Commit Transaction
+     * Valide la transaction
      */
     abstract protected function _transCommit(): bool;
 
     /**
-     * Rollback Transaction
+     * Annulle la transaction
      */
     abstract protected function _transRollback(): bool;
 
     /**
-     * Returns a non-shared new instance of the query builder for this connection.
+     * Retourne une nouvelle instance non partagee du query builder pour cette connexion.
      *
      * @param array|string $tableName
      *
@@ -1070,7 +1070,7 @@ abstract class BaseConnection implements ConnectionInterface
      */
     public function newQuery(): BaseBuilder
     {
-        return $this->table(',')->from([], true);
+        return $this->table('.')->from([], true);
     }
 
     /**

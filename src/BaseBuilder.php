@@ -122,6 +122,14 @@ class BaseBuilder
         return $this;
     }
 
+    /**
+     * Recupere le nom de la table principale.
+     */
+    public function getTable(): string
+    {
+        return $this->tableName ?? ($this->table[0] ?? '');
+    }
+
     public function __clone()
     {
         $new = $this;
@@ -129,18 +137,7 @@ class BaseBuilder
         return $new->reset();
     }
 
-    public function __call($name, $arguments)
-    {
-        if (in_array($name, Database::allowedFacadeMethods, true)) {
-            return call_user_func_array([$this->db, $name], $arguments);
-        }
-        if (Utils::strStartsWith($name, 'where')) {
-            return $this->dynamicWhere($name, $arguments);
-        }
-
-        throw new InvalidArgumentException(sprintf('Not allowed method "%s".', static::class . '::' . $name));
-    }
-
+    
     /**
      * Génère la partie FROM de la requête
      *
@@ -707,9 +704,6 @@ class BaseBuilder
     /**
      * Définit une clause between where.
      * Sépare plusieurs appels avec 'AND'.
-     *
-     * @param mixed $value1
-     * @param mixed $value2
      */
     final public function whereBetween(string $field, $value1, $value2): self
     {
@@ -726,9 +720,6 @@ class BaseBuilder
      * Sépare plusieurs appels avec 'AND'.
      *
      * @alias self::whereBetween()
-     *
-     * @param mixed $value1
-     * @param mixed $value2
      */
     final public function between(string $field, $value1, $value2): self
     {
@@ -736,11 +727,33 @@ class BaseBuilder
     }
 
     /**
+     * Génère la partie WHERE (de type WHERE x NOT BETWEEN a AND b) de la requête.
+     * Sépare plusieurs appels avec 'AND'.
+     */
+    final public function whereNotBetween(string $field, $value1, $value2): self
+    {
+        return $this->where(sprintf(
+            '%s NOT BETWEEN %s AND %s',
+            $field,
+            $this->db->quote($value1),
+            $this->db->quote($value2)
+        ));
+    }
+
+    /**
+     * Génère la partie WHERE (de type WHERE x NOT BETWEEN a AND b) de la requête.
+     * Sépare plusieurs appels avec 'AND'.
+     *
+     * @alias self::whereNotBetween()
+     */
+    final public function notBetween(string $field, $value1, $value2): self
+    {
+        return $this->whereNotBetween($field, $value1, $value2);
+    }
+
+    /**
      * Définit une clause between where.
      * Sépare plusieurs appels avec 'OR'.
-     *
-     * @param mixed $value1
-     * @param mixed $value2
      */
     final public function orWhereBetween(string $field, $value1, $value2): self
     {
@@ -757,13 +770,35 @@ class BaseBuilder
      * Sépare plusieurs appels avec 'OR'.
      *
      * @alias self::orWhereBetween()
-     *
-     * @param mixed $value1
-     * @param mixed $value2
      */
     final public function orBetween(string $field, $value1, $value2): self
     {
         return $this->orWhereBetween($field, $value1, $value2);
+    }
+
+    /**
+     * Génère la partie WHERE (de type WHERE x NOT BETWEEN a AND b) de la requête.
+     * Sépare plusieurs appels avec 'OR'.
+     */
+    final public function orWhereNotBetween(string $field, $value1, $value2): self
+    {
+        return $this->orWhere(sprintf(
+            '%s NOT BETWEEN %s AND %s',
+            $field,
+            $this->db->quote($value1),
+            $this->db->quote($value2)
+        ));
+    }
+
+    /**
+     * Génère la partie WHERE (de type WHERE x NOT BETWEEN a AND b) de la requête.
+     * Sépare plusieurs appels avec 'OR'.
+     *
+     * @alias self::orWhereNotBetween()
+     */
+    final public function orNotBetween(string $field, $value1, $value2): self
+    {
+        return $this->orWhereNotBetween($field, $value1, $value2);
     }
 
     /**
@@ -1257,7 +1292,7 @@ class BaseBuilder
     }
 
     /**
-     * Obtient la valeur minimale d'un champ spécifié.
+     * Obtient la valeur maximale d'un champ spécifié.
      *
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
@@ -1366,11 +1401,11 @@ class BaseBuilder
     }
 
     /**
-     * Fetch multiple rows from a select query.
+     * Recupere plusieurs lignes des resultats de la reauete select.
      *
      * @param int|string  $type
-     * @param string|null $key    Cache key
-     * @param int         $expire Expiration time in seconds
+     * @param string|null $key    Clé de cache
+     * @param int         $expire Délai d'expiration en secondes
      */
     final public function result($type = PDO::FETCH_OBJ, ?string $key = null, int $expire = 0): array
     {
@@ -1378,11 +1413,11 @@ class BaseBuilder
     }
 
     /**
-     * Fetch multiple rows from a select query.
+     * Recupere plusieurs lignes des resultats de la reauete select.
      *
      * @param int|string  $type
-     * @param string|null $key    Cache key
-     * @param int         $expire Expiration time in seconds
+     * @param string|null $key    Clé de cache
+     * @param int         $expire Délai d'expiration en secondes
      *
      * @alias self::result()
      */
@@ -1392,11 +1427,11 @@ class BaseBuilder
     }
 
     /**
-     * Fetch a single row from a select query.
+     * Recupere la premiere ligne des resultats de la reauete select..
      *
      * @param int|string  $type
-     * @param string|null $key    Cache key
-     * @param int         $expire Expiration time in seconds
+     * @param string|null $key    Clé de cache
+     * @param int         $expire Délai d'expiration en secondes
      *
      * @return mixed
      */
@@ -1425,10 +1460,10 @@ class BaseBuilder
      * Recupere un resultat precis dans les resultat d'une requete en BD
      *
      * @param int|string  $type
-     * @param string|null $key    Cache key
-     * @param int         $expire Expiration time in seconds
+     * @param string|null $key    Clé de cache
+     * @param int         $expire Délai d'expiration en secondes
      *
-     * @return mixed Row
+     * @return mixed La ligne souhaitee
      */
     final public function row(int $index, $type = PDO::FETCH_OBJ, ?string $key = null, int $expire = 0)
     {
@@ -1436,13 +1471,13 @@ class BaseBuilder
     }
 
     /**
-     * Fetch a value from a field.
+     * Recupere la valeur d'un champ.
      *
-     * @param string      $name   Database field name
-     * @param string|null $key    Cache key
-     * @param int         $expire Expiration time in seconds
+     * @param string      $name   Le nom du champ de la base de donnees
+     * @param string|null $key    Cle du cache
+     * @param int         $expire Délai d'expiration en secondes
      *
-     * @return mixed Row value
+     * @return mixed La valeur du champ
      */
     final public function value(string $name, ?string $key = null, int $expire = 0)
     {

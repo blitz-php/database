@@ -158,6 +158,9 @@ class Database
      */
     protected function initDriver(string $driver, string $class, $argument): ConnectionInterface
     {
+        $driver = str_ireplace('pdo', '', $driver);
+        $driver = str_ireplace('mysql', 'MySQL', $driver);
+
         $class = $driver . '\\' . $class;
 
         if (strpos($driver, '\\') === false) {
