@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file is part of Blitz PHP framework.
+ * This file is part of Blitz PHP framework - Database Layer.
  *
  * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
  *
@@ -29,9 +29,18 @@ class Database
     protected static $_instance;
 
     /**
+     * Maintient un tableau des instances de toutes les connexions qui ont été créé.
+     *
+     * Aide à garder une trace de toutes les connexions ouvertes pour les performances, surveillance, journalisation, etc.
+     *
+     * @var ConnectionInterface[]
+     */
+    protected $connections = [];
+
+    /**
      * Vérifie, instancie et renvoie la seule instance de la classe appelée.
-	 *
-	 * @return static
+     *
+     * @return static
      */
     public static function instance()
     {
@@ -42,16 +51,6 @@ class Database
 
         return static::$_instance;
     }
-
-
-    /**
-     * Maintient un tableau des instances de toutes les connexions qui ont été créé.
-     *
-     * Aide à garder une trace de toutes les connexions ouvertes pour les performances, surveillance, journalisation, etc.
-     *
-     * @var ConnectionInterface[]
-     */
-    protected $connections = [];
 
     /**
      * Renvoie une instance du pilote prêt à l'emploi.

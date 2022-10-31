@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file is part of Blitz PHP framework.
+ * This file is part of Blitz PHP framework - Database Layer.
  *
  * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
  *
@@ -371,7 +371,7 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Gestionnaire d'evenement
-     * 
+     *
      * @var object|null
      */
     protected $event;

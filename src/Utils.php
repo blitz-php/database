@@ -1,16 +1,26 @@
-<?php 
+<?php
+
+/**
+ * This file is part of Blitz PHP framework - Database Layer.
+ *
+ * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
+ *
+ * For the full copyright and license information, please view
+ * the LICENSE file that was distributed with this source code.
+ */
 
 namespace BlitzPHP\Database;
 
 class Utils
 {
     /**
-     * Compte les dimensions de *tous* les éléments du tableau. Utile pour trouver le nombre 
+     * Compte les dimensions de *tous* les éléments du tableau. Utile pour trouver le nombre
      * maximal de dimensions dans un tableau mixte.
      *
      * @param array $data Tableau sur lequel compter les dimensions
      *
      * @return int Le nombre maximum de dimensions dans $data
+     *
      * @credit CakePHP - http://book.cakephp.org/2.0/en/core-utility-libraries/hash.html#Hash::maxDimensions
      */
     public static function maxDimensions(array $data): int
@@ -24,7 +34,7 @@ class Utils
 
         return max($depth);
     }
-    
+
     /**
      * Compte les dimensions d'un tableau.
      * Ne considère que la dimension du premier élément du tableau.
@@ -35,6 +45,7 @@ class Utils
      * @param array $data Tableau sur lequel compter les dimensions
      *
      * @return int Le nombre de dimensions dans $data
+     *
      * @credit CakePHP - http://book.cakephp.org/2.0/en/core-utility-libraries/hash.html#Hash::dimensions
      */
     public static function dimensions(array $data): int

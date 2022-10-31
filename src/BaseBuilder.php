@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file is part of Blitz PHP framework.
+ * This file is part of Blitz PHP framework - Database Layer.
  *
  * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
  *
@@ -137,7 +137,6 @@ class BaseBuilder
         return $new->reset();
     }
 
-    
     /**
      * Génère la partie FROM de la requête
      *
@@ -704,6 +703,9 @@ class BaseBuilder
     /**
      * Définit une clause between where.
      * Sépare plusieurs appels avec 'AND'.
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     final public function whereBetween(string $field, $value1, $value2): self
     {
@@ -720,6 +722,9 @@ class BaseBuilder
      * Sépare plusieurs appels avec 'AND'.
      *
      * @alias self::whereBetween()
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     final public function between(string $field, $value1, $value2): self
     {
@@ -729,6 +734,9 @@ class BaseBuilder
     /**
      * Génère la partie WHERE (de type WHERE x NOT BETWEEN a AND b) de la requête.
      * Sépare plusieurs appels avec 'AND'.
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     final public function whereNotBetween(string $field, $value1, $value2): self
     {
@@ -745,6 +753,9 @@ class BaseBuilder
      * Sépare plusieurs appels avec 'AND'.
      *
      * @alias self::whereNotBetween()
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     final public function notBetween(string $field, $value1, $value2): self
     {
@@ -754,6 +765,9 @@ class BaseBuilder
     /**
      * Définit une clause between where.
      * Sépare plusieurs appels avec 'OR'.
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     final public function orWhereBetween(string $field, $value1, $value2): self
     {
@@ -770,6 +784,9 @@ class BaseBuilder
      * Sépare plusieurs appels avec 'OR'.
      *
      * @alias self::orWhereBetween()
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     final public function orBetween(string $field, $value1, $value2): self
     {
@@ -779,6 +796,9 @@ class BaseBuilder
     /**
      * Génère la partie WHERE (de type WHERE x NOT BETWEEN a AND b) de la requête.
      * Sépare plusieurs appels avec 'OR'.
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     final public function orWhereNotBetween(string $field, $value1, $value2): self
     {
@@ -795,6 +815,9 @@ class BaseBuilder
      * Sépare plusieurs appels avec 'OR'.
      *
      * @alias self::orWhereNotBetween()
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     final public function orNotBetween(string $field, $value1, $value2): self
     {
@@ -1631,7 +1654,7 @@ class BaseBuilder
         if (! ctype_lower($segment)) {
             $segment = preg_replace('/\s+/u', '', ucwords($segment));
 
-            $segment = mb_strtolower(preg_replace('/(.)(?=[A-Z])/u', '$1'.'_', $segment), 'UTF-8');
+            $segment = mb_strtolower(preg_replace('/(.)(?=[A-Z])/u', '$1' . '_', $segment), 'UTF-8');
         }
 
         // Once we have parsed out the columns and formatted the boolean operators we
