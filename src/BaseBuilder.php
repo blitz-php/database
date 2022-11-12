@@ -14,8 +14,10 @@ namespace BlitzPHP\Database;
 use BadMethodCallException;
 use BlitzPHP\Database\Contracts\ConnectionInterface;
 use BlitzPHP\Database\Exceptions\DatabaseException;
+use BlitzPHP\Database\MySQL\Connection as MySQLConnection;
 use InvalidArgumentException;
 use PDO;
+use Throwable;
 
 /**
  * Fournit les principales méthodes du générateur de requêtes.
@@ -207,11 +209,12 @@ class BaseBuilder
      * Génère la partie JOIN de la requête
      *
      * @param string $table  Table à joindre
-     * @param array  $fields Champs à joindre
+     * @param array|string  $fields Champs à joindre
      *
      * @throws DatabaseException Pour un type de jointure invalide
+     * @throws InvalidArgumentException Lorsque $fields est une chaine et qu'aucune table n'a ete au prealable definie
      */
-    final public function join(string $table, array $fields, string $type = 'INNER'): self
+    final public function join(string $table, array|string $fields, string $type = 'INNER'): self
     {
         $type = strtoupper(trim($type));
 
@@ -226,11 +229,28 @@ class BaseBuilder
         if (! in_array($type, $joins, true)) {
             throw new DatabaseException('Invalid join type.');
         }
+        
+        // On sauvegarde le nom de base de la tabe
+        $foreignTable = $table;
 
         $table = $this->db->makeTableName($table);
 
         // Les conditions réelles de la jointure
         $cond = [];
+
+        if (is_string($fields)) {
+            if (empty($this->table)) {
+                throw new InvalidArgumentException('Join fields is not defined');
+            }
+
+            $key = $fields;
+            $joinTable = $this->table[count($this->table) - 1];
+            
+            [$foreignAlias] = $this->db->getTableAlias($foreignTable);
+            [$joinAlias] = $this->db->getTableAlias($joinTable);
+
+            $fields = [$joinAlias.'.'.$key => $foreignAlias.'.'.$key];
+        }
 
         foreach ($fields as $key => $value) {
             // On s'assure que les table des conditions de jointure utilise les aliases
@@ -301,6 +321,27 @@ class BaseBuilder
     final public function rightJoin(string $table, array $fields, bool $outer = false): self
     {
         return $this->join($table, $fields, 'RIGHT ' . ($outer ? 'OUTER' : ''));
+    }
+
+    /**
+     * Génère la partie JOIN (de type NATURAL JOIN) de la requête
+     * Uniquement pour ceux qui utilisent MySql 
+     * 
+     * @param string|string[] $table  Table à joindre
+     */
+    final public function naturalJoin(string|array $table): self
+    {
+        if (! ($this->db instanceof MySQLConnection)) {
+            throw new DatabaseException('The natural join is only available on MySQL driver');
+        }
+
+        foreach ((array) $table as $t) {
+            $t = $this->db->makeTableName($t);
+
+            $this->joins[] = 'NATURAL JOIN ' . $t;
+        }
+        
+        return $this->asCrud('select');
     }
 
     /**
