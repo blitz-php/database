@@ -741,9 +741,7 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * {@inheritDoc}
      *
-     * @return BaseResult|bool|Query BaseResult when “read” type query, bool when “write” type query, Query when prepared query
-     *
-     * @todo BC set $queryClass default as null in 4.1
+     * @return BaseResult|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
      */
     public function query(string $sql, $binds = null, bool $setEscapeFlags = true, string $queryClass = '')
     {

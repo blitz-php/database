@@ -17,7 +17,6 @@ use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Database\MySQL\Connection as MySQLConnection;
 use InvalidArgumentException;
 use PDO;
-use Throwable;
 
 /**
  * Fournit les principales méthodes du générateur de requêtes.
@@ -208,10 +207,10 @@ class BaseBuilder
     /**
      * Génère la partie JOIN de la requête
      *
-     * @param string $table  Table à joindre
-     * @param array|string  $fields Champs à joindre
+     * @param string       $table  Table à joindre
+     * @param array|string $fields Champs à joindre
      *
-     * @throws DatabaseException Pour un type de jointure invalide
+     * @throws DatabaseException        Pour un type de jointure invalide
      * @throws InvalidArgumentException Lorsque $fields est une chaine et qu'aucune table n'a ete au prealable definie
      */
     final public function join(string $table, array|string $fields, string $type = 'INNER'): self
@@ -229,7 +228,7 @@ class BaseBuilder
         if (! in_array($type, $joins, true)) {
             throw new DatabaseException('Invalid join type.');
         }
-        
+
         // On sauvegarde le nom de base de la tabe
         $foreignTable = $table;
 
@@ -243,13 +242,13 @@ class BaseBuilder
                 throw new InvalidArgumentException('Join fields is not defined');
             }
 
-            $key = $fields;
+            $key       = $fields;
             $joinTable = $this->table[count($this->table) - 1];
-            
-            [$foreignAlias] = $this->db->getTableAlias($foreignTable);
-            [$joinAlias] = $this->db->getTableAlias($joinTable);
 
-            $fields = [$joinAlias.'.'.$key => $foreignAlias.'.'.$key];
+            [$foreignAlias] = $this->db->getTableAlias($foreignTable);
+            [$joinAlias]    = $this->db->getTableAlias($joinTable);
+
+            $fields = [$joinAlias . '.' . $key => $foreignAlias . '.' . $key];
         }
 
         foreach ($fields as $key => $value) {
@@ -282,10 +281,10 @@ class BaseBuilder
     /**
      * Génère la partie JOIN (de type FULL OUTER) de la requête
      *
-     * @param string $table  Table à joindre
-     * @param array  $fields Champs à joindre
+     * @param string       $table  Table à joindre
+     * @param array|string $fields Champs à joindre
      */
-    final public function fullJoin(string $table, array $fields): self
+    final public function fullJoin(string $table, array|string $fields): self
     {
         return $this->join($table, $fields, 'FULL OUTER');
     }
@@ -293,10 +292,10 @@ class BaseBuilder
     /**
      * Génère la partie JOIN (de type INNER) de la requête
      *
-     * @param string $table  Table à joindre
-     * @param array  $fields Champs à joindre
+     * @param string       $table  Table à joindre
+     * @param array|string $fields Champs à joindre
      */
-    final public function innerJoin(string $table, array $fields): self
+    final public function innerJoin(string $table, array|string $fields): self
     {
         return $this->join($table, $fields, 'INNER');
     }
@@ -304,10 +303,10 @@ class BaseBuilder
     /**
      * Génère la partie JOIN (de type LEFT) de la requête
      *
-     * @param string $table  Table à joindre
-     * @param array  $fields Champs à joindre
+     * @param string       $table  Table à joindre
+     * @param array|string $fields Champs à joindre
      */
-    final public function leftJoin(string $table, array $fields, bool $outer = false): self
+    final public function leftJoin(string $table, array|string $fields, bool $outer = false): self
     {
         return $this->join($table, $fields, 'LEFT ' . ($outer ? 'OUTER' : ''));
     }
@@ -315,19 +314,19 @@ class BaseBuilder
     /**
      * Génère la partie JOIN (de type RIGHT) de la requête
      *
-     * @param string $table  Table à joindre
-     * @param array  $fields Champs à joindre
+     * @param string       $table  Table à joindre
+     * @param array|string $fields Champs à joindre
      */
-    final public function rightJoin(string $table, array $fields, bool $outer = false): self
+    final public function rightJoin(string $table, array|string $fields, bool $outer = false): self
     {
         return $this->join($table, $fields, 'RIGHT ' . ($outer ? 'OUTER' : ''));
     }
 
     /**
      * Génère la partie JOIN (de type NATURAL JOIN) de la requête
-     * Uniquement pour ceux qui utilisent MySql 
-     * 
-     * @param string|string[] $table  Table à joindre
+     * Uniquement pour ceux qui utilisent MySql
+     *
+     * @param string|string[] $table Table à joindre
      */
     final public function naturalJoin(string|array $table): self
     {
@@ -340,7 +339,7 @@ class BaseBuilder
 
             $this->joins[] = 'NATURAL JOIN ' . $t;
         }
-        
+
         return $this->asCrud('select');
     }
 
@@ -362,6 +361,10 @@ class BaseBuilder
             }
         } else {
             $field = $this->buildParseField($field);
+
+            if ($escape === false && is_string($value) && strpos($value, '.') !== false) {
+                $value = $this->buildParseField($value);
+            }
         }
 
         $this->where .= $this->parseCondition($field, $value, $join, $escape);
@@ -1447,8 +1450,10 @@ class BaseBuilder
 
     /**
      * Execute une requete sql donnée
+     *
+     * @return BaseResult|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
      */
-    final public function query(string $sql, array $params = []): BaseResult
+    final public function query(string $sql, array $params = [])
     {
         return $this->db->query($sql, $params);
     }
@@ -1458,8 +1463,10 @@ class BaseBuilder
      *
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
+     *
+     * @return BaseResult|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
      */
-    final public function execute(?string $key = null, int $expire = 0): BaseResult
+    final public function execute(?string $key = null, int $expire = 0)
     {
         return $this->result = $this->query($this->sql(), $this->params);
     }
@@ -1537,17 +1544,25 @@ class BaseBuilder
     /**
      * Recupere la valeur d'un champ.
      *
-     * @param string      $name   Le nom du champ de la base de donnees
-     * @param string|null $key    Cle du cache
-     * @param int         $expire Délai d'expiration en secondes
+     * @param string|string[] $name   Le nom du champ de la base de donnees
+     * @param string|null     $key    Cle du cache
+     * @param int             $expire Délai d'expiration en secondes
      *
-     * @return mixed La valeur du champ
+     * @return mixed|mixed[] La valeur du champ
      */
-    final public function value(string $name, ?string $key = null, int $expire = 0)
+    final public function value(string|array $name, ?string $key = null, int $expire = 0)
     {
         $row = $this->first(PDO::FETCH_OBJ, $key, $expire);
 
-        return $row->{$name} ?? null;
+        $values = [];
+
+        foreach ((array) $name as $v) {
+            if (is_string($v)) {
+                $values[] = $row->{$v} ?? null;
+            }
+        }
+
+        return is_string($name) ? $values[0] : $values;
     }
 
     // Advanced finders methods
