@@ -1975,6 +1975,13 @@ class BaseBuilder
      */
     private function buildParseField(string $field): string
     {
+        $aggregate = null;
+
+        if (preg_match('/^(AVG|COUNT|MAX|MIN|SUM)\S?\(([a-zA-Z0-9\*_\.]+)\)/isU', $field, $matches)) {
+            $aggregate = $matches[1];
+            $field     = str_replace($aggregate . '(' . $matches[2] . ')', $matches[2], $field);
+        }
+        
         $field = explode('.', $field);
 
         if (count($field) === 2) {
@@ -1992,7 +1999,18 @@ class BaseBuilder
             $field[0] = $operator . $field[0];
         }
 
-        return implode('.', $field);
+        $result = implode('.', $field);
+
+        if (null !== $aggregate) {
+            $parts = explode(' ', $result);
+            $field = array_shift($parts);
+
+            $result = $aggregate . '(' . $this->db->escapeIdentifiers($field) . ')' . ' ' . implode(' ', $parts);
+        } else {
+            $result = $this->db->escapeIdentifiers($result);
+        }
+
+        return $result;
     }
 
     /**
