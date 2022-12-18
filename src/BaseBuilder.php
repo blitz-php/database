@@ -1542,13 +1542,13 @@ class BaseBuilder
     }
 
     /**
-     * Recupere la valeur d'un champ.
+     * Recupere la valeur d'un ou de plusieurs champs.
      *
-     * @param string|string[] $name   Le nom du champ de la base de donnees
+     * @param string|string[] $name   Le nom du/des champs de la base de donnees
      * @param string|null     $key    Cle du cache
      * @param int             $expire Délai d'expiration en secondes
      *
-     * @return mixed|mixed[] La valeur du champ
+     * @return mixed|mixed[] La valeur du/des champs
      */
     final public function value(string|array $name, ?string $key = null, int $expire = 0)
     {
@@ -1563,6 +1563,34 @@ class BaseBuilder
         }
 
         return is_string($name) ? $values[0] : $values;
+    }
+
+    /**
+     * Recupere les valeurs d'un ou de plusieurs champs.
+     *
+     * @param string|string[] $name   Le nom du/des champs de la base de donnees
+     * @param string|null     $key    Cle du cache
+     * @param int             $expire Délai d'expiration en secondes
+     *
+     * @return mixed[] La/les valeurs du/des champs
+     */
+    final public function values(string|array $name, ?string $key = null, int $expire = 0): array
+    {
+        $rows = $this->all(PDO::FETCH_OBJ, $key, $expire);
+
+        $fields = [];
+        
+        foreach ($rows as $row) {
+            $values = [];
+            foreach ((array) $name as $v) {
+                if (is_string($v)) {
+                    $values[$v] = $row->{$v} ?? null;
+                }
+            }
+            $fields[] = is_string($name) ? ($values[$name] ?? null) : $values; 
+        }
+
+        return $fields;
     }
 
     // Advanced finders methods
