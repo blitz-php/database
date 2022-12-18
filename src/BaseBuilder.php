@@ -1792,7 +1792,9 @@ class BaseBuilder
                 'DELETE FROM',
                 $this->removeAlias($this->table[0]),
                 $this->where,
+                $this->order,
                 $this->limit,
+                $this->offset,
             ]);
         }
 
