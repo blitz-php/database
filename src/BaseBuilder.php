@@ -2091,7 +2091,7 @@ class BaseBuilder
         }
 
         if (is_array($param)) {
-            $param = implode(',', $param);
+            $param = implode(',', array_map([$this->db, 'quote'], $param));
         } elseif ($param instanceof self) {
             $param = $param->sql();
         } elseif (! is_string($param)) {
