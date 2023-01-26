@@ -108,7 +108,7 @@ class BaseBuilder
      *
      * @return BaseConnection|ConnectionInterface
      */
-    public function db(): ConnectionInterface
+    final public function db(): ConnectionInterface
     {
         return $this->db;
     }
@@ -116,7 +116,7 @@ class BaseBuilder
     /**
      * Définit un statut de mode de test.
      */
-    public function testMode(bool $mode = true): self
+    final public function testMode(bool $mode = true): self
     {
         $this->testMode = $mode;
 
@@ -449,11 +449,9 @@ class BaseBuilder
      * Génère la partie WHERE (de type WHERE x IN(y)) de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|callable|self $param
-     *
      * @alias self::whereIn()
      */
-    final public function in(string $field, $param): self
+    final public function in(string $field, array|callable|self $param): self
     {
         return $this->whereIn($field, $param);
     }
@@ -461,10 +459,8 @@ class BaseBuilder
     /**
      * Génère la partie WHERE (de type WHERE x IN(y)) de la requête.
      * Sépare plusieurs appels avec 'OR'.
-     *
-     * @param array|callable|self $param
      */
-    final public function orWhereIn(string $field, $param): self
+    final public function orWhereIn(string $field, array|callable|self $param): self
     {
         $param = $this->buildInCallbackParam($param, __METHOD__);
 
@@ -883,7 +879,7 @@ class BaseBuilder
      *
      * @param string|string[] $field Un nom de champ ou un tableau de champs
      */
-    final public function orderBy($field, string $direction = 'ASC', bool $escape = true): self
+    final public function orderBy(string|array $field, string $direction = 'ASC', bool $escape = true): self
     {
         if (is_array($field)) {
             foreach ($field as $key => $item) {
@@ -921,7 +917,7 @@ class BaseBuilder
      *
      * @alias self::orderBy()
      */
-    final public function order($field, string $direction = 'ASC', bool $escape = true): self
+    final public function order(string|array $field, string $direction = 'ASC', bool $escape = true): self
     {
         return $this->orderBy($field, $direction, $escape);
     }
@@ -931,7 +927,7 @@ class BaseBuilder
      *
      * @param string|string[] $field Un nom de champ ou un tableau de champs
      */
-    final public function sortAsc($field, bool $escape = true): self
+    final public function sortAsc(string|array $field, bool $escape = true): self
     {
         return $this->orderBy($field, 'ASC', $escape);
     }
@@ -941,9 +937,19 @@ class BaseBuilder
      *
      * @param string|string[] $field Un nom de champ ou un tableau de champs
      */
-    final public function sortDesc($field, bool $escape = true): self
+    final public function sortDesc(string|array $field, bool $escape = true): self
     {
         return $this->orderBy($field, 'DESC', $escape);
+    }
+
+    /**
+     * Ajoute un tri aléatoire pour les champs.
+     *
+     * @alias self::rand
+     */
+    final public function sortRand(?int $digit = null): self
+    {
+        return $this->rand($digit);
     }
 
     /**
@@ -1042,10 +1048,8 @@ class BaseBuilder
     /**
      * Ajoute des conditions de type HAVING IN.
      * Sépare plusieurs appels avec 'AND'.
-     *
-     * @param array|callable|self $param
      */
-    final public function havingIn(string $field, $param): self
+    final public function havingIn(string $field, array|callable|self $param): self
     {
         $param = $this->buildInCallbackParam($param, __METHOD__);
 
@@ -1055,10 +1059,8 @@ class BaseBuilder
     /**
      * Ajoute des conditions de type HAVING NOT IN.
      * Sépare plusieurs appels avec 'AND'.
-     *
-     * @param array|callable|self $param
      */
-    final public function havingNotIn(string $field, $param): self
+    final public function havingNotIn(string $field, array|callable|self $param): self
     {
         $param = $this->buildInCallbackParam($param, __METHOD__);
 
@@ -1068,10 +1070,8 @@ class BaseBuilder
     /**
      * Ajoute des conditions de type HAVING IN.
      * Sépare plusieurs appels avec 'OR'.
-     *
-     * @param array|callable|self $param
      */
-    final public function orHavingIn(string $field, $param): self
+    final public function orHavingIn(string $field, array|callable|self $param): self
     {
         $param = $this->buildInCallbackParam($param, __METHOD__);
 
@@ -1081,10 +1081,8 @@ class BaseBuilder
     /**
      * Ajoute des conditions de type HAVING NOT IN.
      * Sépare plusieurs appels avec 'OR'.
-     *
-     * @param array|callable|self $param
      */
-    final public function orHavingNotIn(string $field, $param): self
+    final public function orHavingNotIn(string $field, array|callable|self $param): self
     {
         $param = $this->buildInCallbackParam($param, __METHOD__);
 
@@ -1099,7 +1097,7 @@ class BaseBuilder
      * @param mixed        $match Une valeur de champ à comparer
      * @param string       $side  Côté sur lequel sera ajouté le caractère '%' si necessaire
      */
-    final public function havingLike($field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
+    final public function havingLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
     {
         if (! is_array($field)) {
             $field = [$field => $match];
@@ -1121,7 +1119,7 @@ class BaseBuilder
      * @param mixed        $match Une valeur de champ à comparer
      * @param string       $side  Côté sur lequel sera ajouté le caractère '%' si necessaire
      */
-    final public function havingNotLike($field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
+    final public function havingNotLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
     {
         if (! is_array($field)) {
             $field = [$field => $match];
@@ -1136,6 +1134,21 @@ class BaseBuilder
     }
 
     /**
+     * Ajoute des conditions de type HAVING NOT LIKE.
+     * Sépare plusieurs appels avec 'AND'.
+     *
+     * @param array|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param mixed        $match Une valeur de champ à comparer
+     * @param string       $side  Côté sur lequel sera ajouté le caractère '%' si necessaire
+     *
+     * @alias self::havingNotLike()
+     */
+    final public function notHavingLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
+    {
+        return $this->havingNotLike($field, $match, $side, $escape, $insensitiveSearch);
+    }
+
+    /**
      * Ajoute des conditions de type HAVING Like.
      * Sépare plusieurs appels avec 'OR'.
      *
@@ -1143,7 +1156,7 @@ class BaseBuilder
      * @param mixed        $match Une valeur de champ à comparer
      * @param string       $side  Côté sur lequel sera ajouté le caractère '%' si necessaire
      */
-    final public function orHavingLike($field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
+    final public function orHavingLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
     {
         if (! is_array($field)) {
             $field = [$field => $match];
@@ -1165,7 +1178,7 @@ class BaseBuilder
      * @param mixed        $match Une valeur de champ à comparer
      * @param string       $side  Côté sur lequel sera ajouté le caractère '%' si necessaire
      */
-    final public function orHavingNotLike($field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
+    final public function orHavingNotLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
     {
         if (! is_array($field)) {
             $field = [$field => $match];
@@ -1245,7 +1258,7 @@ class BaseBuilder
      * @param array $data    Tableau de clés et de valeurs à insérer
      * @param bool  $execute Spécifié si nous voulons exécuter directement la requête
      *
-     * @return BaseResult|self
+     * @return BaseResult|self|string
      */
     final public function insert(array $data, bool $execute = true)
     {
@@ -1259,6 +1272,10 @@ class BaseBuilder
 
         $this->query_keys   = array_keys($data);
         $this->query_values = array_values(array_map([$this->db, 'quote'], $data));
+
+        if ($this->testMode) {
+            return $this->sql();
+        }
 
         if (true === $execute) {
             return $this->execute();
@@ -1275,7 +1292,7 @@ class BaseBuilder
      *
      * @return BaseResult|self
      */
-    final public function update($data, bool $execute = true)
+    final public function update(array|string $data, bool $execute = true)
     {
         $this->checkTable();
 
@@ -1474,11 +1491,10 @@ class BaseBuilder
     /**
      * Recupere plusieurs lignes des resultats de la reauete select.
      *
-     * @param int|string  $type
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
      */
-    final public function result($type = PDO::FETCH_OBJ, ?string $key = null, int $expire = 0): array
+    final public function result(int|string $type = PDO::FETCH_OBJ, ?string $key = null, int $expire = 0): array
     {
         return $this->execute($key, $expire)->result($type);
     }
@@ -1579,15 +1595,16 @@ class BaseBuilder
         $rows = $this->all(PDO::FETCH_OBJ, $key, $expire);
 
         $fields = [];
-        
+
         foreach ($rows as $row) {
             $values = [];
+
             foreach ((array) $name as $v) {
                 if (is_string($v)) {
                     $values[$v] = $row->{$v} ?? null;
                 }
             }
-            $fields[] = is_string($name) ? ($values[$name] ?? null) : $values; 
+            $fields[] = is_string($name) ? ($values[$name] ?? null) : $values;
         }
 
         return $fields;
@@ -1603,9 +1620,8 @@ class BaseBuilder
      *                              - @var int limit
      *                              - @var int offset
      *                              - @var array where
-     * @param int|string   $type
      */
-    final public function findAll($fields = '*', array $options = [], $type = PDO::FETCH_OBJ): array
+    final public function findAll(array|string $fields = '*', array $options = [], int|string $type = PDO::FETCH_OBJ): array
     {
         $this->select($fields);
 
@@ -1629,11 +1645,10 @@ class BaseBuilder
      * @param array        $options Array of selecting options
      *                              - @var int offset
      *                              - @var array where
-     * @param int|string   $type
      *
      * @return mixed
      */
-    final public function findOne($fields = '*', array $options = [], $type = PDO::FETCH_OBJ)
+    final public function findOne(array|string $fields = '*', array $options = [], int|string $type = PDO::FETCH_OBJ)
     {
         $this->select($fields);
 
@@ -1650,7 +1665,7 @@ class BaseBuilder
     /**
      * Handles dynamic "where" clauses to the query.
      */
-    public function dynamicWhere(string $method, array $parameters): self
+    private function dynamicWhere(string $method, array $parameters): self
     {
         $finder = substr($method, 5);
 
@@ -2011,7 +2026,7 @@ class BaseBuilder
             $aggregate = $matches[1];
             $field     = str_replace($aggregate . '(' . $matches[2] . ')', $matches[2], $field);
         }
-        
+
         $field = explode('.', $field);
 
         if (count($field) === 2) {
