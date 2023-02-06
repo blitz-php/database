@@ -1802,7 +1802,7 @@ class BaseBuilder
             ]);
         }
 
-        if ($this->crud === 'delete') {
+        else if ($this->crud === 'delete') {
             $this->setSql([
                 'DELETE FROM',
                 $this->removeAlias($this->table[0]),
@@ -1813,17 +1813,20 @@ class BaseBuilder
             ]);
         }
 
-        if ($this->crud === 'update') {
+        else if ($this->crud === 'update') {
             $this->setSql([
                 'UPDATE',
-                $this->table[0],
+				$this->removeAlias($this->table[0]),
                 'SET',
                 implode(',', $this->query_values),
                 $this->where,
+                $this->order,
+                $this->limit,
+                $this->offset,
             ]);
         }
 
-        if ($this->crud === 'select') {
+        else if ($this->crud === 'select') {
             $this->setSql([
                 'SELECT',
                 $this->distinct,
