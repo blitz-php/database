@@ -48,8 +48,8 @@ class MockConnection extends BaseConnection
 
         $query->setQuery($sql, $binds, $setEscapeFlags);
 
-        if (! empty($this->swapPre) && ! empty($this->DBPrefix)) {
-            $query->swapPrefix($this->DBPrefix, $this->swapPre);
+        if (! empty($this->swapPre) && ! empty($this->prefix)) {
+            $query->swapPrefix($this->prefix, $this->swapPre);
         }
 
         $startTime = microtime(true);
@@ -57,7 +57,7 @@ class MockConnection extends BaseConnection
         $this->lastQuery = $query;
 
         // Run the query
-        if (false === ($this->resultID = $this->simpleQuery($query->getQuery()))) {
+        if (false === ($this->result = $this->simpleQuery($query->getQuery()))) {
             $query->setDuration($startTime, $startTime);
 
             // @todo deal with errors
@@ -75,7 +75,7 @@ class MockConnection extends BaseConnection
         // query is not write-type, so it must be read-type query; return QueryResult
         $resultClass = str_replace('Connection', 'Result', static::class);
 
-        return new $resultClass($this->connID, $this->resultID);
+        return new $resultClass($this->conn, $this->result);
     }
 
     /**
@@ -171,7 +171,15 @@ class MockConnection extends BaseConnection
      */
     public function insertID(): int
     {
-        return $this->connID->insert_id;
+        return $this->conn->insert_id;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function _escapeString(string $str): string
+    {
+        return "'" . parent::_escapeString($str) . "'";
     }
 
     /**

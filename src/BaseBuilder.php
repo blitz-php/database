@@ -31,8 +31,9 @@ class BaseBuilder
      */
     protected $testMode = false;
 
-    protected $table  = [];
-    protected $fields = [];
+    protected $tableName = '';
+    protected $table     = [];
+    protected $fields    = [];
     protected $where;
     protected $params = [];
     protected $joins  = [];
@@ -547,7 +548,10 @@ class BaseBuilder
         }
 
         foreach ($field as $key => $match) {
-            $key = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
+            if ($insensitiveSearch === true) {
+                $key = 'LOWER(' . $key . ')';
+                $match = is_string($match) ? strtolower($match) : $match;
+            }
             $this->where($key . ' %', $this->buildLikeMatch($match, $side, $escape), false);
         }
 
@@ -1896,10 +1900,8 @@ class BaseBuilder
             $str = '';
 
             foreach ($field as $key => $value) {
-                if (! empty($value)) {
-                    $str .= $this->parseCondition($key, $value, $join, $escape);
-                    $join = '';
-                }
+                $str .=  $this->parseCondition($key, $value, $join, $escape);
+                $join = '';
             }
 
             return $str;
@@ -1914,7 +1916,7 @@ class BaseBuilder
         if (empty($join)) {
             $join = ($field[0] === '|') ? ' OR ' : ' AND ';
         }
-        $field = str_replace('|', '', $field);
+        $field = trim(str_replace('|', '', $field));
 
         if ($value === null) {
             return rtrim($join) . ' ' . ltrim($field);
@@ -1922,24 +1924,28 @@ class BaseBuilder
 
         $operator = '';
         if (strpos($field, ' ') !== false) {
-            [$field, $operator] = explode(' ', $field);
+            [$field, $operator] = explode(' ', $field, 2);
         }
 
         if (! empty($operator)) {
-            switch ($operator) {
+            switch (strtoupper($operator)) {
                 case '%':
+                case 'LIKE':
                     $condition = ' LIKE ';
                     break;
 
                 case '!%':
+                case 'NOT LIKE':
                     $condition = ' NOT LIKE ';
                     break;
 
                 case '@':
+                case 'IN':
                     $condition = ' IN ';
                     break;
 
                 case '!@':
+                case 'NOT IN':
                     $condition = ' NOT IN ';
                     break;
 
@@ -1967,18 +1973,19 @@ class BaseBuilder
      */
     final public function reset(): self
     {
-        $this->table    = [];
-        $this->params   = [];
-        $this->where    = '';
-        $this->fields   = [];
-        $this->joins    = [];
-        $this->order    = '';
-        $this->groups   = '';
-        $this->having   = '';
-        $this->distinct = '';
-        $this->limit    = '';
-        $this->offset   = '';
-        $this->sql      = '';
+        $this->tableName = '';
+        $this->table     = [];
+        $this->params    = [];
+        $this->where     = '';
+        $this->fields    = [];
+        $this->joins     = [];
+        $this->order     = '';
+        $this->groups    = '';
+        $this->having    = '';
+        $this->distinct  = '';
+        $this->limit     = '';
+        $this->offset    = '';
+        $this->sql       = '';
 
         return $this->asCrud('select');
     }
@@ -2034,7 +2041,7 @@ class BaseBuilder
 
         if (count($field) === 2) {
             $operator = '';
-            if ($field[0] === '|') {
+            if ($field[0][0] === '|') {
                 $field[0] = substr($field[0], 1);
                 $operator = '|';
             }

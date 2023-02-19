@@ -97,7 +97,6 @@ class Connection extends BaseConnection
         if (! empty($this->charset)) {
             $this->commands[] = "SET NAMES '{$this->charset}'" . (! empty($this->collation) ? " COLLATE '{$this->collation}'" : '');
         }
-        $this->type = strpos($this->driver, 'pdo') !== false ? 'pdo' : $this->driver;
 
         return self::pushConnection('mysql', $this, $db);
     }
