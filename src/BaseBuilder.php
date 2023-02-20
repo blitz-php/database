@@ -31,22 +31,23 @@ class BaseBuilder
      */
     protected $testMode = false;
 
-    protected $tableName = '';
-    protected $table     = [];
-    protected $fields    = [];
-    protected $where;
-    protected $params = [];
-    protected $joins  = [];
-    protected $order;
-    protected $groups;
-    protected $having;
-    protected $distinct;
-    protected $limit;
-    protected $offset;
-    protected $sql;
-    private $crud         = 'select';
-    private $query_keys   = [];
-    private $query_values = [];
+    protected string $tableName = '';
+    protected array $table      = [];
+    protected array  $fields    = [];
+    protected string $where     = '';
+    protected array $params     = [];
+    protected array $joins      = [];
+    protected string $order     = '';
+    protected string $groups    = '';
+    protected string $having    = '';
+    protected string $distinct  = '';
+    protected string $ignore    = '';
+    protected string $limit     = '';
+    protected string $offset    = '';
+    protected string $sql       = '';
+    private string $crud        = 'select';
+    private array $query_keys   = [];
+    private array $query_values = [];
 
     /**
      * @var BaseResult
@@ -197,7 +198,7 @@ class BaseBuilder
 
         $alias = trim($alias);
         if ($alias !== '') {
-            $subquery .= ' ' . $this->db->quote($alias);
+            $subquery .= ' ' . $this->db->escapeIdentifiers($alias);
         }
 
         $this->table = [$subquery];
@@ -549,7 +550,7 @@ class BaseBuilder
 
         foreach ($field as $key => $match) {
             if ($insensitiveSearch === true) {
-                $key = 'LOWER(' . $key . ')';
+                $key   = 'LOWER(' . $key . ')';
                 $match = is_string($match) ? strtolower($match) : $match;
             }
             $this->where($key . ' %', $this->buildLikeMatch($match, $side, $escape), false);
@@ -897,7 +898,7 @@ class BaseBuilder
             return $this;
         }
 
-        $join = empty($this->order) ? 'ORDER BY' : ',';
+        $join = empty($this->order) ? 'ORDER BY ' : ', ';
 
         $direction = strtoupper(trim($direction));
 
@@ -909,7 +910,7 @@ class BaseBuilder
             $direction = in_array($direction, ['ASC', 'DESC'], true) ? ' ' . $direction : '';
         }
 
-        $this->order .= $join . ($escape ? $this->db->quote($field) : $field) . $direction;
+        $this->order .= $join . ($escape ? $this->db->escapeIdentifiers($field) : $field) . $direction;
 
         return $this->asCrud('select');
     }
@@ -979,12 +980,12 @@ class BaseBuilder
 
         if (is_array($field)) {
             foreach ($field as &$val) {
-                $val = $this->buildParseField($escape ? $this->db->quote($val) : $val);
+                $val = $this->buildParseField($escape ? $this->db->escapeIdentifiers($val) : $val);
             }
 
             $fields = implode(',', $field);
         } else {
-            $fields = $this->buildParseField($escape ? $this->db->quote($field) : $field);
+            $fields = $this->buildParseField($escape ? $this->db->escapeIdentifiers($field) : $field);
         }
 
         $this->groups .= $join . ' ' . $fields;
@@ -1257,30 +1258,48 @@ class BaseBuilder
     }
 
     /**
+     * Définit un indicateur qui indique au compilateur de chaîne de requête d'ajouter IGNORE.
+     */
+    final public function ignore(bool $value = true): self
+    {
+        $this->ignore = $value ? 'IGNORE' : '';
+
+        return $this->asCrud('insert');
+    }
+
+    /**
      * Construit une requête d'insertion.
      *
-     * @param array $data    Tableau de clés et de valeurs à insérer
-     * @param bool  $execute Spécifié si nous voulons exécuter directement la requête
+     * @param array|object $data    Tableau ou objet de clés et de valeurs à insérer
+     * @param bool         $execute Spécifié si nous voulons exécuter directement la requête
      *
      * @return BaseResult|self|string
      */
-    final public function insert(array $data, bool $execute = true)
+    final public function insert(array|object $data, bool $escape = true, bool $execute = true)
     {
-        $this->checkTable();
-
         $this->crud = 'insert';
 
+        if (is_object($data)) {
+            if (method_exists($data, 'toArray')) {
+                $data = $data->toArray();
+            } else {
+                $data = (array) $data;
+            }
+        }
         if (empty($data)) {
+            if (true === $execute) {
+                throw new DatabaseException('You must give entries to insert.');
+            }
+
             return $this;
         }
 
         $this->query_keys   = array_keys($data);
-        $this->query_values = array_values(array_map([$this->db, 'quote'], $data));
+        $this->query_values = array_values(array_map(fn ($val) => $escape === true ? $this->db->quote($val) : $val, $data));
 
         if ($this->testMode) {
             return $this->sql();
         }
-
         if (true === $execute) {
             return $this->execute();
         }
@@ -1289,20 +1308,93 @@ class BaseBuilder
     }
 
     /**
+     * Construit une requête d'insertion de type INSERT IGNORE.
+     *
+     * @param array:object $data    Tableau ou objet de clés et de valeurs à insérer
+     * @param bool $execute Spécifié si nous voulons exécuter directement la requête
+     *
+     * @return BaseResult|self|string
+     */
+    final public function insertIgnore(array|object $data, bool $escape = true, $execute = true)
+    {
+        return $this->ignore(true)->insert($data, $escape, $execute);
+    }
+
+    /**
+     * Construit une requête d'insertion multiple.
+     *
+     * @param array<array|object> $data Tableau a deux dimensions contenant les valeurs a inserer
+     *
+     * @return BaseResult|string
+     */
+    final public function bulckInsert(array $data, bool $escape = true, bool $ignore = false)
+    {
+        if (2 !== Utils::maxDimensions($data)) {
+            throw new BadMethodCallException('Bad usage of ' . static::class . '::' . __METHOD__ . ' method');
+        }
+
+        $table = array_pop($this->table);
+
+        $statement = [];
+
+        foreach ($data as $item) {
+            if (is_array($item)) {
+                $result = $this->ignore($ignore)->into($table)->insert($item, $escape, false);
+                if (is_string($result)) {
+                    $statement[] = $result;
+                } elseif ($result instanceof self) {
+                    $statement[] = $result->sql();
+                }
+            }
+        }
+
+        $sql = implode('; ', $statement);
+
+        if ($this->testMode) {
+            return $sql;
+        }
+
+        return $this->result = $this->query($sql, $this->params);
+    }
+
+    /**
+     * Construit une requête d'insertion multiple de type INSERT IGNORE.
+     *
+     * @param array<array|object> $data Tableau a deux dimensions contenant les valeurs a inserer
+     *
+     * @return BaseResult|string
+     */
+    final public function bulckInsertIgnore(array $data, bool $escape = true)
+    {
+        return $this->bulckInsert($data, $escape, true);
+    }
+
+    /**
      * Construit une requête de mise à jour.
      *
-     * @param array|string $data    Tableau de clés et de valeurs, ou chaîne littérale
-     * @param bool         $execute Spécifié si nous voulons exécuter directement la requête
+     * @param array|object|string $data    Tableau ou objet de clés et de valeurs, ou chaîne littérale
+     * @param bool                $execute Spécifié si nous voulons exécuter directement la requête
      *
      * @return BaseResult|self
      */
-    final public function update(array|string $data, bool $execute = true)
+    final public function update(array|string|object $data, bool $escape = true, bool $execute = true)
     {
-        $this->checkTable();
-
         $this->crud = 'update';
 
+        if (is_object($data)) {
+            if (method_exists($data, 'toArray')) {
+                $data = $data->toArray();
+            } elseif (method_exists($data, '__toString')) {
+                $data = (string) $data;
+            } else {
+                $data = (array) $data;
+            }
+        }
         if (empty($data)) {
+            if (true === $execute) {
+                throw new DatabaseException('You must give entries to update.');
+            }
+
             return $this;
         }
 
@@ -1310,7 +1402,9 @@ class BaseBuilder
 
         if (is_array($data)) {
             foreach ($data as $key => $value) {
-                $values[] = is_numeric($key) ? $value : $key . ' = ' . $this->db->quote($value);
+                $values[] = $this->db->escapeIdentifiers(is_numeric($key) ? $value : $key)
+                    . ' = ' .
+                    ($escape === true ? $this->db->quote($value) : $value);
             }
         } else {
             $values[] = (string) $data;
@@ -1318,6 +1412,9 @@ class BaseBuilder
 
         $this->query_values = $values;
 
+        if ($this->testMode) {
+            return $this->sql();
+        }
         if (true === $execute) {
             return $this->execute();
         }
@@ -1709,45 +1806,6 @@ class BaseBuilder
     }
 
     /**
-     * Builds an multi insert query.
-     *
-     * @param array       $data  Array of key and values to insert
-     * @param string|null $table Table to insert data
-     */
-    final public function bulckInsert(array $data, ?string $table = null): array
-    {
-        if (2 !== Utils::maxDimensions($data)) {
-            throw new BadMethodCallException('Mauvaise utilisation de la méthode ' . __METHOD__);
-        }
-
-        if (empty($table)) {
-            $table = $this->table;
-        }
-
-        $table = (array) $table;
-        $table = array_pop($table);
-        if (empty($table) || ! is_string($table)) {
-            throw new InvalidArgumentException("Aucune table d'insertion trouvée");
-        }
-
-        $insered = [];
-
-        foreach ($data as $item) {
-            if (is_array($item)) {
-                $result = $this->into($table)->insert($item, true);
-                if ($result instanceof BaseResult) {
-                    $insert_id = $result->insertID();
-                    if (! empty($insert_id)) {
-                        $insered[] = $insert_id;
-                    }
-                }
-            }
-        }
-
-        return $insered;
-    }
-
-    /**
      * Add a single dynamic where clause statement to the query.
      *
      * @return void
@@ -1798,29 +1856,25 @@ class BaseBuilder
             $values = implode(',', $this->query_values);
 
             $this->setSql([
-                'INSERT INTO',
-                $this->removeAlias($this->table[0]),
+                'INSERT', $this->ignore, 'INTO',
+                $this->removeAlias(array_pop($this->table)),
                 '(' . $keys . ')',
                 'VALUES',
                 '(' . $values . ')',
             ]);
-        }
-
-        else if ($this->crud === 'delete') {
+        } elseif ($this->crud === 'delete') {
             $this->setSql([
                 'DELETE FROM',
-                $this->removeAlias($this->table[0]),
+                $this->removeAlias(array_pop($this->table)),
                 $this->where,
                 $this->order,
                 $this->limit,
                 $this->offset,
             ]);
-        }
-
-        else if ($this->crud === 'update') {
+        } elseif ($this->crud === 'update') {
             $this->setSql([
                 'UPDATE',
-				$this->removeAlias($this->table[0]),
+                $this->removeAlias(array_pop($this->table)),
                 'SET',
                 implode(',', $this->query_values),
                 $this->where,
@@ -1828,9 +1882,7 @@ class BaseBuilder
                 $this->limit,
                 $this->offset,
             ]);
-        }
-
-        else if ($this->crud === 'select') {
+        } elseif ($this->crud === 'select') {
             $this->setSql([
                 'SELECT',
                 $this->distinct,
@@ -1900,7 +1952,7 @@ class BaseBuilder
             $str = '';
 
             foreach ($field as $key => $value) {
-                $str .=  $this->parseCondition($key, $value, $join, $escape);
+                $str .= $this->parseCondition($key, $value, $join, $escape);
                 $join = '';
             }
 
@@ -1960,7 +2012,7 @@ class BaseBuilder
             if (strpos($operator, '@') === false) {
                 $condition = ' IN ';
             }
-            $value = '(' . implode(',', array_map([$this->db, 'quote'], $value)) . ')';
+            $value = '(' . implode(',', array_map(fn ($val) => $escape === true ? $this->db->quote($val) : $val, $value)) . ')';
         } else {
             $value = ($escape && ! is_numeric($value)) ? $this->db->quote($value) : $value;
         }
@@ -1982,6 +2034,7 @@ class BaseBuilder
         $this->order     = '';
         $this->groups    = '';
         $this->having    = '';
+        $this->ignore    = '';
         $this->distinct  = '';
         $this->limit     = '';
         $this->offset    = '';
