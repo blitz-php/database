@@ -30,12 +30,12 @@ describe("Query Builder : Where", function() {
     describe('whereOr', function(){
         it(": WhereOr simple", function() {
             $builder = $this->builder->from('users u')->where('name !=', 'John')->orWhere('id >', 2);
-            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE name != John OR id > 2');
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE name != \'John\' OR id > 2');
         });
 
         it(": WhereOr avec la meme colonne", function() {
             $builder = $this->builder->from('users u')->where('name !=', 'John')->orWhere('name', 'Doe');
-            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE name != John OR name = Doe');
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE name != \'John\' OR name = \'Doe\'');
         });  
     });
 });
