@@ -16,6 +16,7 @@ use BlitzPHP\Database\Exceptions\DatabaseException;
 use Closure;
 use Exception;
 use PDO;
+use PDOStatement;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use stdClass;
@@ -54,105 +55,77 @@ abstract class BaseConnection implements ConnectionInterface
 {
     /**
      * Data Source Name / Connect string
-     *
-     * @var string
      */
-    protected $dsn;
+    protected string $dsn;
 
     /**
-     * Database port
-     *
-     * @var int|string
+     * Port de la base de données
      */
-    protected $port = '';
+    protected int|string $port = '';
 
     /**
-     * Hostname
-     *
-     * @var string
+     * Nom d'hote
      */
-    protected $hostname;
+    protected string $hostname;
 
     /**
-     * Username
-     *
-     * @var string
+     * Utilisateur de la base de données
      */
-    protected $username;
+    protected string $username;
 
     /**
-     * Password
-     *
-     * @var string
+     * Mot de passe de l'utilisateur
      */
-    protected $password;
+    protected string $password;
 
     /**
-     * Database name
-     *
-     * @var string
+     * Nom de la base de données
      */
-    protected $database;
+    protected string $database;
 
     /**
-     * Database driver
-     *
-     * @var string
+     * Pilote de la base de données
      */
-    public $driver = 'pdomysql';
+    public string $driver = 'pdomysql';
 
     /**
      * Sub-driver
-     *
-     * @used-by CI_DB_pdo_driver
-     *
-     * @var string
      */
-    protected $subdriver;
+    protected string $subdriver;
 
     /**
-     * Table prefix
-     *
-     * @var string
+     * Prefixe des tables
      */
-    protected $prefix = '';
+    protected string $prefix = '';
 
     /**
-     * Persistent connection flag
+     * Drapeau de persistence de la connexion
+     */
+    protected bool $persistent = false;
+
+    /**
+     * Drapeau de debugage
+     * 
+     * Doit on afficher les erreurs ?
      *
      * @var bool
      */
-    protected $persistent = false;
-
-    /**
-     * Debug flag
-     *
-     * Whether to display error messages.
-     *
-     * @var bool
-     */
-    public $debug = false;
+    public bool $debug = false;
 
     /**
      * Character set
-     *
-     * @var string
      */
-    protected $charset = 'utf8';
+    protected string $charset = 'utf8';
 
     /**
      * Collation
-     *
-     * @var string
      */
-    protected $collation = 'utf8_general_ci';
+    protected string $collation = 'utf8_general_ci';
 
     /**
      * Swap Prefix
-     *
-     * @var string
      */
-    protected $swapPre = '';
+    protected string $swapPre = '';
 
     /**
      * Encryption flag/data
@@ -162,27 +135,21 @@ abstract class BaseConnection implements ConnectionInterface
     protected $encrypt = false;
 
     /**
-     * Compression flag
-     *
-     * @var bool
+     * Drapeau de compression
      */
-    protected $compress = false;
+    protected bool $compress = false;
 
     /**
-     * Strict ON flag
+     * Drapeau Strict ON
      *
-     * Whether we're running in strict SQL mode.
-     *
-     * @var bool
+     * Doit on execute en mode SQL strict.
      */
-    protected $strictOn;
+    protected bool $strictOn = false;
 
     /**
-     * Settings for a failover connection.
-     *
-     * @var array
+     * Parametres de connexion de secours
      */
-    protected $failover = [];
+    protected array $failover = [];
 
     /**
      * The last query object that was executed
@@ -193,187 +160,141 @@ abstract class BaseConnection implements ConnectionInterface
     protected $lastQuery;
 
     /**
-     * Connection ID
+     * Connexion a la bd
      *
-     * @var bool|object|resource
+     * @var bool|object|resource|PDO
      */
     public $conn = false;
 
     /**
-     * Result ID
+     * Resultat  de requete
      *
-     * @var bool|object|resource
+     * @var bool|object|resource|PDOStatement
      */
     public $result = false;
 
     /**
-     * Protect identifiers flag
-     *
-     * @var bool
+     * Drapeau de protection des identifiants
      */
-    public $protectIdentifiers = true;
+    public bool $protectIdentifiers = true;
 
     /**
-     * List of reserved identifiers
-     *
-     * Identifiers that must NOT be escaped.
-     *
-     * @var array
+     * Liste des identifiants reserves
+     * 
+     * Les identifiants ne doivent pas etre echaper.
      */
-    protected $reservedIdentifiers = ['*'];
+    protected array $reservedIdentifiers = ['*'];
 
     /**
      * Caractere d'echapement des identifiant
      */
-    public array|string $escapeChar = '"';
+    public string $escapeChar = '"';
 
     /**
      * ESCAPE statement string
-     *
-     * @var string
      */
-    public $likeEscapeStr = " ESCAPE '%s' ";
+    public string $likeEscapeStr = " ESCAPE '%s' ";
 
     /**
      * ESCAPE character
-     *
-     * @var string
      */
-    public $likeEscapeChar = '!';
+    public string $likeEscapeChar = '!';
 
     /**
-     * RegExp used to escape identifiers
-     *
-     * @var array
+     * RegExp a utiliser pour echaper les identifiants
      */
-    protected $pregEscapeChar = [];
+    protected array $pregEscapeChar = [];
 
     /**
-     * Holds previously looked up data
-     * for performance reasons.
-     *
-     * @var array
+     * Ancienes donnees pour les raisons de performance.
      */
-    public $dataCache = [];
+    public array $dataCache = [];
 
     /**
-     * Microtime when connection was made
-     *
-     * @var float
+     * Heure de debut de la connexion (microsecondes)
      */
-    protected $connectTime = 0.0;
+    protected float $connectTime = 0.0;
 
     /**
-     * How long it took to establish connection.
-     *
-     * @var float
+     * Combien de temps la connexion a t-elle mise pour etre etablie
      */
-    protected $connectDuration = 0.0;
+    protected float $connectDuration = 0.0;
 
     /**
-     * If true, no queries will actually be
-     * run against the database.
-     *
-     * @var bool
+     * Si vrai, aucune requete ne pourra etre reexecuter en bd.
      */
-    protected $pretend = false;
+    protected bool $pretend = false;
 
     /**
-     * Transaction enabled flag
-     *
-     * @var bool
+     * Drapeau d'activation des transactions
      */
-    public $transEnabled = true;
+    public bool $transEnabled = true;
 
     /**
-     * Strict transaction mode flag
-     *
-     * @var bool
+     * Drapeau du mode de transactions strictes.
      */
-    public $transStrict = true;
+    public bool $transStrict = true;
 
     /**
-     * Transaction depth level
-     *
-     * @var int
+     * Niveau de profondeur des transactions
      */
-    protected $transDepth = 0;
+    protected int $transDepth = 0;
 
     /**
-     * Transaction status flag
+     * Drapeau du statut des transaction
      *
-     * Used with transactions to determine if a rollback should occur.
-     *
-     * @var bool
+     * Utilise avec les transactions pour determiner si un rollback est en cours.
      */
-    protected $transStatus = true;
+    protected bool $transStatus = true;
 
     /**
-     * Transaction failure flag
+     * Drapeau d'echec des transactions
      *
-     * Used with transactions to determine if a transaction has failed.
-     *
-     * @var bool
+     * Utilise avec les transactions pour determiner si une transation a echouee.
      */
-    protected $transFailure = false;
+    protected bool $transFailure = false;
 
     /**
-     * Array of table aliases.
-     *
-     * @var array
+     * tableau des alias des tables.
      */
-    protected $aliasedTables = [];
+    protected array $aliasedTables = [];
 
     /**
      * Query Class
-     *
-     * @var string
      */
-    protected $queryClass = Query::class;
+    protected string $queryClass = Query::class;
 
     /**
      * Liste des connexions etablies
-     *
-     * @var array
      */
-    protected static $allConnections = [];
+    protected static array $allConnections = [];
 
     /**
      * Statistiques de la requete
-     *
-     * @var array
      */
-    protected $stats = [
+    protected array $stats = [
         'queries' => [],
     ];
 
     /**
      * Commandes sql a executer a l'initialisation de la connexion a la base de donnees
-     *
-     * @var array
      */
-    protected $commands = [];
+    protected array $commands = [];
 
     /**
      * Specifie si on doit ouvrir la connexion au serveur en se connectant automatiquement à la base de donnees
-     *
-     * @var bool
      */
-    protected $withDatabase = true;
+    protected bool $withDatabase = true;
 
     /**
      * Instance de la LoggerInterface pour logger les problemes de connexion
-     *
-     * @var LoggerInterface|null
      */
-    protected $logger;
+    protected LoggerInterface|null $logger;
 
     /**
      * Gestionnaire d'evenement
-     *
-     * @var object|null
      */
-    protected $event;
+    protected object|null $event;
 
     /**
      * Saves our connection settings.

@@ -13,6 +13,7 @@ namespace BlitzPHP\Database;
 
 use BadMethodCallException;
 use BlitzPHP\Database\Contracts\ConnectionInterface;
+use BlitzPHP\Database\Contracts\ResultInterface;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Database\MySQL\Connection as MySQLConnection;
 use InvalidArgumentException;
@@ -1653,7 +1654,7 @@ class BaseBuilder
     /**
      * Execute une requete sql donnée
      *
-     * @return BaseResult|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
+     * @return ResultInterface|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
      */
     final public function query(string $sql, array $params = [])
     {
@@ -1666,7 +1667,7 @@ class BaseBuilder
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
      *
-     * @return BaseResult|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
+     * @return ResultInterface|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
      */
     final public function execute(?string $key = null, int $expire = 0)
     {

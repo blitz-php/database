@@ -5,21 +5,29 @@ use BlitzPHP\Database\BaseConnection;
 
 class MockConnection extends BaseConnection
 {
-    public $escapeChar = '';
+    /**
+     * {@inheritDoc}
+     */
+    public string $escapeChar = '';
 
-    protected $returnValues = [];
+    protected array $returnValues = [];
 
     /**
      * Database schema for Postgre and SQLSRV
-     *
-     * @var string
      */
-    protected $schema;
+    protected string $schema;
 
-    public $database;
+    /**
+     * {@inheritDoc}
+     */
+    public string $database;
+
+    /**
+     * {@inheritDoc}
+     */
     public $lastQuery;
 
-    public function shouldReturn(string $method, $return)
+    public function shouldReturn(string $method, $return): self
     {
         $this->returnValues[$method] = $return;
 

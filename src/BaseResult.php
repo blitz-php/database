@@ -13,36 +13,35 @@ namespace BlitzPHP\Database;
 
 use BlitzPHP\Database\Contracts\ResultInterface;
 use PDO;
+use PDOStatement;
 
 abstract class BaseResult implements ResultInterface
 {
     /**
      * Details de la requete
-     *
-     * @var array
      */
-    private $details = [
+    private array $details = [
         'num_rows'      => 0,
         'affected_rows' => 0,
         'insert_id'     => -1,
     ];
 
     /**
-     * Database query object
+     * Resultat de la requete
      *
-     * @var object|resource
+     * @var object|resource|PDOStatement
      */
     protected $query;
 
     /**
-     * @var BaseConnection
+     * Instace BaseConnection
      */
-    protected $db;
+    protected BaseConnection $db;
 
     /**
-     * @var int
+     * Enrergistrement courant (lors de la recuperation d'un select)
      */
-    private $currentRow = 0;
+    private int $currentRow = 0;
 
     /**
      * Constructor
@@ -68,11 +67,9 @@ abstract class BaseResult implements ResultInterface
     /**
      * Fetch multiple rows from a select query.
      *
-     * @param int|string $type
-     *
-     * @alias result()
+     * @alias self::result()
      */
-    public function all($type = PDO::FETCH_OBJ): array
+    public function all(int|string|null $type = PDO::FETCH_OBJ): array
     {
         return $this->result($type);
     }
@@ -80,7 +77,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function first($type = PDO::FETCH_OBJ)
+    public function first(int|string|null $type = PDO::FETCH_OBJ)
     {
         $records = $this->result($type);
 
@@ -94,21 +91,17 @@ abstract class BaseResult implements ResultInterface
      *
      * @return mixed
      *
-     * @alias first()
+     * @alias self::first()
      */
-    public function one($type = PDO::FETCH_OBJ)
+    public function one(int|string|null $type = PDO::FETCH_OBJ)
     {
         return $this->first($type);
     }
 
     /**
-     * Recupere le dernier element des resultats d'une requete en BD
-     *
-     * @param int|string $type
-     *
-     * @return mixed Row
+     * {@inheritDoc}
      */
-    public function last($type = PDO::FETCH_OBJ)
+    public function last(int|string|null $type = PDO::FETCH_OBJ)
     {
         $records = $this->all($type);
 
@@ -122,7 +115,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function next($type = PDO::FETCH_OBJ)
+    public function next(int|string|null $type = PDO::FETCH_OBJ)
     {
         $records = $this->result($type);
 
@@ -136,7 +129,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function previous($type = PDO::FETCH_OBJ)
+    public function previous(int|string|null $type = PDO::FETCH_OBJ)
     {
         $records = $this->result($type);
 
@@ -154,7 +147,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function row(int $index, $type = PDO::FETCH_OBJ)
+    public function row(int $index, int|string|null $type = PDO::FETCH_OBJ)
     {
         $records = $this->result($type);
 
@@ -180,7 +173,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function result($type = PDO::FETCH_OBJ): array
+    public function result(int|string|null $type = PDO::FETCH_OBJ): array
     {
         if (null === $type) {
             $type = PDO::FETCH_OBJ;

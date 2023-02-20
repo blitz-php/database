@@ -24,7 +24,7 @@ use stdClass;
  */
 class Connection extends BaseConnection
 {
-    protected $error = [
+    protected array $error = [
         'message' => '',
         'code'    => 0,
     ];
@@ -35,15 +35,13 @@ class Connection extends BaseConnection
      * Whether to use the MySQL "delete hack" which allows the number
      * of affected rows to be shown. Uses a preg_replace when enabled,
      * adding a bit more processing to all queries.
-     *
-     * @var bool
      */
-    public $deleteHack = true;
+    public bool $deleteHack = true;
 
     /**
      * {@inheritDoc}
      */
-    public $escapeChar = '`';
+    public string $escapeChar = '`';
 
     /**
      * Connect to the database.
