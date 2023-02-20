@@ -26,10 +26,28 @@ class BaseBuilder
 {
     /**
      * État du mode de test du générateur.
-     *
-     * @var bool
      */
-    protected $testMode = false;
+    protected bool $testMode = false;
+
+    /**
+     * Type de jointures entre tables
+     */
+    protected array $joinTypes = [
+        'LEFT',
+        'RIGHT',
+        'OUTER',
+        'INNER',
+        'LEFT OUTER',
+        'RIGHT OUTER',
+    ];
+
+    /**
+     * Specifie quelles requetes requetes sql
+     * supportent l'option IGNORE.
+     */
+    protected array $supportedIgnoreStatements = [
+        'insert' => 'IGNORE',
+    ];
 
     protected string $tableName = '';
     protected array $table      = [];
@@ -44,10 +62,11 @@ class BaseBuilder
     protected string $ignore    = '';
     protected string $limit     = '';
     protected string $offset    = '';
-    protected string $sql       = '';
-    private string $crud        = 'select';
-    private array $query_keys   = [];
-    private array $query_values = [];
+    
+    protected string $sql         = '';
+    protected string $crud        = 'select';
+    protected array $query_keys   = [];
+    protected array $query_values = [];
 
     /**
      * @var BaseResult
@@ -110,7 +129,7 @@ class BaseBuilder
      *
      * @return BaseConnection|ConnectionInterface
      */
-    final public function db(): ConnectionInterface
+    public function db(): ConnectionInterface
     {
         return $this->db;
     }
@@ -118,7 +137,7 @@ class BaseBuilder
     /**
      * Définit un statut de mode de test.
      */
-    final public function testMode(bool $mode = true): self
+    public function testMode(bool $mode = true): self
     {
         $this->testMode = $mode;
 
@@ -188,7 +207,7 @@ class BaseBuilder
         return $this->table($table);
     }
 
-    final public function fromSubquery(self $builder, string $alias = ''): self
+    public function fromSubquery(self $builder, string $alias = ''): self
     {
         if ($builder === $this) {
             throw new DatabaseException('The subquery cannot be the same object as the main query object.');
@@ -212,23 +231,14 @@ class BaseBuilder
      * @param string       $table  Table à joindre
      * @param array|string $fields Champs à joindre
      *
-     * @throws DatabaseException        Pour un type de jointure invalide
      * @throws InvalidArgumentException Lorsque $fields est une chaine et qu'aucune table n'a ete au prealable definie
      */
-    final public function join(string $table, array|string $fields, string $type = 'INNER'): self
+    public function join(string $table, array|string $fields, string $type = 'INNER', bool $escape = false): self
     {
         $type = strtoupper(trim($type));
 
-        static $joins = [
-            'INNER',
-            'LEFT',
-            'RIGHT',
-            'FULL OUTER',
-            'LEFT OUTER',
-            'RIGHT OUTER',
-        ];
-        if (! in_array($type, $joins, true)) {
-            throw new DatabaseException('Invalid join type.');
+        if (! in_array($type, $this->joinTypes, true)) {
+            $type = '';
         }
 
         // On sauvegarde le nom de base de la tabe
@@ -275,7 +285,7 @@ class BaseBuilder
             $cond = array_merge($cond, [$key => $value]);
         }
 
-        $this->joins[] = $type . ' JOIN ' . $table . $this->parseCondition($cond, null, ' ON', false);
+        $this->joins[] = $type . ' JOIN ' . $table . $this->parseCondition($cond, null, ' ON', $escape);
 
         return $this->asCrud('select');
     }
@@ -286,9 +296,9 @@ class BaseBuilder
      * @param string       $table  Table à joindre
      * @param array|string $fields Champs à joindre
      */
-    final public function fullJoin(string $table, array|string $fields): self
+    final public function fullJoin(string $table, array|string $fields, bool $escape = false): self
     {
-        return $this->join($table, $fields, 'FULL OUTER');
+        return $this->join($table, $fields, 'FULL OUTER', $escape);
     }
 
     /**
@@ -297,9 +307,9 @@ class BaseBuilder
      * @param string       $table  Table à joindre
      * @param array|string $fields Champs à joindre
      */
-    final public function innerJoin(string $table, array|string $fields): self
+    final public function innerJoin(string $table, array|string $fields, bool $escape = false): self
     {
-        return $this->join($table, $fields, 'INNER');
+        return $this->join($table, $fields, 'INNER', $escape);
     }
 
     /**
@@ -308,9 +318,9 @@ class BaseBuilder
      * @param string       $table  Table à joindre
      * @param array|string $fields Champs à joindre
      */
-    final public function leftJoin(string $table, array|string $fields, bool $outer = false): self
+    final public function leftJoin(string $table, array|string $fields, bool $outer = false, bool $escape = false): self
     {
-        return $this->join($table, $fields, 'LEFT ' . ($outer ? 'OUTER' : ''));
+        return $this->join($table, $fields, 'LEFT ' . ($outer ? 'OUTER' : ''), $escape);
     }
 
     /**
@@ -319,9 +329,9 @@ class BaseBuilder
      * @param string       $table  Table à joindre
      * @param array|string $fields Champs à joindre
      */
-    final public function rightJoin(string $table, array|string $fields, bool $outer = false): self
+    final public function rightJoin(string $table, array|string $fields, bool $outer = false, bool $escape = false): self
     {
-        return $this->join($table, $fields, 'RIGHT ' . ($outer ? 'OUTER' : ''));
+        return $this->join($table, $fields, 'RIGHT ' . ($outer ? 'OUTER' : ''), $escape);
     }
 
     /**
@@ -352,7 +362,7 @@ class BaseBuilder
      * @param array|string $field Un nom de champ ou un tableau de champs et de valeurs.
      * @param mixed        $value Une valeur de champ à comparer
      */
-    final public function where($field, $value = null, bool $escape = true): self
+    public function where($field, $value = null, bool $escape = true): self
     {
         $join = empty($this->where) ? 'WHERE' : '';
 
@@ -503,7 +513,7 @@ class BaseBuilder
      *
      * @alias self::whereNotIn()
      */
-    final protected function notIn(string $field, $param): self
+    final public function notIn(string $field, $param): self
     {
         return $this->whereNotIn($field, $param);
     }
@@ -549,11 +559,8 @@ class BaseBuilder
         }
 
         foreach ($field as $key => $match) {
-            if ($insensitiveSearch === true) {
-                $key   = 'LOWER(' . $key . ')';
-                $match = is_string($match) ? strtolower($match) : $match;
-            }
-            $this->where($key . ' %', $this->buildLikeMatch($match, $side, $escape), false);
+            [$key, $match, $condition] = $this->_likeStatement($key, $match, false, $insensitiveSearch);
+            $this->where($key . ' ' . $condition, $this->buildLikeMatch($match, $side, $escape), false);
         }
 
         return $this;
@@ -589,8 +596,8 @@ class BaseBuilder
         }
 
         foreach ($field as $key => $match) {
-            $key = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
-            $this->where($key . ' !%', $this->buildLikeMatch($match, $side, $escape), false);
+            [$key, $match, $condition] = $this->_likeStatement($key, $match, true, $insensitiveSearch);
+            $this->where($key . ' ' . $condition, $this->buildLikeMatch($match, $side, $escape), false);
         }
 
         return $this;
@@ -626,8 +633,8 @@ class BaseBuilder
         }
 
         foreach ($field as $key => $match) {
-            $key = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
-            $this->where('|' . $key . ' %', $this->buildLikeMatch($match, $side, $escape), false);
+            [$key, $match, $condition] = $this->_likeStatement($key, $match, false, $insensitiveSearch);
+            $this->where('|' . $key . ' ' . $condition, $this->buildLikeMatch($match, $side, $escape), false);
         }
 
         return $this;
@@ -663,8 +670,8 @@ class BaseBuilder
         }
 
         foreach ($field as $key => $match) {
-            $key = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
-            $this->where('|' . $key . ' !%', $this->buildLikeMatch($match, $side, $escape), false);
+            [$key, $match, $condition] = $this->_likeStatement($key, $match, true, $insensitiveSearch);
+            $this->where('|' . $key . ' ' . $condition, $this->buildLikeMatch($match, $side, $escape), false);
         }
 
         return $this;
@@ -756,7 +763,7 @@ class BaseBuilder
     {
         return $this->where(sprintf(
             '%s BETWEEN %s AND %s',
-            $field,
+            $this->db->escapeIdentifiers($field),
             $this->db->quote($value1),
             $this->db->quote($value2)
         ));
@@ -787,7 +794,7 @@ class BaseBuilder
     {
         return $this->where(sprintf(
             '%s NOT BETWEEN %s AND %s',
-            $field,
+            $this->db->escapeIdentifiers($field),
             $this->db->quote($value1),
             $this->db->quote($value2)
         ));
@@ -818,7 +825,7 @@ class BaseBuilder
     {
         return $this->orWhere(sprintf(
             '%s BETWEEN %s AND %s',
-            $field,
+            $this->db->escapeIdentifiers($field),
             $this->db->quote($value1),
             $this->db->quote($value2)
         ));
@@ -849,7 +856,7 @@ class BaseBuilder
     {
         return $this->orWhere(sprintf(
             '%s NOT BETWEEN %s AND %s',
-            $field,
+            $this->db->escapeIdentifiers($field),
             $this->db->quote($value1),
             $this->db->quote($value2)
         ));
@@ -872,7 +879,7 @@ class BaseBuilder
     /**
      * Définit les parametres de la requete en cas d'utilisation de requete préparées classiques
      */
-    final public function params(array $params): self
+    public function params(array $params): self
     {
         $this->params = array_merge($this->params, $params);
 
@@ -884,7 +891,7 @@ class BaseBuilder
      *
      * @param string|string[] $field Un nom de champ ou un tableau de champs
      */
-    final public function orderBy(string|array $field, string $direction = 'ASC', bool $escape = true): self
+    public function orderBy(string|array $field, string $direction = 'ASC', bool $escape = true): self
     {
         if (is_array($field)) {
             foreach ($field as $key => $item) {
@@ -974,7 +981,7 @@ class BaseBuilder
      *
      * @param string|string[] $field Nom de champ ou tableau de noms de champs
      */
-    final public function groupBy($field, bool $escape = true): self
+    public function groupBy($field, bool $escape = true): self
     {
         $join = empty($this->groups) ? 'GROUP BY' : ',';
 
@@ -1012,7 +1019,7 @@ class BaseBuilder
      * @param array|string $field Un nom de champ ou un tableau de champs et de valeurs.
      * @param string       $value Une valeur de champ à comparer
      */
-    final public function having($field, $value = null, bool $escape = true): self
+    public function having($field, $value = null, bool $escape = true): self
     {
         $join = empty($this->having) ? 'HAVING' : '';
 
@@ -1037,7 +1044,7 @@ class BaseBuilder
      * @param array|string $field Un nom de champ ou un tableau de champs et de valeurs.
      * @param string       $value Une valeur de champ à comparer
      */
-    final public function orHaving($field, $value = null, bool $escape = true): self
+    public function orHaving($field, $value = null, bool $escape = true): self
     {
         if (! is_array($field)) {
             $field = [$field => $value];
@@ -1102,14 +1109,15 @@ class BaseBuilder
      * @param mixed        $match Une valeur de champ à comparer
      * @param string       $side  Côté sur lequel sera ajouté le caractère '%' si necessaire
      */
-    final public function havingLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
+    public function havingLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
     {
         if (! is_array($field)) {
             $field = [$field => $match];
         }
 
         foreach ($field as $key => $match) {
-            $key = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
+            $key   = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
+            $match = $insensitiveSearch === true ? strtolower($match) : $match;
             $this->having($key . ' %', $this->buildLikeMatch($match, $side, $escape), false);
         }
 
@@ -1124,14 +1132,15 @@ class BaseBuilder
      * @param mixed        $match Une valeur de champ à comparer
      * @param string       $side  Côté sur lequel sera ajouté le caractère '%' si necessaire
      */
-    final public function havingNotLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
+    public function havingNotLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
     {
         if (! is_array($field)) {
             $field = [$field => $match];
         }
 
         foreach ($field as $key => $match) {
-            $key = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
+            $key   = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
+            $match = $insensitiveSearch === true ? strtolower($match) : $match;
             $this->having($key . ' !%', $this->buildLikeMatch($match, $side, $escape), false);
         }
 
@@ -1168,7 +1177,8 @@ class BaseBuilder
         }
 
         foreach ($field as $key => $match) {
-            $key = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
+            $key   = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
+            $match = $insensitiveSearch === true ? strtolower($match) : $match;
             $this->having('|' . $key . ' %', $this->buildLikeMatch($match, $side, $escape), false);
         }
 
@@ -1190,7 +1200,8 @@ class BaseBuilder
         }
 
         foreach ($field as $key => $match) {
-            $key = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
+            $key   = $insensitiveSearch === true ? 'LOWER(' . $key . ')' : $key;
+            $match = $insensitiveSearch === true ? strtolower($match) : $match;
             $this->having('|' . $key . ' !%', $this->buildLikeMatch($match, $side, $escape), false);
         }
 
@@ -1238,7 +1249,7 @@ class BaseBuilder
      *
      * @param string|string[] $fields Nom de champ ou tableau de noms de champs à sélectionner
      */
-    final public function select($fields = '*', ?int $limit = null, ?int $offset = null): self
+    public function select($fields = '*', ?int $limit = null, ?int $offset = null): self
     {
         if ($limit !== null) {
             $this->limit($limit, $offset);
@@ -1275,18 +1286,13 @@ class BaseBuilder
      *
      * @return BaseResult|self|string
      */
-    final public function insert(array|object $data, bool $escape = true, bool $execute = true)
+    public function insert(array|object $data = [], bool $escape = true, bool $execute = true)
     {
         $this->crud = 'insert';
 
-        if (is_object($data)) {
-            if (method_exists($data, 'toArray')) {
-                $data = $data->toArray();
-            } else {
-                $data = (array) $data;
-            }
-        }
-        if (empty($data)) {
+        $data = $this->objectToArray($data);
+
+        if (empty($data) && empty($this->query_values)) {
             if (true === $execute) {
                 throw new DatabaseException('You must give entries to insert.');
             }
@@ -1294,8 +1300,9 @@ class BaseBuilder
             return $this;
         }
 
-        $this->query_keys   = array_keys($data);
-        $this->query_values = array_values(array_map(fn ($val) => $escape === true ? $this->db->quote($val) : $val, $data));
+        if (!empty($data)) {
+            $this->set($data, null, $escape);
+        }
 
         if ($this->testMode) {
             return $this->sql();
@@ -1375,22 +1382,17 @@ class BaseBuilder
      * @param array|object|string $data    Tableau ou objet de clés et de valeurs, ou chaîne littérale
      * @param bool                $execute Spécifié si nous voulons exécuter directement la requête
      *
-     * @return BaseResult|self
+     * @return BaseResult|self|string
      */
-    final public function update(array|string|object $data, bool $escape = true, bool $execute = true)
+    public function update(array|string|object $data = [], bool $escape = true, bool $execute = true)
     {
         $this->crud = 'update';
 
-        if (is_object($data)) {
-            if (method_exists($data, 'toArray')) {
-                $data = $data->toArray();
-            } elseif (method_exists($data, '__toString')) {
-                $data = (string) $data;
-            } else {
-                $data = (array) $data;
-            }
+        if (!is_string($data)) {
+            $data = $this->objectToArray($data);
         }
-        if (empty($data)) {
+
+        if (empty($data) && empty($this->query_values)) {
             if (true === $execute) {
                 throw new DatabaseException('You must give entries to update.');
             }
@@ -1398,19 +1400,45 @@ class BaseBuilder
             return $this;
         }
 
-        $values = [];
-
-        if (is_array($data)) {
-            foreach ($data as $key => $value) {
-                $values[] = $this->db->escapeIdentifiers(is_numeric($key) ? $value : $key)
-                    . ' = ' .
-                    ($escape === true ? $this->db->quote($value) : $value);
-            }
-        } else {
-            $values[] = (string) $data;
+        if (!empty($data)) {
+            $this->set($data, null, $escape);
         }
 
-        $this->query_values = $values;
+        if ($this->testMode) {
+            return $this->sql();
+        }
+        if (true === $execute) {
+            return $this->execute();
+        }
+
+        return $this;
+    }
+
+    /**
+     * Construit une requête de remplacement (REPLACE INTO).
+     *
+     * @param array|object $data    Tableau ou objet de clés et de valeurs à remplacer
+     * @param bool         $execute Spécifié si nous voulons exécuter directement la requête
+     *
+     * @return BaseResult|self|string
+     */
+    public function replace(array|object $data = [], bool $escape = true, bool $execute = true)
+    {
+        $this->crud = 'replace';
+
+        $data = $this->objectToArray($data);
+
+        if (empty($data) && empty($this->query_values)) {
+            if (true === $execute) {
+                throw new DatabaseException('You must give entries to replace.');
+            }
+
+            return $this;
+        }
+
+        if (!empty($data)) {
+            $this->set($data, null, $escape);
+        }
 
         if ($this->testMode) {
             return $this->sql();
@@ -1430,7 +1458,7 @@ class BaseBuilder
      *
      * @return BaseResult|self|string
      */
-    final public function delete(?array $where = null, ?int $limit = null, bool $execute = true)
+    public function delete(?array $where = null, ?int $limit = null, bool $execute = true)
     {
         $this->crud = 'delete';
 
@@ -1457,6 +1485,30 @@ class BaseBuilder
         return $this;
     }
 
+    /**
+     * Allows key/value pairs to be set for insert(), update() or replace().
+     *
+     * @param array|object|string $key    Nom du champ, ou tableau de paire champs/valeurs
+     * @param mixed               $value  Valeur du champ, si $key est un simple champ
+     */
+    public function set($key, $value = '', ?bool $escape = null)
+    {
+        $key = $this->objectToArray($key);
+
+        if (! is_array($key)) {
+            $key = [$key => $value];
+        }
+
+        $escape = is_bool($escape) ? $escape : $this->db->protectIdentifiers;
+
+        foreach ($key as $k => $v) {
+            $this->query_keys  [$k] = $this->db->escapeIdentifiers($k);
+            $this->query_values[$k] = $escape === true ? $this->db->quote($v) : $v;
+        }
+
+        return $this;
+    }
+
     // Méthodes d'agrégation SQL
 
     /**
@@ -1464,10 +1516,18 @@ class BaseBuilder
      *
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
+     * 
+     * @return float|string float en mode reel et string (la chaîne SQL) en mode test
      */
-    final public function min(string $field, ?string $key = null, int $expire = 0): float
+    final public function min(string $field, ?string $key = null, int $expire = 0)
     {
-        $value = $this->select('MIN(' . $field . ') min_value')->value(
+        $this->select('MIN(' . $field . ') min_value');
+
+        if ($this->testMode) {
+            return $this->sql();
+        }
+
+        $value = $this->value(
             'min_value',
             $key,
             $expire
@@ -1481,10 +1541,18 @@ class BaseBuilder
      *
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
+     * 
+     * @return float|string float en mode reel et string (la chaîne SQL) en mode test
      */
-    final public function max(string $field, ?string $key = null, int $expire = 0): float
+    final public function max(string $field, ?string $key = null, int $expire = 0)
     {
-        $value = $this->select('MAX(' . $field . ') max_value')->value(
+        $this->select('MAX(' . $field . ') max_value');
+
+        if ($this->testMode) {
+            return $this->sql();
+        }
+        
+        $value = $this->value(
             'max_value',
             $key,
             $expire
@@ -1498,10 +1566,18 @@ class BaseBuilder
      *
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
+     * 
+     * @return float|string float en mode reel et string (la chaîne SQL) en mode test
      */
-    final public function sum(string $field, ?string $key = null, int $expire = 0): float
+    final public function sum(string $field, ?string $key = null, int $expire = 0)
     {
-        $value = $this->select('SUM(' . $field . ') sum_value')->value(
+        $this->select('SUM(' . $field . ') sum_value');
+
+        if ($this->testMode) {
+            return $this->sql();
+        }
+
+        $value = $this->value(
             'sum_value',
             $key,
             $expire
@@ -1515,10 +1591,18 @@ class BaseBuilder
      *
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
+     * 
+     * @return float|string float en mode reel et string (la chaîne SQL) en mode test
      */
-    final public function avg(string $field, ?string $key = null, int $expire = 0): float
+    final public function avg(string $field, ?string $key = null, int $expire = 0)
     {
-        $value = $this->select('AVG(' . $field . ') avg_value')->value(
+        $this->select('AVG(' . $field . ') avg_value');
+
+        if ($this->testMode) {
+            return $this->sql();
+        }
+
+        $value = $this->value(
             'avg_value',
             $key,
             $expire
@@ -1653,7 +1737,7 @@ class BaseBuilder
      *
      * @return mixed La ligne souhaitee
      */
-    final public function row(int $index, $type = PDO::FETCH_OBJ, ?string $key = null, int $expire = 0)
+    public function row(int $index, $type = PDO::FETCH_OBJ, ?string $key = null, int $expire = 0)
     {
         return $this->execute($key, $expire)->row($index, $type);
     }
@@ -1709,6 +1793,50 @@ class BaseBuilder
         }
 
         return $fields;
+    }
+
+    /**
+     * Incremente un champ numerique par la valeur specifiee.
+     *
+     * @return bool
+     *
+     * @throws DatabaseException
+     */
+    public function increment(string $column, int $value = 1)
+    {
+        $column = $this->db->protectIdentifiers($column);
+
+        $sql = $this->update([$column => "{$column} + {$value}"], false, false)->sql(true);
+
+        if (! $this->testMode) {
+            $this->reset();
+
+            return $this->db->query($sql, null, false);
+        }
+
+        return true;
+    }
+    
+    /**
+     * Decremente un champ numerique par la valeur specifiee.
+     *
+     * @return bool
+     *
+     * @throws DatabaseException
+     */
+    public function decrement(string $column, int $value = 1)
+    {
+        $column = $this->db->protectIdentifiers($column);
+
+        $sql = $this->update([$column => "{$column} - {$value}"], false, false)->sql(true);
+
+        if (! $this->testMode) {
+            $this->reset();
+
+            return $this->db->query($sql, null, false);
+        }
+
+        return true;
     }
 
     // Advanced finders methods
@@ -1832,36 +1960,48 @@ class BaseBuilder
     // SQL Statement Generator Methods
 
     /**
-     * Get the current SQL statement and reset builder.
-     *
-     * @return string SQL statement
+     * Recupere la requete sql courrante et reinitialise le builder.
      */
-    final public function sql(): string
+    final public function sql(bool $preserve = false): string
     {
         $sql = $this->statement()->sql;
-        $this->reset();
+
+        if (false === $preserve) {
+            $this->reset();
+        }
 
         return $sql;
     }
 
     /**
-     * Create a sql statement for query
+     * Creer la requete sql pour la demande
      */
     private function statement(): self
     {
         $this->checkTable();
 
-        if ($this->crud === 'insert') {
-            $keys   = implode(',', $this->query_keys);
-            $values = implode(',', $this->query_values);
+        $keys = [];
+        $values = [];
 
-            $this->setSql([
-                'INSERT', $this->ignore, 'INTO',
-                $this->removeAlias(array_pop($this->table)),
-                '(' . $keys . ')',
-                'VALUES',
-                '(' . $values . ')',
-            ]);
+        foreach ($this->query_keys as $key => $value) {
+            if (isset($this->query_values[$key])) {
+                $keys  [] = $value;
+                $values[] = $this->query_values[$key];
+            }
+        }
+        
+        if ($this->crud === 'insert') {
+            $this->setSql($this->_insertStatement(
+                $this->removeAlias(array_pop($this->table)), 
+                implode(',', $keys), 
+                implode(',', $values)
+            ));
+        } elseif ($this->crud === 'replace') {
+            $this->setSql($this->_replaceStatement(
+                $this->removeAlias(array_pop($this->table)), 
+                implode(',', $keys), 
+                implode(',', $values)
+            ));
         } elseif ($this->crud === 'delete') {
             $this->setSql([
                 'DELETE FROM',
@@ -1876,7 +2016,7 @@ class BaseBuilder
                 'UPDATE',
                 $this->removeAlias(array_pop($this->table)),
                 'SET',
-                implode(',', $this->query_values),
+                implode(',', $values),
                 $this->where,
                 $this->order,
                 $this->limit,
@@ -1921,6 +2061,68 @@ class BaseBuilder
         );
     }
 
+    
+
+    /**
+     * Constructeur de requete LIKE independament de la platforme
+     * 
+     * @return string[] [column, match, condition]
+     */
+    protected function _likeStatement(string $column, $match, bool $not, bool $insensitiveSearch = false): array
+    {
+        $column = $this->db->escapeIdentifiers($column);
+        return [
+            $insensitiveSearch === true ? 'LOWER(' . $column . ')' : $column,
+            $insensitiveSearch === true && is_string($match) ? strtolower($match) : $match,
+            ($not === true ? 'NOT ' : '') . 'LIKE'
+        ];
+    }
+    
+    /**
+     * Genere la chaine REPLACE INTO conformement a la plateforme
+     * 
+     * @return string|string[]
+     */
+    protected function _replaceStatement(string $table, string $keys, string $values)
+    {
+        return [
+            'REPLACE INTO',
+            $table,
+            '(' . $keys . ')',
+            'VALUES',
+            '(' . $values . ')',
+        ];
+    }
+    
+    /**
+     * Genere la chaine INSERT conformement a la plateforme
+     * 
+     * @return string|string[]
+     */
+    protected function _insertStatement(string $table, string $keys, string $values)
+    {
+        return [
+            'INSERT', $this->compileIgnore('insert'), 'INTO',
+            $table,
+            '(' . $keys . ')',
+            'VALUES',
+            '(' . $values . ')',
+        ];
+    }
+
+    /**
+     * Verifie si l'option IGNORE est supporter par
+     * le pilote de la base de donnees pour la requete specifiee.
+     */
+    protected function compileIgnore(string $statement): string
+    {
+        if (!empty($this->ignore) && isset($this->supportedIgnoreStatements[$statement])) {
+            return trim($this->supportedIgnoreStatements[$statement]) . ' ';
+        }
+
+        return '';
+    }
+    
     /**
      * Joins string tokens into a SQL statement.
      *
@@ -1946,7 +2148,7 @@ class BaseBuilder
      *
      * @return string Condition sous forme de chaîne
      */
-    final protected function parseCondition($field, $value = null, $join = '', $escape = true)
+    protected function parseCondition($field, $value = null, $join = '', $escape = true)
     {
         if (is_array($field)) {
             $str = '';
@@ -1976,7 +2178,9 @@ class BaseBuilder
 
         $operator = '';
         if (strpos($field, ' ') !== false) {
-            [$field, $operator] = explode(' ', $field, 2);
+            $parts = explode(' ', $field);
+            $field = array_shift($parts);
+            $operator = implode(' ', $parts);
         }
 
         if (! empty($operator)) {
@@ -2023,7 +2227,7 @@ class BaseBuilder
     /**
      * Réinitialise les propriétés du builder.
      */
-    final public function reset(): self
+    public function reset(): self
     {
         $this->tableName = '';
         $this->table     = [];
@@ -2044,9 +2248,33 @@ class BaseBuilder
     }
 
     /**
+     * Prend un objet en entree et convertit les variable de calss en tableau de cle/valeurs
+     */
+    protected function objectToArray($object)
+    {
+        if (! is_object($object)) {
+            return $object;
+        }
+
+        if (method_exists($object, 'toArray')) {
+            return $object->toArray();
+        }
+
+        $array = [];
+
+        foreach (get_object_vars($object) as $key => $val) {
+            if (! is_object($val) && ! is_array($val)) {
+                $array[$key] = $val;
+            }
+        }
+
+        return $array;
+    }
+    
+    /**
      * Vérifie si la propriété de table a été définie.
      */
-    final protected function checkTable()
+    protected function checkTable()
     {
         if (empty($this->table)) {
             throw new DatabaseException('Table is not defined.');
@@ -2056,7 +2284,7 @@ class BaseBuilder
     /**
      * Vérifie si la propriété de classe a été définie.
      */
-    final protected function checkClass()
+    protected function checkClass()
     {
         if (! $this->class) {
             throw new DatabaseException('Class is not defined.');

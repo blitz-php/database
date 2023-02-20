@@ -13,6 +13,7 @@ namespace BlitzPHP\Database;
 
 use BlitzPHP\Database\Contracts\ConnectionInterface;
 use InvalidArgumentException;
+use Psr\Log\LoggerInterface;
 
 /**
  * Usine de connexion de base de données
@@ -33,7 +34,7 @@ class Database
      *
      * Aide à garder une trace de toutes les connexions ouvertes pour les performances, surveillance, journalisation, etc.
      *
-     * @var ConnectionInterface[]
+     * @var array<string, ConnectionInterface>
      */
     protected $connections = [];
 
@@ -59,9 +60,9 @@ class Database
      *
      * @uses self::load
      */
-    public static function connection(array $params = [], string $alias = ''): ConnectionInterface
+    public static function connection(array $params = [], string $alias = '', ...$arguments): ConnectionInterface
     {
-        return self::instance()->load($params, $alias);
+        return self::instance()->load($params, $alias, ...$arguments);
     }
 
     /**
@@ -69,7 +70,7 @@ class Database
      *
      * @throws InvalidArgumentException
      */
-    public function load(array $params = [], string $alias = ''): ConnectionInterface
+    public function load(array $params = [], string $alias = '', ...$arguments): ConnectionInterface
     {
         if ($alias === '') {
             throw new InvalidArgumentException('You must supply the parameter: alias.');
@@ -83,7 +84,7 @@ class Database
             throw new InvalidArgumentException('You have not selected a database type to connect to.');
         }
 
-        $this->connections[$alias] = $this->initDriver($params['driver'], 'Connection', $params);
+        $this->connections[$alias] = $this->initDriver($params['driver'], 'Connection', $params, ...$arguments);
 
         return $this->connections[$alias];
     }
@@ -155,10 +156,14 @@ class Database
      *
      * @param array|object $argument
      */
-    protected function initDriver(string $driver, string $class, $argument): ConnectionInterface
+    protected function initDriver(string $driver, string $class, $params, ...$arguments): ConnectionInterface
     {
         $driver = str_ireplace('pdo', '', $driver);
-        $driver = str_ireplace('mysql', 'MySQL', $driver);
+        $driver = str_ireplace(
+            ['mysql', 'pgsql'], 
+            ['MySQL', 'Postgre'], 
+            $driver
+        );
 
         $class = $driver . '\\' . $class;
 
@@ -166,6 +171,6 @@ class Database
             $class = "\\BlitzPHP\\Database\\{$class}";
         }
 
-        return new $class($argument);
+        return new $class($params, ...$arguments);
     }
 }

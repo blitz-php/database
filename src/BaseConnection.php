@@ -17,6 +17,7 @@ use Closure;
 use Exception;
 use PDO;
 use Psr\Log\LoggerInterface;
+use Psr\Log\LogLevel;
 use stdClass;
 use Throwable;
 
@@ -222,11 +223,9 @@ abstract class BaseConnection implements ConnectionInterface
     protected $reservedIdentifiers = ['*'];
 
     /**
-     * Identifier escape character
-     *
-     * @var array|string
+     * Caractere d'echapement des identifiant
      */
-    public $escapeChar = '"';
+    public array|string $escapeChar = '"';
 
     /**
      * ESCAPE statement string
@@ -431,9 +430,7 @@ abstract class BaseConnection implements ConnectionInterface
             $this->conn = $this->connect($this->persistent);
         } catch (Throwable $e) {
             $connectionErrors[] = sprintf('Main connection [%s]: %s', $this->driver, $e->getMessage());
-            if ($this->logger) {
-                $this->logger->error('Error connecting to the database: ' . $e);
-            }
+            $this->log('Error connecting to the database: ' . $e);
         }
 
         // No connection resource? Check if there is a failover else throw an error
@@ -454,9 +451,7 @@ abstract class BaseConnection implements ConnectionInterface
                         $this->conn = $this->connect($this->persistent);
                     } catch (Throwable $e) {
                         $connectionErrors[] = sprintf('Failover #%d [%s]: %s', ++$index, $this->driver, $e->getMessage());
-                        if ($this->logger) {
-                            $this->logger->error('Error connecting to the database: ' . $e);
-                        }
+                        $this->log('Error connecting to the database: ' . $e);
                     }
 
                     // If a connection is made break the foreach loop
@@ -803,22 +798,13 @@ abstract class BaseConnection implements ConnectionInterface
                     $this->transComplete();
 
                     if ($transDepth === $this->transDepth) {
-                        if ($this->logger) {
-                            $this->logger->error('Database: Failure during an automated transaction commit/rollback!');
-                        }
+                        $this->log('Failure during an automated transaction commit/rollback!');
                         break;
                     }
                 }
 
                 // Let others do something with this query.
-                if ($this->event) {
-                    if (method_exists($this->event, 'trigger')) {
-                        $this->event->trigger('db.query', $query);
-                    }
-                    if (method_exists($this->event, 'dispatch')) {
-                        $this->event->dispatch($query);
-                    }
-                }
+                $this->triggerEvent($query);
 
                 if ($exception !== null) {
                     throw $exception;
@@ -828,14 +814,7 @@ abstract class BaseConnection implements ConnectionInterface
             }
 
             // Let others do something with this query.
-            if ($this->event) {
-                if (method_exists($this->event, 'trigger')) {
-                    $this->event->trigger('db.query', $query);
-                }
-                if (method_exists($this->event, 'dispatch')) {
-                    $this->event->dispatch($query);
-                }
-            }
+            $this->triggerEvent($query);
 
             return false;
         }
@@ -843,14 +822,7 @@ abstract class BaseConnection implements ConnectionInterface
         $query->setDuration($startTime);
 
         // Let others do something with this query
-        if ($this->event) {
-            if (method_exists($this->event, 'trigger')) {
-                $this->event->trigger('db.query', $query);
-            }
-            if (method_exists($this->event, 'dispatch')) {
-                $this->event->dispatch($query);
-            }
-        }
+        $this->triggerEvent($query);
 
         // resultID is not false, so it must be successful
         if ($this->isWriteType($sql)) {
@@ -861,6 +833,39 @@ abstract class BaseConnection implements ConnectionInterface
         $resultClass = str_replace('Connection', 'Result', static::class);
 
         return new $resultClass($this, $this->result);
+    }
+
+    /**
+     * Declanche un evenement
+     *
+     * @param mixed $target
+     * @return void
+     */
+    public function triggerEvent($target, string $eventName = 'db.query') 
+    {
+        if ($this->event) {
+            if (method_exists($this->event, 'trigger')) {
+                $this->event->trigger($eventName, $target);
+            }
+            if (method_exists($this->event, 'dispatch')) {
+                $this->event->dispatch($target);
+            }
+        }
+    }
+
+    /**
+     * Enregistre un log
+     *
+     * @param string|\Stringable $message
+     * @param int $level
+     * @param array $context
+     * @return void
+     */
+    public function log(string|\Stringable $message, string $level = LogLevel::ERROR, array $context = [])
+    {
+        if ($this->logger) {
+            $this->logger->log($level, 'Database: ' . $message, $context);
+        }
     }
 
     /**
@@ -1801,6 +1806,51 @@ abstract class BaseConnection implements ConnectionInterface
      */
     abstract protected function _foreignKeyData(string $table): array;
 
+     /**
+     * Converts array of arrays generated by _foreignKeyData() to array of objects
+     *
+     * @return array[
+     *    {constraint_name} =>
+     *        stdClass[
+     *            'constraint_name'     => string,
+     *            'table_name'          => string,
+     *            'column_name'         => string[],
+     *            'foreign_table_name'  => string,
+     *            'foreign_column_name' => string[],
+     *            'on_delete'           => string,
+     *            'on_update'           => string,
+     *            'match'               => string
+     *        ]
+     * ]
+     */
+    protected function foreignKeyDataToObjects(array $data)
+    {
+        $retVal = [];
+
+        foreach ($data as $row) {
+            $name = $row['constraint_name'];
+
+            // for sqlite generate name
+            if ($name === null) {
+                $name = $row['table_name'] . '_' . implode('_', $row['column_name']) . '_foreign';
+            }
+
+            $obj                      = new stdClass();
+            $obj->constraint_name     = $name;
+            $obj->table_name          = $row['table_name'];
+            $obj->column_name         = $row['column_name'];
+            $obj->foreign_table_name  = $row['foreign_table_name'];
+            $obj->foreign_column_name = $row['foreign_column_name'];
+            $obj->on_delete           = $row['on_delete'];
+            $obj->on_update           = $row['on_update'];
+            $obj->match               = $row['match'];
+
+            $retVal[$name] = $obj;
+        }
+
+        return $retVal;
+    }
+    
     /**
      * Accessor for properties if they exist.
      *

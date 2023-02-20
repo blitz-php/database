@@ -54,7 +54,7 @@ abstract class BaseResult implements ResultInterface
         $this->query = &$query;
         $this->db    = &$db;
 
-        // Service::event()->trigger('db.query', $this);
+        $db->triggerEvent($this);
     }
 
     /**
@@ -182,6 +182,10 @@ abstract class BaseResult implements ResultInterface
      */
     public function result($type = PDO::FETCH_OBJ): array
     {
+        if (null === $type) {
+            $type = PDO::FETCH_OBJ;
+        }
+
         $data = [];
 
         if ($type === PDO::FETCH_OBJ || $type === 'object') {
@@ -222,7 +226,6 @@ abstract class BaseResult implements ResultInterface
     {
         if ($this->isPdo()) {
             $data = $this->query->fetchAll(PDO::FETCH_OBJ);
-
             $this->query->closeCursor();
 
             return $data;
@@ -395,7 +398,7 @@ abstract class BaseResult implements ResultInterface
     abstract protected function _result($type): array;
 
     /**
-     * Retourne un table contenant les resultat de la requete sous forme de tableau associatif
+     * Retourne une table contenant les resultat de la requete sous forme de tableau associatif
      */
     abstract protected function _resultArray(): array;
 
