@@ -12,10 +12,11 @@
 namespace BlitzPHP\Database;
 
 use BadMethodCallException;
-use BlitzPHP\Database\Contracts\ConnectionInterface;
-use BlitzPHP\Database\Contracts\ResultInterface;
+use BlitzPHP\Contracts\Database\BuilderInterface;
+use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Database\MySQL\Connection as MySQLConnection;
+use BlitzPHP\Utilities\Arr;
 use InvalidArgumentException;
 use PDO;
 
@@ -23,7 +24,7 @@ use PDO;
  * Fournit les principales méthodes du générateur de requêtes.
  * Les constructeurs spécifiques à la base de données peuvent avoir besoin de remplacer certaines méthodes pour les faire fonctionner.
  */
-class BaseBuilder
+class BaseBuilder implements BuilderInterface
 {
     /**
      * État du mode de test du générateur.
@@ -208,7 +209,7 @@ class BaseBuilder
         return $this->table($table);
     }
 
-    public function fromSubquery(self $builder, string $alias = ''): self
+    public function fromSubquery(BuilderInterface $builder, string $alias = ''): self
     {
         if ($builder === $this) {
             throw new DatabaseException('The subquery cannot be the same object as the main query object.');
@@ -1337,7 +1338,7 @@ class BaseBuilder
      */
     final public function bulckInsert(array $data, bool $escape = true, bool $ignore = false)
     {
-        if (2 !== Utils::maxDimensions($data)) {
+        if (2 !== Arr::maxDimensions($data)) {
             throw new BadMethodCallException('Bad usage of ' . static::class . '::' . __METHOD__ . ' method');
         }
 
@@ -1492,7 +1493,7 @@ class BaseBuilder
      * @param array|object|string $key    Nom du champ, ou tableau de paire champs/valeurs
      * @param mixed               $value  Valeur du champ, si $key est un simple champ
      */
-    public function set($key, $value = '', ?bool $escape = null)
+    public function set($key, $value = '', ?bool $escape = null): self
     {
         $key = $this->objectToArray($key);
 
@@ -1654,7 +1655,7 @@ class BaseBuilder
     /**
      * Execute une requete sql donnée
      *
-     * @return ResultInterface|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
+     * @return BaseResult|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
      */
     final public function query(string $sql, array $params = [])
     {
@@ -1667,7 +1668,7 @@ class BaseBuilder
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
      *
-     * @return ResultInterface|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
+     * @return BaseResult|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
      */
     final public function execute(?string $key = null, int $expire = 0)
     {

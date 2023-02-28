@@ -11,8 +11,9 @@
 
 namespace BlitzPHP\Database;
 
-use BlitzPHP\Database\Contracts\ConnectionInterface;
+use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Exceptions\DatabaseException;
+use BlitzPHP\Utilities\Helpers;
 use Closure;
 use Exception;
 use PDO;
@@ -391,6 +392,8 @@ abstract class BaseConnection implements ConnectionInterface
                 ));
             }
         }
+
+        $this->execCommands();
 
         $this->connectDuration = microtime(true) - $this->connectTime;
     }
@@ -1395,7 +1398,7 @@ abstract class BaseConnection implements ConnectionInterface
      */
     protected function _escapeString(string $str): string
     {
-        return str_replace("'", "''", Utils::removeInvisibleCharacters($str, false));
+        return str_replace("'", "''", Helpers::removeInvisibleCharacters($str, false));
     }
 
     /**
@@ -1792,5 +1795,39 @@ abstract class BaseConnection implements ConnectionInterface
     public function __isset(string $key): bool
     {
         return property_exists($this, $key);
+    }
+
+    
+    /**
+     * Execute les commandes sql
+     *
+     * @return void
+     */
+    private function execCommands()
+    {
+        if (!empty($this->conn) && $this->isPdo()) {
+            foreach ($this->commands AS $command) {
+                $this->conn->exec($command);
+            }
+
+            if ($this->debug === true) {
+                $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            }
+
+            if (isset($this->options['column_case'])) {
+                switch (strtolower($this->options['column_case'])) {
+                    case 'lower' :
+                        $casse = PDO::CASE_LOWER;
+                        break;
+                    case 'upper' :
+                        $casse = PDO::CASE_UPPER;
+                        break;
+                    default:
+                        $casse = PDO::CASE_NATURAL;
+                        break;
+                }
+                $this->conn->setAttribute(PDO::ATTR_CASE, $casse);
+            }
+        }
     }
 }

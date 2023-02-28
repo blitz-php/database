@@ -11,9 +11,8 @@
 
 namespace BlitzPHP\Database;
 
-use BlitzPHP\Database\Contracts\ConnectionInterface;
+use BlitzPHP\Contracts\Database\ConnectionInterface;
 use InvalidArgumentException;
-use Psr\Log\LoggerInterface;
 
 /**
  * Usine de connexion de base de données

@@ -11,7 +11,7 @@
 
 namespace BlitzPHP\Database;
 
-use BlitzPHP\Database\Contracts\ResultInterface;
+use BlitzPHP\Contracts\Database\ResultInterface;
 use PDO;
 use PDOStatement;
 

@@ -11,7 +11,7 @@
 
 namespace BlitzPHP\Database;
 
-use BlitzPHP\Database\Contracts\ConnectionInterface;
+use BlitzPHP\Contracts\Database\ConnectionInterface;
 
 /**
  * Query builder
