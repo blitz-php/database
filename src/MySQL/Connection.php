@@ -54,46 +54,63 @@ class Connection extends BaseConnection
     {
         $db = null;
 
-        switch ($this->driver) {
-            case 'mysqli':
-                $db = new mysqli(
-                    $this->host,
-                    $this->username,
-                    $this->password,
-                    true === $this->withDatabase ? $this->database : null,
-                    $this->port
-                );
+        if (! $this->isPdo()) {
+            $db = new mysqli(
+                $this->host,
+                $this->username,
+                $this->password,
+                true === $this->withDatabase ? $this->database : null,
+                $this->port
+            );
 
-                if ($db->connect_error) {
-                    throw new DatabaseException('Connection error: ' . $db->connect_error);
-                }
-
-                break;
-
-            case 'pdomysql':
-            case 'pdo_mysql':
-                $this->dsn = true === $this->withDatabase ? sprintf(
-                    'mysql:host=%s;port=%d;dbname=%s',
-                    $this->host,
-                    $this->port,
-                    $this->database
-                ) : sprintf(
-                    'mysql:host=%s;port=%d',
-                    $this->host,
-                    $this->port
-                );
-                $db               = new PDO($this->dsn, $this->username, $this->password);
-                $this->commands[] = 'SET SQL_MODE=ANSI_QUOTES';
-
-                break;
-
-            default:
-                // code...
-                break;
+            if ($db->connect_error) {
+                throw new DatabaseException('Connection error: ' . $db->connect_error);
+            }
+        }
+        else {
+            $this->dsn = true === $this->withDatabase ? sprintf(
+                'mysql:host=%s;port=%d;dbname=%s',
+                $this->host,
+                $this->port,
+                $this->database
+            ) : sprintf(
+                'mysql:host=%s;port=%d',
+                $this->host,
+                $this->port
+            );
+            $db               = new PDO($this->dsn, $this->username, $this->password);
+            $this->commands[] = 'SET SQL_MODE=ANSI_QUOTES';
         }
 
         if (! empty($this->charset)) {
             $this->commands[] = "SET NAMES '{$this->charset}'" . (! empty($this->collation) ? " COLLATE '{$this->collation}'" : '');
+        }
+
+        if ($this->strictOn === true) {
+            if (! $this->isPdo()) {
+                $db->options(MYSQLI_INIT_COMMAND, "SET SESSION sql_mode = CONCAT(@@sql_mode, ',', 'STRICT_ALL_TABLES')");
+            }    
+            else {
+                $this->commands[] = (version_compare($db->getAttribute(PDO::ATTR_SERVER_VERSION), '8.0.11') >= 0)
+                    ? "set session sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'"
+                    : "set session sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'";
+            }
+        } else {
+            if (! $this->isPdo()) {
+                $db->options(MYSQLI_INIT_COMMAND,
+                    "SET SESSION sql_mode = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                                        @@sql_mode,
+                                        'STRICT_ALL_TABLES,', ''),
+                                    ',STRICT_ALL_TABLES', ''),
+                                'STRICT_ALL_TABLES', ''),
+                            'STRICT_TRANS_TABLES,', ''),
+                        ',STRICT_TRANS_TABLES', ''),
+                    'STRICT_TRANS_TABLES', '')"
+                );
+            }
+            else {
+                $this->commands[] = "set session sql_mode='NO_ENGINE_SUBSTITUTION'";
+            }
         }
 
         return self::pushConnection('mysql', $this, $db);

@@ -82,10 +82,10 @@ class Connection extends BaseConnection
                 }
 
                 if (! empty($this->schema)) {
-                    $this->simpleQuery("SET search_path TO {$this->schema},public");
+                    pg_query($db, "SET search_path TO {$this->schema},public");
                 }
 
-                if ($this->setClientEncoding($this->charset) === false) {
+                if ($this->setClientEncoding($this->charset, $db) === false) {
                     return false;
                 }
             }
@@ -602,9 +602,16 @@ class Connection extends BaseConnection
     /**
      * Set client encoding
      */
-    protected function setClientEncoding(string $charset): bool
+    protected function setClientEncoding(string $charset, &$db = null): bool
     {
-        return pg_set_client_encoding($this->conn, $charset) === 0;
+        if (!$this->conn && !$db) {
+            return false;
+        }
+        
+        return pg_set_client_encoding(
+            $this->conn === null ? $db : $this->conn, 
+            $charset
+        ) === 0;
     }
 
     /**
