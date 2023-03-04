@@ -9,9 +9,8 @@
  * the LICENSE file that was distributed with this source code.
  */
 
-namespace BlitzPHP\Database\Postgre;
+namespace BlitzPHP\Database\Connection;
 
-use BlitzPHP\Database\BaseConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use ErrorException;
 use PDO;
@@ -21,7 +20,7 @@ use stdClass;
 /**
  * Connexion pour PostgreSQL
  */
-class Connection extends BaseConnection
+class Postgre extends BaseConnection
 {
     /**
      * Pilote de la base de donnees

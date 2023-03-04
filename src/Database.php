@@ -164,7 +164,7 @@ class Database
             $driver
         );
 
-        $class = $driver . '\\' . $class;
+        $class = $class . '\\' . $driver;
 
         if (strpos($driver, '\\') === false) {
             $class = "\\BlitzPHP\\Database\\{$class}";

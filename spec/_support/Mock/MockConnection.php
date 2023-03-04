@@ -1,7 +1,7 @@
 <?php
 namespace BlitzPHP\Database\Spec\Mock;
 
-use BlitzPHP\Database\BaseConnection;
+use BlitzPHP\Database\Connection\BaseConnection;
 
 class MockConnection extends BaseConnection
 {

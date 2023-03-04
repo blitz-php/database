@@ -9,14 +9,12 @@
  * the LICENSE file that was distributed with this source code.
  */
 
-namespace BlitzPHP\Database\MySQL;
-
-use BlitzPHP\Database\BaseBuilder;
+namespace BlitzPHP\Database\Builder;
 
 /**
  * Builder for MySQLi
  */
-class Builder extends BaseBuilder
+class MySQL extends BaseBuilder
 {
     /**
      * Identifier escape character

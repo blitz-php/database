@@ -1,7 +1,7 @@
 <?php
 
-use BlitzPHP\Database\BaseBuilder;
-use BlitzPHP\Database\MySQL\Connection as MySQLConnection;
+use BlitzPHP\Database\Builder\BaseBuilder;
+use BlitzPHP\Database\Connection\MySQL as MySQLConnection;
 use BlitzPHP\Database\Spec\Mock\MockConnection;
 
 describe("Database / Query Builder : Jointures", function() {

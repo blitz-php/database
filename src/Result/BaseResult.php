@@ -9,9 +9,10 @@
  * the LICENSE file that was distributed with this source code.
  */
 
-namespace BlitzPHP\Database;
+namespace BlitzPHP\Database\Result;
 
 use BlitzPHP\Contracts\Database\ResultInterface;
+use BlitzPHP\Database\Connection\BaseConnection;
 use PDO;
 use PDOStatement;
 

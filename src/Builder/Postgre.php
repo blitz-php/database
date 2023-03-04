@@ -9,15 +9,14 @@
  * the LICENSE file that was distributed with this source code.
  */
 
-namespace BlitzPHP\Database\Postgre;
+namespace BlitzPHP\Database\Builder;
 
-use BlitzPHP\Database\BaseBuilder;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 
 /**
  * Builder pour PostgreSQL
  */
-class Builder extends BaseBuilder
+class Postgre extends BaseBuilder
 {
     /**
      * Mots cles pour ORDER BY random

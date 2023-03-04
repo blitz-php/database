@@ -1,6 +1,6 @@
 <?php
 
-use BlitzPHP\Database\BaseBuilder;
+use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Spec\Mock\MockConnection;
 
 describe("Database / Query Builder : Regroupement", function() {

@@ -9,15 +9,14 @@
  * the LICENSE file that was distributed with this source code.
  */
 
-namespace BlitzPHP\Database\Postgre;
+namespace BlitzPHP\Database\Result;
 
-use BlitzPHP\Database\BaseResult;
 use stdClass;
 
 /**
  * Resultats Postgre
  */
-class Result extends BaseResult
+class Postgre extends BaseResult
 {
     /**
      * {@inheritDoc}

@@ -9,13 +9,14 @@
  * the LICENSE file that was distributed with this source code.
  */
 
-namespace BlitzPHP\Database;
+namespace BlitzPHP\Database\Builder;
 
 use BadMethodCallException;
 use BlitzPHP\Contracts\Database\BuilderInterface;
 use BlitzPHP\Contracts\Database\ConnectionInterface;
+use BlitzPHP\Database\Connection\BaseConnection;
+use BlitzPHP\Database\Connection\MySQL as MySQLConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
-use BlitzPHP\Database\MySQL\Connection as MySQLConnection;
 use BlitzPHP\Utilities\Arr;
 use InvalidArgumentException;
 use PDO;

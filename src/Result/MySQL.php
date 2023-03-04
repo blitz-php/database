@@ -9,15 +9,14 @@
  * the LICENSE file that was distributed with this source code.
  */
 
-namespace BlitzPHP\Database\MySQL;
+namespace BlitzPHP\Database\Result;
 
-use BlitzPHP\Database\BaseResult;
 use stdClass;
 
 /**
- * Result for MySQLi
+ * Result pour MySQL
  */
-class Result extends BaseResult
+class MySQL extends BaseResult
 {
     /**
      * {@inheritDoc}

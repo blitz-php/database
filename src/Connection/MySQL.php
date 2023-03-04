@@ -9,9 +9,8 @@
  * the LICENSE file that was distributed with this source code.
  */
 
-namespace BlitzPHP\Database\MySQL;
+namespace BlitzPHP\Database\Connection;
 
-use BlitzPHP\Database\BaseConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use LogicException;
 use mysqli;
@@ -22,7 +21,7 @@ use stdClass;
 /**
  * Connexion MySQL
  */
-class Connection extends BaseConnection
+class MySQL extends BaseConnection
 {
     protected array $error = [
         'message' => '',

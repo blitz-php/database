@@ -9,9 +9,10 @@
  * the LICENSE file that was distributed with this source code.
  */
 
-namespace BlitzPHP\Database;
+namespace BlitzPHP\Database\Connection;
 
 use BlitzPHP\Contracts\Database\ConnectionInterface;
+use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Utilities\Helpers;
 use Closure;
