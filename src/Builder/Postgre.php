@@ -209,10 +209,7 @@ class Postgre extends BaseBuilder
     }
 
     /**
-     * Generates a platform-specific truncate string from the supplied data
-     *
-     * If the database does not support the truncate() command,
-     * then this method maps to 'DELETE FROM table'
+     * {@inheritDoc}
      */
     protected function _truncateStatement(string $table): string
     {

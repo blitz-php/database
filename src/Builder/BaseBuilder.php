@@ -1489,6 +1489,29 @@ class BaseBuilder implements BuilderInterface
     }
 
     /**
+     * Compile une chaine truncate string et execute la requete.
+     * 
+     * Si la base de donnee ne supporte pas la commande truncate(),
+     * cette fonction va executer "DELETE FROM table"
+     *
+     * @return bool|string TRUE on success, FALSE on failure, string on testMode
+     */
+    public function truncate(?string $table = null)
+    {
+        $this->crud = 'truncate';
+
+        if (!empty($table)) {
+            $this->table($table);
+        }
+
+        if ($this->testMode) {
+            return $this->sql();
+        }
+
+        return $this->execute();
+    }
+
+    /**
      * Allows key/value pairs to be set for insert(), update() or replace().
      *
      * @param array|object|string $key    Nom du champ, ou tableau de paire champs/valeurs
@@ -2014,6 +2037,10 @@ class BaseBuilder implements BuilderInterface
                 $this->limit,
                 $this->offset,
             ]);
+        } elseif ($this->crud === 'truncate') {
+            $this->setSql($this->_truncateStatement(
+                $this->removeAlias(array_pop($this->table))
+            ));
         } elseif ($this->crud === 'update') {
             $this->setSql([
                 'UPDATE',
@@ -2111,6 +2138,17 @@ class BaseBuilder implements BuilderInterface
             'VALUES',
             '(' . $values . ')',
         ];
+    }
+
+    /**
+     * Genere la chaine TRUNCATE conformement a la plateforme
+     *
+     * Si la base de donnee ne supporte pas la commande truncate(),
+     * cette fonction va executer "DELETE FROM table"
+     */
+    protected function _truncateStatement(string $table): string
+    {
+        return 'TRUNCATE ' . $table;
     }
 
     /**
