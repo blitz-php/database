@@ -1495,10 +1495,41 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Determine if a particular table exists
+     *
+     * @param bool $cached Whether to use data cache
      */
-    public function tableExists(string $tableName): bool
+    public function tableExists(string $tableName, bool $cached = true): bool
     {
-        return in_array($this->protectIdentifiers($tableName, true, false, false), $this->listTables(), true);
+        if ($cached === true) {
+            return in_array($this->protectIdentifiers($tableName, true, false, false), $this->listTables(), true);
+        }
+
+        if (false === ($sql = $this->_listTables(false, $tableName))) {
+            if ($this->debug) {
+                throw new DatabaseException('This feature is not available for the database you are using.');
+            }
+
+            return false;
+        }
+
+        $tableExists = $this->query($sql)->resultArray() !== [];
+
+        // if cache has been built already
+        if (! empty($this->dataCache['table_names'])) {
+            $key = array_search(
+                strtolower($tableName),
+                array_map('strtolower', $this->dataCache['table_names']),
+                true
+            );
+
+            // table doesn't exist but still in cache - lets reset cache, it can be rebuilt later
+            // OR if table does exist but is not found in cache
+            if (($key !== false && ! $tableExists) || ($key === false && $tableExists)) {
+                $this->resetDataCache();
+            }
+        }
+
+        return $tableExists;
     }
 
     /**
