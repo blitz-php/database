@@ -14,6 +14,7 @@ namespace BlitzPHP\Database\Connection;
 use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Exceptions\DatabaseException;
+use BlitzPHP\Database\Query;
 use BlitzPHP\Utilities\Helpers;
 use Closure;
 use Exception;

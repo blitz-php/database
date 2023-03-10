@@ -12,7 +12,7 @@
 namespace BlitzPHP\Database\Builder;
 
 /**
- * Builder for MySQLi
+ * Builder pour MySQL
  */
 class MySQL extends BaseBuilder
 {
@@ -23,13 +23,11 @@ class MySQL extends BaseBuilder
      */
     protected $escapeChar = '`';
 
-    /**
-     * Specifies which sql statements
-     * support the ignore option.
-     *
-     * @var array
+     /**
+     * Specifie quelles requetes requetes sql
+     * supportent l'option IGNORE.
      */
-    protected $supportedIgnoreStatements = [
+    protected array $supportedIgnoreStatements = [
         'update' => 'IGNORE',
         'insert' => 'IGNORE',
         'delete' => 'IGNORE',
