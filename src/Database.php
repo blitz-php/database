@@ -12,6 +12,8 @@
 namespace BlitzPHP\Database;
 
 use BlitzPHP\Contracts\Database\ConnectionInterface;
+use BlitzPHP\Database\Connection\BaseConnection;
+use BlitzPHP\Database\Creator\BaseCreator;
 use InvalidArgumentException;
 
 /**
@@ -89,15 +91,27 @@ class Database
     }
 
     /**
-     * Crée une instance Forge pour le type de base de données actuel.
+     * Renvoie une instance Creator adaptee au pilote et prêt à l'emploi.
+     *
+     * @throws InvalidArgumentException
+     *
+     * @uses self::loadCreator
      */
-    public function loadForge(ConnectionInterface $db): object
+    public static function creator(ConnectionInterface $db): BaseCreator
+    {
+        return self::instance()->loadCreator($db);
+    }
+    
+    /**
+     * Crée une instance Creator pour le type de base de données actuel.
+     */
+    public function loadCreator(ConnectionInterface $db): BaseCreator
     {
         if (! $db->conn) {
             $db->initialize();
         }
 
-        return $this->initDriver($db->driver, 'Forge', $db);
+        return $this->initDriver($db->driver, 'Creator', $db);
     }
 
     /**
@@ -154,8 +168,10 @@ class Database
      * Initialiser le pilote de base de données.
      *
      * @param array|object $argument
+     * 
+     * @return BaseConnection|BaseUtils|BaseCreator
      */
-    protected function initDriver(string $driver, string $class, $params, ...$arguments): ConnectionInterface
+    protected function initDriver(string $driver, string $class, $params, ...$arguments): object
     {
         $driver = str_ireplace('pdo', '', $driver);
         $driver = str_ireplace(
