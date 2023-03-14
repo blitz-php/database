@@ -101,7 +101,7 @@ class Database
     {
         return self::instance()->loadCreator($db);
     }
-    
+
     /**
      * Crée une instance Creator pour le type de base de données actuel.
      */
@@ -168,15 +168,16 @@ class Database
      * Initialiser le pilote de base de données.
      *
      * @param array|object $argument
-     * 
-     * @return BaseConnection|BaseUtils|BaseCreator
+     * @param mixed        $params
+     *
+     * @return BaseConnection|BaseCreator|BaseUtils
      */
     protected function initDriver(string $driver, string $class, $params, ...$arguments): object
     {
         $driver = str_ireplace('pdo', '', $driver);
         $driver = str_ireplace(
-            ['mysql', 'pgsql'], 
-            ['MySQL', 'Postgre'], 
+            ['mysql', 'pgsql'],
+            ['MySQL', 'Postgre'],
             $driver
         );
 

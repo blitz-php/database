@@ -1,12 +1,21 @@
 <?php
 
+/**
+ * This file is part of Blitz PHP framework - Database Layer.
+ *
+ * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
+ *
+ * For the full copyright and license information, please view
+ * the LICENSE file that was distributed with this source code.
+ */
+
 namespace BlitzPHP\Database\Creator;
 
 use BlitzPHP\Database\Connection\Postgre as ConnectionPostgre;
 
 /**
  * Createur Postgre
- * 
+ *
  * @credit <a href="https://codeigniter.com">CodeIgniter4 - CodeIgniter\Database\Postgre\Forge</a>
  */
 class Postgre extends BaseCreator
@@ -55,43 +64,43 @@ class Postgre extends BaseCreator
      * {@inheritDoc}
      */
     protected array $mapTypes = [
-        'boolean'            => 'BOOLEAN',
+        'boolean' => 'BOOLEAN',
 
-        'bigInteger'         => 'BIGINT|BIGSERIAL',
-        'integer'            => 'INTEGER|SERIAL',
-        'mediumInteger'      => 'INTEGER|SERIAL',
-        'smallInteger'       => 'SMALLINT|SMALLSERIAL',
-        'tinyInteger'        => 'SMALLINT|SMALLSERIAL',
-        'decimal'            => 'DECIMAL',
-        'double'             => 'DOUBLE PRECISION',
-        'float'              => 'DOUBLE PRECISION',
-        'real'               => 'REAL',
-        
-        'date'               => 'DATE',
-        'dateTime'           => 'TIMESTAMP({precision}) WITHOUT TIME ZONE',
-        'dateTimeTz'         => 'TIMESTAMP({precision}) WITH TIME ZONE',
-        'time'               => 'TIME({precision}) WITHOUT TIME ZONE',
-        'timeTz'             => 'TIME({precision}) WITH TIME ZONE',
-        'timestamp'          => 'TIMESTAMP({precision}) WITHOUT TIME ZONE',
-        'timestampTz'        => 'TIMESTAMP({precision}) WITH TIME ZONE',
-        'year'               => 'INTEGER',
-        
-        'binary'             => 'BYTEA',
-        'char'               => 'CHAR',
-        'longText'           => 'TEXT',
-        'mediumText'         => 'TEXT',
-        'string'             => 'VARCHAR',
-        'text'               => 'TEXT',
-        
-        'uuid'               => 'UUID',
-        'ipAddress'          => 'INET',
-        'macAddress'         => 'MACADDR',
-        
-        'enum'               => ['VARCHAR', 255],
-        
-        'json'               => 'JSON',
-        'jsonb'              => 'JSONB',
-        
+        'bigInteger'    => 'BIGINT|BIGSERIAL',
+        'integer'       => 'INTEGER|SERIAL',
+        'mediumInteger' => 'INTEGER|SERIAL',
+        'smallInteger'  => 'SMALLINT|SMALLSERIAL',
+        'tinyInteger'   => 'SMALLINT|SMALLSERIAL',
+        'decimal'       => 'DECIMAL',
+        'double'        => 'DOUBLE PRECISION',
+        'float'         => 'DOUBLE PRECISION',
+        'real'          => 'REAL',
+
+        'date'        => 'DATE',
+        'dateTime'    => 'TIMESTAMP({precision}) WITHOUT TIME ZONE',
+        'dateTimeTz'  => 'TIMESTAMP({precision}) WITH TIME ZONE',
+        'time'        => 'TIME({precision}) WITHOUT TIME ZONE',
+        'timeTz'      => 'TIME({precision}) WITH TIME ZONE',
+        'timestamp'   => 'TIMESTAMP({precision}) WITHOUT TIME ZONE',
+        'timestampTz' => 'TIMESTAMP({precision}) WITH TIME ZONE',
+        'year'        => 'INTEGER',
+
+        'binary'     => 'BYTEA',
+        'char'       => 'CHAR',
+        'longText'   => 'TEXT',
+        'mediumText' => 'TEXT',
+        'string'     => 'VARCHAR',
+        'text'       => 'TEXT',
+
+        'uuid'       => 'UUID',
+        'ipAddress'  => 'INET',
+        'macAddress' => 'MACADDR',
+
+        'enum' => ['VARCHAR', 255],
+
+        'json'  => 'JSON',
+        'jsonb' => 'JSONB',
+
         'geometry'           => 'GEOGRAPHY(GEOMETRY, 4326)',
         'geometryCollection' => 'GEOGRAPHY(GEOMETRYCOLLECTION, 4326)',
         'lineString'         => 'GEOGRAPHY(LINESTRING, 4326)',
@@ -102,9 +111,9 @@ class Postgre extends BaseCreator
         'point'              => 'GEOGRAPHY(POINT, 4326)',
         'polygon'            => 'GEOGRAPHY(POLYGON, 4326)',
 
-        'computed'           => false, // Non supporter
+        'computed' => false, // Non supporter
     ];
-    
+
     /**
      * {@inheritDoc}
      */

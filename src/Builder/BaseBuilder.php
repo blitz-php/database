@@ -52,20 +52,19 @@ class BaseBuilder implements BuilderInterface
         'insert' => 'IGNORE',
     ];
 
-    protected string $tableName = '';
-    protected array $table      = [];
-    protected array  $fields    = [];
-    protected string $where     = '';
-    protected array $params     = [];
-    protected array $joins      = [];
-    protected string $order     = '';
-    protected string $groups    = '';
-    protected string $having    = '';
-    protected string $distinct  = '';
-    protected string $ignore    = '';
-    protected string $limit     = '';
-    protected string $offset    = '';
-    
+    protected string $tableName   = '';
+    protected array $table        = [];
+    protected array  $fields      = [];
+    protected string $where       = '';
+    protected array $params       = [];
+    protected array $joins        = [];
+    protected string $order       = '';
+    protected string $groups      = '';
+    protected string $having      = '';
+    protected string $distinct    = '';
+    protected string $ignore      = '';
+    protected string $limit       = '';
+    protected string $offset      = '';
     protected string $sql         = '';
     protected string $crud        = 'select';
     protected array $query_keys   = [];
@@ -1303,7 +1302,7 @@ class BaseBuilder implements BuilderInterface
             return $this;
         }
 
-        if (!empty($data)) {
+        if (! empty($data)) {
             $this->set($data, null, $escape);
         }
 
@@ -1391,7 +1390,7 @@ class BaseBuilder implements BuilderInterface
     {
         $this->crud = 'update';
 
-        if (!is_string($data)) {
+        if (! is_string($data)) {
             $data = $this->objectToArray($data);
         }
 
@@ -1403,7 +1402,7 @@ class BaseBuilder implements BuilderInterface
             return $this;
         }
 
-        if (!empty($data)) {
+        if (! empty($data)) {
             $this->set($data, null, $escape);
         }
 
@@ -1439,7 +1438,7 @@ class BaseBuilder implements BuilderInterface
             return $this;
         }
 
-        if (!empty($data)) {
+        if (! empty($data)) {
             $this->set($data, null, $escape);
         }
 
@@ -1490,7 +1489,7 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Compile une chaine truncate string et execute la requete.
-     * 
+     *
      * Si la base de donnee ne supporte pas la commande truncate(),
      * cette fonction va executer "DELETE FROM table"
      *
@@ -1500,7 +1499,7 @@ class BaseBuilder implements BuilderInterface
     {
         $this->crud = 'truncate';
 
-        if (!empty($table)) {
+        if (! empty($table)) {
             $this->table($table);
         }
 
@@ -1514,8 +1513,8 @@ class BaseBuilder implements BuilderInterface
     /**
      * Allows key/value pairs to be set for insert(), update() or replace().
      *
-     * @param array|object|string $key    Nom du champ, ou tableau de paire champs/valeurs
-     * @param mixed               $value  Valeur du champ, si $key est un simple champ
+     * @param array|object|string $key   Nom du champ, ou tableau de paire champs/valeurs
+     * @param mixed               $value Valeur du champ, si $key est un simple champ
      */
     public function set($key, $value = '', ?bool $escape = null): self
     {
@@ -1528,7 +1527,7 @@ class BaseBuilder implements BuilderInterface
         $escape = is_bool($escape) ? $escape : $this->db->protectIdentifiers;
 
         foreach ($key as $k => $v) {
-            $this->query_keys  [$k] = $this->db->escapeIdentifiers($k);
+            $this->query_keys[$k]   = $this->db->escapeIdentifiers($k);
             $this->query_values[$k] = $escape === true ? $this->db->quote($v) : $v;
         }
 
@@ -1542,7 +1541,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
-     * 
+     *
      * @return float|string float en mode reel et string (la chaîne SQL) en mode test
      */
     final public function min(string $field, ?string $key = null, int $expire = 0)
@@ -1567,7 +1566,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
-     * 
+     *
      * @return float|string float en mode reel et string (la chaîne SQL) en mode test
      */
     final public function max(string $field, ?string $key = null, int $expire = 0)
@@ -1577,7 +1576,7 @@ class BaseBuilder implements BuilderInterface
         if ($this->testMode) {
             return $this->sql();
         }
-        
+
         $value = $this->value(
             'max_value',
             $key,
@@ -1592,7 +1591,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
-     * 
+     *
      * @return float|string float en mode reel et string (la chaîne SQL) en mode test
      */
     final public function sum(string $field, ?string $key = null, int $expire = 0)
@@ -1617,7 +1616,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param string|null $key    Clé de cache
      * @param int         $expire Délai d'expiration en secondes
-     * 
+     *
      * @return float|string float en mode reel et string (la chaîne SQL) en mode test
      */
     final public function avg(string $field, ?string $key = null, int $expire = 0)
@@ -1824,9 +1823,9 @@ class BaseBuilder implements BuilderInterface
     /**
      * Incremente un champ numerique par la valeur specifiee.
      *
-     * @return bool
-     *
      * @throws DatabaseException
+     *
+     * @return bool
      */
     public function increment(string $column, int $value = 1)
     {
@@ -1842,13 +1841,13 @@ class BaseBuilder implements BuilderInterface
 
         return true;
     }
-    
+
     /**
      * Decremente un champ numerique par la valeur specifiee.
      *
-     * @return bool
-     *
      * @throws DatabaseException
+     *
+     * @return bool
      */
     public function decrement(string $column, int $value = 1)
     {
@@ -2006,26 +2005,26 @@ class BaseBuilder implements BuilderInterface
     {
         $this->checkTable();
 
-        $keys = [];
+        $keys   = [];
         $values = [];
 
         foreach ($this->query_keys as $key => $value) {
             if (isset($this->query_values[$key])) {
-                $keys  [] = $value;
+                $keys[]   = $value;
                 $values[] = $this->query_values[$key];
             }
         }
-        
+
         if ($this->crud === 'insert') {
             $this->setSql($this->_insertStatement(
-                $this->removeAlias(array_pop($this->table)), 
-                implode(',', $keys), 
+                $this->removeAlias(array_pop($this->table)),
+                implode(',', $keys),
                 implode(',', $values)
             ));
         } elseif ($this->crud === 'replace') {
             $this->setSql($this->_replaceStatement(
-                $this->removeAlias(array_pop($this->table)), 
-                implode(',', $keys), 
+                $this->removeAlias(array_pop($this->table)),
+                implode(',', $keys),
                 implode(',', $values)
             ));
         } elseif ($this->crud === 'delete') {
@@ -2091,26 +2090,27 @@ class BaseBuilder implements BuilderInterface
         );
     }
 
-    
-
     /**
      * Constructeur de requete LIKE independament de la platforme
-     * 
+     *
+     * @param mixed $match
+     *
      * @return string[] [column, match, condition]
      */
     protected function _likeStatement(string $column, $match, bool $not, bool $insensitiveSearch = false): array
     {
         $column = $this->db->escapeIdentifiers($column);
+
         return [
             $insensitiveSearch === true ? 'LOWER(' . $column . ')' : $column,
             $insensitiveSearch === true && is_string($match) ? strtolower($match) : $match,
-            ($not === true ? 'NOT ' : '') . 'LIKE'
+            ($not === true ? 'NOT ' : '') . 'LIKE',
         ];
     }
-    
+
     /**
      * Genere la chaine REPLACE INTO conformement a la plateforme
-     * 
+     *
      * @return string|string[]
      */
     protected function _replaceStatement(string $table, string $keys, string $values)
@@ -2123,10 +2123,10 @@ class BaseBuilder implements BuilderInterface
             '(' . $values . ')',
         ];
     }
-    
+
     /**
      * Genere la chaine INSERT conformement a la plateforme
-     * 
+     *
      * @return string|string[]
      */
     protected function _insertStatement(string $table, string $keys, string $values)
@@ -2157,13 +2157,13 @@ class BaseBuilder implements BuilderInterface
      */
     protected function compileIgnore(string $statement): string
     {
-        if (!empty($this->ignore) && isset($this->supportedIgnoreStatements[$statement])) {
+        if (! empty($this->ignore) && isset($this->supportedIgnoreStatements[$statement])) {
             return trim($this->supportedIgnoreStatements[$statement]) . ' ';
         }
 
         return '';
     }
-    
+
     /**
      * Joins string tokens into a SQL statement.
      *
@@ -2219,8 +2219,8 @@ class BaseBuilder implements BuilderInterface
 
         $operator = '';
         if (strpos($field, ' ') !== false) {
-            $parts = explode(' ', $field);
-            $field = array_shift($parts);
+            $parts    = explode(' ', $field);
+            $field    = array_shift($parts);
             $operator = implode(' ', $parts);
         }
 
@@ -2290,6 +2290,8 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Prend un objet en entree et convertit les variable de calss en tableau de cle/valeurs
+     *
+     * @param mixed $object
      */
     protected function objectToArray($object)
     {
@@ -2311,7 +2313,7 @@ class BaseBuilder implements BuilderInterface
 
         return $array;
     }
-    
+
     /**
      * Vérifie si la propriété de table a été définie.
      */

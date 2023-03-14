@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * This file is part of Blitz PHP framework - Database Layer.
+ *
+ * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
+ *
+ * For the full copyright and license information, please view
+ * the LICENSE file that was distributed with this source code.
+ */
+
 namespace BlitzPHP\Database\Creator;
 
 use BlitzPHP\Contracts\Database\ConnectionInterface;
@@ -14,7 +23,7 @@ use UnexpectedValueException;
 
 /**
  * La classe creator transforme les migrations en requete SQL executable.
- * 
+ *
  * @credit <a href="https://codeigniter.com">CodeIgniter4 - CodeIgniter\Database\Forge</a>
  */
 class BaseCreator
@@ -152,12 +161,11 @@ class BaseCreator
      */
     protected array $fkAllowActions = ['CASCADE', 'SET NULL', 'NO ACTION', 'RESTRICT', 'SET DEFAULT'];
 
-    
     /**
      * Table des correspondances des types de donnees
      *
-     * @var array<string, string|array|false>
-     * 
+     * @var array<string, array|false|string>
+     *
      * @example
      * ```
      * [
@@ -188,9 +196,9 @@ class BaseCreator
     /**
      * Recupere le type de champs en fonction de la base de donnees
      *
-     * @return string|array
+     * @return array|string
      */
-    public function typeOf(string $type = null)
+    public function typeOf(?string $type = null)
     {
         if ($type === null) {
             return $this->mapTypes;
@@ -486,9 +494,9 @@ class BaseCreator
     }
 
     /**
-     * @return BaseResult|bool|false|mixed|Query
-     *
      * @throws DatabaseException
+     *
+     * @return BaseResult|bool|false|mixed|Query
      */
     public function dropForeignKey(string $table, string $foreignName)
     {
@@ -510,9 +518,9 @@ class BaseCreator
     }
 
     /**
-     * @return mixed
-     *
      * @throws DatabaseException
+     *
+     * @return mixed
      */
     public function createTable(string $table, bool $ifNotExists = false, array $attributes = [])
     {
@@ -553,9 +561,6 @@ class BaseCreator
         return $result;
     }
 
-    /**
-     * 
-     */
     protected function _createTable(string $table, array $attributes): string
     {
         $columns = $this->_processFields(true);
@@ -600,9 +605,9 @@ class BaseCreator
     }
 
     /**
-     * @return mixed
-     *
      * @throws DatabaseException
+     *
+     * @return mixed
      */
     public function dropTable(string $tableName, bool $ifExists = false, bool $cascade = false)
     {
@@ -666,9 +671,9 @@ class BaseCreator
     }
 
     /**
-     * @return mixed
-     *
      * @throws DatabaseException
+     *
+     * @return mixed
      */
     public function renameTable(string $tableName, string $newTableName)
     {
@@ -738,9 +743,9 @@ class BaseCreator
     }
 
     /**
-     * @return mixed
-     *
      * @throws DatabaseException
+     *
+     * @return mixed
      */
     public function dropColumn(string $table, array|string $columnName)
     {
@@ -1148,7 +1153,7 @@ class BaseCreator
         if ($errorNames !== []) {
             $errorNames = [implode(', ', $errorNames)];
 
-            throw new DatabaseException('Field "'.$errorNames.'" not found.');
+            throw new DatabaseException('Field "' . $errorNames . '" not found.');
         }
 
         $sqls = [''];

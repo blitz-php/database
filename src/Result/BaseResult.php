@@ -30,7 +30,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * Resultat de la requete
      *
-     * @var object|resource|PDOStatement
+     * @var object|PDOStatement|resource
      */
     protected $query;
 

@@ -32,7 +32,7 @@ class Postgre extends BaseResult
     public function fieldNames(): array
     {
         $fieldNames = [];
-        
+
         for ($i = 0, $c = $this->countField(); $i < $c; $i++) {
             $fieldNames[] = pg_field_name($this->query, $i);
         }

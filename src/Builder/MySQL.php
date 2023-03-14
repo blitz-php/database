@@ -23,7 +23,7 @@ class MySQL extends BaseBuilder
      */
     protected $escapeChar = '`';
 
-     /**
+    /**
      * Specifie quelles requetes requetes sql
      * supportent l'option IGNORE.
      */

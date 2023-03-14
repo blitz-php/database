@@ -41,7 +41,6 @@ class Postgre extends BaseConnection
     protected $options;
     protected $sslmode;
     protected $service;
-
     protected array $error = [
         'message' => '',
         'code'    => 0,
@@ -51,6 +50,7 @@ class Postgre extends BaseConnection
      * {@inheritDoc}
      *
      * @return false|resource
+     *
      * @phpstan-return false|PgSqlConnection
      */
     public function connect(bool $persistent = false)
@@ -71,8 +71,7 @@ class Postgre extends BaseConnection
 
         if ($this->isPdo()) {
             $db = new PDO('pgsql:' . $this->dsn);
-        }
-        else {
+        } else {
             $db = $persistent === true ? pg_pconnect($this->dsn) : pg_connect($this->dsn);
 
             if ($db !== false) {
@@ -89,12 +88,12 @@ class Postgre extends BaseConnection
                 }
             }
         }
-        
-        if (!empty($this->charset)) {
+
+        if (! empty($this->charset)) {
             $this->commands[] = "SET NAMES '{$this->charset}'";
         }
 
-		return self::pushConnection('pgsql', $this, $db);
+        return self::pushConnection('pgsql', $this, $db);
     }
 
     /**
@@ -104,12 +103,11 @@ class Postgre extends BaseConnection
     public function reconnect()
     {
         if ($this->isPdo()) {
-			$this->close();
-			$this->initialize();
-		}
-		else if (pg_ping($this->conn) === false) {
-			$this->conn = false;
-		}
+            $this->close();
+            $this->initialize();
+        } elseif (pg_ping($this->conn) === false) {
+            $this->conn = false;
+        }
     }
 
     /**
@@ -118,9 +116,9 @@ class Postgre extends BaseConnection
     protected function _close()
     {
         if ($this->isPdo()) {
-			return $this->conn = null;
-		}
-		pg_close($this->conn);
+            return $this->conn = null;
+        }
+        pg_close($this->conn);
     }
 
     /**
@@ -153,29 +151,30 @@ class Postgre extends BaseConnection
     public function getVersion(): string
     {
         if (isset($this->dataCache['version'])) {
-			return $this->dataCache['version'];
-		}
-
-		if (empty($this->conn) OR (!$this->isPdo() AND ( $pgVersion = pg_version($this->conn)) === false)) {
-			$this->initialize();
+            return $this->dataCache['version'];
         }
 
-		return $this->dataCache['version'] = ! $this->isPdo() 
-            ? ($pgVersion['server'] ?? false) 
+        if (empty($this->conn) || (! $this->isPdo() && ($pgVersion = pg_version($this->conn)) === false)) {
+            $this->initialize();
+        }
+
+        return $this->dataCache['version'] = ! $this->isPdo()
+            ? ($pgVersion['server'] ?? false)
             : $this->conn->getAttribute(PDO::ATTR_CLIENT_VERSION);
     }
 
     /**
      * {@inheritDoc}
+     *
      * @phpstan-return false|PgSqlResult
      */
     public function execute(string $sql, array $params = [])
-	{
-        $error = null;
+    {
+        $error  = null;
         $result = false;
-		$time = microtime(true);
+        $time   = microtime(true);
 
-       	if (! $this->isPdo()) {
+        if (! $this->isPdo()) {
             try {
                 $result = pg_query($this->conn, $sql);
             } catch (ErrorException $e) {
@@ -185,16 +184,14 @@ class Postgre extends BaseConnection
                 $this->error['code']    = $e->getCode();
                 $this->error['message'] = $error = $e->getMessage();
             }
-        }
-        else {
+        } else {
             try {
                 $result = $this->conn->prepare($sql);
 
-                if (!$result) {
+                if (! $result) {
                     $error = $this->conn->errorInfo();
-                }
-                else {
-                    foreach ($params As $key => $value) {
+                } else {
+                    foreach ($params as $key => $value) {
                         $result->bindValue(
                             is_int($key) ? $key + 1 : $key,
                             $value,
@@ -203,8 +200,7 @@ class Postgre extends BaseConnection
                     }
                     $result->execute();
                 }
-            }
-            catch (PDOException $e) {
+            } catch (PDOException $e) {
                 if ($this->logger) {
                     $this->logger->error('Database: ' . (string) $e);
                 }
@@ -213,10 +209,10 @@ class Postgre extends BaseConnection
             }
         }
 
-        if ($error !== null)
-        {
-            $error .= "\nSQL: ".$sql;
-            throw new DatabaseException('Database error: '.$error);
+        if ($error !== null) {
+            $error .= "\nSQL: " . $sql;
+
+            throw new DatabaseException('Database error: ' . $error);
         }
 
         $this->lastQuery = [
@@ -227,7 +223,7 @@ class Postgre extends BaseConnection
         $this->stats['queries'][] = &$this->lastQuery;
 
         return $result;
-	}
+    }
 
     /**
      * {@inheritDoc}
@@ -243,22 +239,23 @@ class Postgre extends BaseConnection
     public function affectedRows(): int
     {
         if ($this->isPdo()) {
-			return $this->result->rowCount();
-		}
-		return pg_affected_rows($this->result);
+            return $this->result->rowCount();
+        }
+
+        return pg_affected_rows($this->result);
     }
 
     /**
      * {@inheritDoc}
      */
-	public function numRows(): int
-	{
-		if ($this->isPdo()) {
-			return $this->result->rowCount();
-		}
+    public function numRows(): int
+    {
+        if ($this->isPdo()) {
+            return $this->result->rowCount();
+        }
 
-		return pg_num_rows($this->result);
-	}
+        return pg_num_rows($this->result);
+    }
 
     /**
      * "Smart" Escape String
@@ -268,6 +265,7 @@ class Postgre extends BaseConnection
      * @param array|bool|float|int|object|string|null $str
      *
      * @return array|float|int|string
+     *
      * @phpstan-return ($str is array ? array : float|int|string)
      */
     public function escape($str)
@@ -279,8 +277,8 @@ class Postgre extends BaseConnection
         /** @psalm-suppress NoValue I don't know why ERROR. */
         if (is_object($str) && method_exists($str, '__toString')) {
             return $str->__toString();
-            }
-        if (is_string($str) && !$this->isPdo()) {
+        }
+        if (is_string($str) && ! $this->isPdo()) {
             return pg_escape_literal($this->conn, $str);
         }
 
@@ -298,15 +296,15 @@ class Postgre extends BaseConnection
     protected function _escapeString(string $str): string
     {
         if (is_bool($str)) {
-			return $str;
-		}
+            return $str;
+        }
 
-		if (! $this->conn) {
-			$this->initialize();
-		}
+        if (! $this->conn) {
+            $this->initialize();
+        }
 
         if (! $this->isPdo()) {
-			return pg_escape_string($this->conn, $str);
+            return pg_escape_string($this->conn, $str);
         }
 
         return $this->conn->quote($str);
@@ -342,41 +340,41 @@ class Postgre extends BaseConnection
         return 'SELECT "column_name"
 			FROM "information_schema"."columns"
 			WHERE LOWER("table_name") = '
-                . $this->escape( strtolower($this->prefix . $table))
+                . $this->escape(strtolower($this->prefix . $table))
                 . ' ORDER BY "ordinal_position"';
     }
 
     /**
      * {@inheritDoc}
      *
-     * @return stdClass[]
-     *
      * @throws DatabaseException
+     *
+     * @return stdClass[]
      */
     protected function _fieldData(string $table): array
     {
         $sql = 'SELECT "column_name", "data_type", "character_maximum_length", "numeric_precision", "column_default",  "is_nullable"
 			FROM "information_schema"."columns"
 			WHERE LOWER("table_name") = '
-				. $this->escape(strtolower($this->prefix . $table))
+                . $this->escape(strtolower($this->prefix . $table))
                 . ' ORDER BY "ordinal_position"';
 
-		if (($query = $this->query($sql)) === false) {
-			throw new DatabaseException('No data fied found');
-		}
-		$query = $query->resultObject();
+        if (($query = $this->query($sql)) === false) {
+            throw new DatabaseException('No data fied found');
+        }
+        $query = $query->resultObject();
 
-		$retVal = [];
+        $retVal = [];
 
-		for ($i = 0, $c = count($query); $i < $c; $i ++) {
-			$retVal[$i]             = new \stdClass();
+        for ($i = 0, $c = count($query); $i < $c; $i++) {
+            $retVal[$i] = new stdClass();
 
-			$retVal[$i]->name       = $query[$i]->column_name;
-			$retVal[$i]->type       = $query[$i]->data_type;
+            $retVal[$i]->name       = $query[$i]->column_name;
+            $retVal[$i]->type       = $query[$i]->data_type;
             $retVal[$i]->nullable   = $query[$i]->is_nullable === 'YES';
-			$retVal[$i]->default    = $query[$i]->column_default;
-			$retVal[$i]->max_length = $query[$i]->character_maximum_length > 0 ? $query[$i]->character_maximum_length : $query[$i]->numeric_precision;
-		}
+            $retVal[$i]->default    = $query[$i]->column_default;
+            $retVal[$i]->max_length = $query[$i]->character_maximum_length > 0 ? $query[$i]->character_maximum_length : $query[$i]->numeric_precision;
+        }
 
         return $retVal;
     }
@@ -384,9 +382,9 @@ class Postgre extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @return stdClass[]
-     *
      * @throws DatabaseException
+     *
+     * @return stdClass[]
      */
     protected function _indexData(string $table): array
     {
@@ -395,17 +393,16 @@ class Postgre extends BaseConnection
 			WHERE LOWER("tablename") = ' . $this->escape(strtolower($this->prefix . $table)) . '
 			AND "schemaname" = ' . $this->escape('public');
 
-		if (($query = $this->query($sql)) === false) {
-			throw new DatabaseException('No index data found');
-		}
-		
+        if (($query = $this->query($sql)) === false) {
+            throw new DatabaseException('No index data found');
+        }
+
         $query = $query->resultObject();
 
-		$retVal = [];
+        $retVal = [];
 
-		foreach ($query as $row)
-		{
-			$obj         = new stdClass();
+        foreach ($query as $row) {
+            $obj         = new stdClass();
             $obj->name   = $row->indexname;
             $_fields     = explode(',', preg_replace('/^.*\((.+?)\)$/', '$1', trim($row->indexdef)));
             $obj->fields = array_map(static fn ($v) => trim($v), $_fields);
@@ -417,7 +414,7 @@ class Postgre extends BaseConnection
             }
 
             $retVal[$obj->name] = $obj;
-		}
+        }
 
         return $retVal;
     }
@@ -425,9 +422,9 @@ class Postgre extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @return stdClass[]
-     *
      * @throws DatabaseException
+     *
+     * @return stdClass[]
      */
     protected function _foreignKeyData(string $table): array
     {
@@ -449,7 +446,7 @@ class Postgre extends BaseConnection
                 'order by c.constraint_name, x.ordinal_position';
 
         if (($query = $this->query($sql)) === false) {
-            throw new DatabaseException('No foreign keys found for table '.$table);
+            throw new DatabaseException('No foreign keys found for table ' . $table);
         }
 
         $query   = $query->resultObject();
@@ -498,7 +495,7 @@ class Postgre extends BaseConnection
         $message = $this->error['message'] ?? '';
 
         if (empty($message)) {
-            $message = $this->isPdo() 
+            $message = $this->isPdo()
                 ? $this->conn->errorInfo()
                 : (pg_last_error($this->connID) ?: '');
         }
@@ -512,8 +509,8 @@ class Postgre extends BaseConnection
     public function insertID()
     {
         if ($this->isPdo()) {
-			return $this->conn->lastInsertId();
-		}
+            return $this->conn->lastInsertId();
+        }
 
         $v = pg_version($this->connID);
         // 'server' key is only available since PostgreSQL 7.4
@@ -600,15 +597,17 @@ class Postgre extends BaseConnection
 
     /**
      * Set client encoding
+     *
+     * @param mixed|null $db
      */
     protected function setClientEncoding(string $charset, &$db = null): bool
     {
-        if (!$this->conn && !$db) {
+        if (! $this->conn && ! $db) {
             return false;
         }
-        
+
         return pg_set_client_encoding(
-            $this->conn === null ? $db : $this->conn, 
+            $this->conn === null ? $db : $this->conn,
             $charset
         ) === 0;
     }
@@ -631,8 +630,8 @@ class Postgre extends BaseConnection
     protected function _transCommit(): bool
     {
         if (! $this->isPdo()) {
-			return (bool) pg_query($this->conn, 'COMMIT');
-		}
+            return (bool) pg_query($this->conn, 'COMMIT');
+        }
 
         return $this->conn->commit();
     }
@@ -643,10 +642,10 @@ class Postgre extends BaseConnection
     protected function _transRollback(): bool
     {
         if (! $this->isPdo()) {
-			return (bool) pg_query($this->conn, 'ROLLBACK');
-		}
+            return (bool) pg_query($this->conn, 'ROLLBACK');
+        }
 
-		return $this->conn->rollback();
+        return $this->conn->rollback();
     }
 
     /**

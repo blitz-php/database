@@ -1,10 +1,19 @@
 <?php
 
+/**
+ * This file is part of Blitz PHP framework - Database Layer.
+ *
+ * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
+ *
+ * For the full copyright and license information, please view
+ * the LICENSE file that was distributed with this source code.
+ */
+
 namespace BlitzPHP\Database\Creator;
 
 /**
  * Createur MySQL
- * 
+ *
  * @credit <a href="https://codeigniter.com">CodeIgniter4 - CodeIgniter\Database\MySQLi\Forge</a>
  */
 class MySQL extends BaseCreator
@@ -71,43 +80,43 @@ class MySQL extends BaseCreator
      * {@inheritDoc}
      */
     protected array $mapTypes = [
-        'boolean'            => ['TINYINT', 1],
+        'boolean' => ['TINYINT', 1],
 
-        'bigInteger'         => 'BIGINT',
-        'integer'            => 'INT',
-        'mediumInteger'      => 'MEDIUMINT',
-        'smallInteger'       => 'SMALLINT',
-        'tinyInteger'        => 'TINYINT',
-        'decimal'            => 'DECIMAL',
-        'double'             => 'DOUBLE',
-        'float'              => 'DOUBLE',
-        
-        'date'               => 'DATE',
-        'dateTime'           => 'DATETIME',
-        'dateTimeTz'         => 'DATETIME',
-        'time'               => 'TIME',
-        'timeTz'             => 'TIME',
-        'timestamp'          => 'TIMESTAMP',
-        'timestampTz'        => 'TIMESTAMP',
-        'year'               => 'YEAR',
-        
-        'binary'             => 'BLOB',
-        'char'               => 'CHAR',
-        'longText'           => 'LONGTEXT',
-        'mediumText'         => 'MEDIUMTEXT',
-        'string'             => 'VARCHAR',
-        'text'               => 'TEXT',
-        
-        'uuid'               => ['VARCHAR', 36],
-        'ipAddress'          => ['VARCHAR', 45],
-        'macAddress'         => ['VARCHAR', 17],
-        
-        'enum'               => 'ENUM',
-        'set'                => 'SET',
-        
-        'json'               => 'JSON',
-        'jsonb'              => 'JSON',
-        
+        'bigInteger'    => 'BIGINT',
+        'integer'       => 'INT',
+        'mediumInteger' => 'MEDIUMINT',
+        'smallInteger'  => 'SMALLINT',
+        'tinyInteger'   => 'TINYINT',
+        'decimal'       => 'DECIMAL',
+        'double'        => 'DOUBLE',
+        'float'         => 'DOUBLE',
+
+        'date'        => 'DATE',
+        'dateTime'    => 'DATETIME',
+        'dateTimeTz'  => 'DATETIME',
+        'time'        => 'TIME',
+        'timeTz'      => 'TIME',
+        'timestamp'   => 'TIMESTAMP',
+        'timestampTz' => 'TIMESTAMP',
+        'year'        => 'YEAR',
+
+        'binary'     => 'BLOB',
+        'char'       => 'CHAR',
+        'longText'   => 'LONGTEXT',
+        'mediumText' => 'MEDIUMTEXT',
+        'string'     => 'VARCHAR',
+        'text'       => 'TEXT',
+
+        'uuid'       => ['VARCHAR', 36],
+        'ipAddress'  => ['VARCHAR', 45],
+        'macAddress' => ['VARCHAR', 17],
+
+        'enum' => 'ENUM',
+        'set'  => 'SET',
+
+        'json'  => 'JSON',
+        'jsonb' => 'JSON',
+
         'geometry'           => 'GEOMETRY',
         'geometryCollection' => 'GEOMETRYCOLLECTION',
         'lineString'         => 'LINESTRING',
@@ -117,7 +126,7 @@ class MySQL extends BaseCreator
         'point'              => 'POINT',
         'polygon'            => 'POLYGON',
 
-        'computed'           => false, // Non supporter
+        'computed' => false, // Non supporter
     ];
 
     /**
@@ -155,7 +164,7 @@ class MySQL extends BaseCreator
     /**
      * ALTER TABLE
      *
-     * @param array|string $field     Column definition
+     * @param array|string $field Column definition
      *
      * @return string|string[]
      */

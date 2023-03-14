@@ -121,7 +121,7 @@ class Postgre extends BaseBuilder
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * Compiles an replace into string and runs the query.
      * Because PostgreSQL doesn't support the replace into command,
      * we simply do a DELETE and an INSERT on the first key/value
@@ -141,12 +141,12 @@ class Postgre extends BaseBuilder
             return $this;
         }
 
-        if (!empty($data)) {
+        if (! empty($data)) {
             $this->set($data, null, $escape);
         }
 
-        $table = array_pop($this->table);
-        $values   = $this->query_values;
+        $table  = array_pop($this->table);
+        $values = $this->query_values;
 
         $key   = array_key_first($values);
         $value = $values[$key];
@@ -198,7 +198,7 @@ class Postgre extends BaseBuilder
      * {@inheritDoc}
      *
      * @throws DatabaseException
-     */    
+     */
     public function update(array|string|object $data = [], bool $escape = true, bool $execute = true)
     {
         if (! empty($this->limit)) {
@@ -235,16 +235,16 @@ class Postgre extends BaseBuilder
 
     /**
      * Genere la chaine INSERT conformement a la plateforme
-     * 
+     *
      * @return string|string[]
      */
     protected function _insertStatement(string $table, string $keys, string $values)
     {
         return trim(sprintf(
-            'INSERT INTO %s (%s) VALUES (%s) %s', 
-            $table, 
+            'INSERT INTO %s (%s) VALUES (%s) %s',
+            $table,
             $keys,
-            $values, 
+            $values,
             $this->compileIgnore('insert')
         ));
     }

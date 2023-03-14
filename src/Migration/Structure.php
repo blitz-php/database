@@ -1,4 +1,13 @@
-<?php 
+<?php
+
+/**
+ * This file is part of Blitz PHP framework - Database Layer.
+ *
+ * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
+ *
+ * For the full copyright and license information, please view
+ * the LICENSE file that was distributed with this source code.
+ */
 
 namespace BlitzPHP\Database\Migration;
 
@@ -8,7 +17,7 @@ use Closure;
 
 /**
  * Classe pour define la structure de la table a migrer.
- * 
+ *
  * @credit <a href="https://laravel.com">Laravel Framework - Illuminate\Database\Schema\Blueprint</a>
  */
 class Structure
@@ -53,13 +62,12 @@ class Structure
      */
     public bool $temporary = false;
 
-
     public function __construct(string $table, ?Closure $callback = null, string $prefix = '')
     {
-        $this->table = $table;
+        $this->table  = $table;
         $this->prefix = $prefix;
 
-        if (! is_null($callback)) {
+        if (null !== $callback) {
             $callback($this);
         }
     }
@@ -71,7 +79,7 @@ class Structure
     {
         return $this->addCommand('add');
     }
-    
+
     /**
      * Indique qu'on veut creer la table.
      */
@@ -97,7 +105,7 @@ class Structure
     {
         $this->temporary = true;
     }
-    
+
     /**
      * Indique qu'on veut supprimer la table.
      */
@@ -121,7 +129,7 @@ class Structure
     /**
      * Indique qu'on veut supprimer un champs.
      *
-     * @param  array|mixed  $columns
+     * @param array|mixed $columns
      */
     public function dropColumn($columns): Column
     {
@@ -204,7 +212,7 @@ class Structure
 
     /**
      * Indique qu'on veut supprimer les colones polymorphe.
-     * 
+     *
      * @return void
      */
     public function dropMorphs(string $name, ?string $indexName = null)
@@ -297,7 +305,7 @@ class Structure
     /**
      * Create a new auto-incrementing medium integer (3-byte) column on the table.
      */
-    public function mediumIncrements(string $column) : Column
+    public function mediumIncrements(string $column): Column
     {
         return $this->unsignedMediumInteger($column, true)->primary();
     }
@@ -323,7 +331,7 @@ class Structure
     /**
      * Create a new string column on the table.
      */
-    public function string(string $column, int $length = 255) : Column
+    public function string(string $column, int $length = 255): Column
     {
         $length = max($length, 1);
 
@@ -333,7 +341,7 @@ class Structure
     /**
      * Create a new text column on the table.
      */
-    public function text(string $column) : Column
+    public function text(string $column): Column
     {
         return $this->addColumn('text', $column);
     }
@@ -349,84 +357,55 @@ class Structure
     /**
      * Create a new long text column on the table.
      */
-    public function longText(string $column) : Column
+    public function longText(string $column): Column
     {
         return $this->addColumn('longText', $column);
     }
 
     /**
      * Create a new integer (4-byte) column on the table.
-     *
-     * @param  string  $column
-     * @param  bool  $autoIncrement
-     * @param  bool  $unsigned
-     * @return Column
      */
-    public function integer(string $column, bool $autoIncrement = false, bool $unsigned = false) : Column
+    public function integer(string $column, bool $autoIncrement = false, bool $unsigned = false): Column
     {
         return $this->addColumn('integer', $column, compact('autoIncrement', 'unsigned'));
     }
 
     /**
      * Create a new tiny integer (1-byte) column on the table.
-     *
-     * @param  string  $column
-     * @param  bool  $autoIncrement
-     * @param  bool  $unsigned
-     * @return Column
      */
-    public function tinyInteger(string $column, bool $autoIncrement = false, bool $unsigned = false) : Column
+    public function tinyInteger(string $column, bool $autoIncrement = false, bool $unsigned = false): Column
     {
         return $this->addColumn('tinyInteger', $column, compact('autoIncrement', 'unsigned'));
     }
 
     /**
      * Create a new small integer (2-byte) column on the table.
-     *
-     * @param  string  $column
-     * @param  bool  $autoIncrement
-     * @param  bool  $unsigned
-     * @return Column
      */
-    public function smallInteger(string $column, bool $autoIncrement = false, bool $unsigned = false) : Column
+    public function smallInteger(string $column, bool $autoIncrement = false, bool $unsigned = false): Column
     {
         return $this->addColumn('smallInteger', $column, compact('autoIncrement', 'unsigned'));
     }
 
     /**
      * Create a new medium integer (3-byte) column on the table.
-     *
-     * @param  string  $column
-     * @param  bool  $autoIncrement
-     * @param  bool  $unsigned
-     * @return Column
      */
-    public function mediumInteger(string $column, bool $autoIncrement = false, bool $unsigned = false) : Column
+    public function mediumInteger(string $column, bool $autoIncrement = false, bool $unsigned = false): Column
     {
         return $this->addColumn('mediumInteger', $column, compact('autoIncrement', 'unsigned'));
     }
 
     /**
      * Create a new big integer (8-byte) column on the table.
-     *
-     * @param  string  $column
-     * @param  bool  $autoIncrement
-     * @param  bool  $unsigned
-     * @return Column
      */
-    public function bigInteger(string $column, bool $autoIncrement = false, bool $unsigned = false) : Column
+    public function bigInteger(string $column, bool $autoIncrement = false, bool $unsigned = false): Column
     {
         return $this->addColumn('bigInteger', $column, compact('autoIncrement', 'unsigned'));
     }
 
     /**
      * Create a new unsigned integer (4-byte) column on the table.
-     *
-     * @param  string  $column
-     * @param  bool  $autoIncrement
-     * @return Column
      */
-    public function unsignedInteger(string $column, bool $autoIncrement = false) : Column
+    public function unsignedInteger(string $column, bool $autoIncrement = false): Column
     {
         return $this->integer($column, $autoIncrement, true);
     }
@@ -434,8 +413,6 @@ class Structure
     /**
      * Create a new unsigned tiny integer (1-byte) column on the table.
      *
-     * @param  string  $column
-     * @param  bool  $autoIncrement
      * @return Column
      */
     public function unsignedTinyInteger(string $column, bool $autoIncrement = false)
@@ -445,88 +422,56 @@ class Structure
 
     /**
      * Create a new unsigned small integer (2-byte) column on the table.
-     *
-     * @param  string  $column
-     * @param  bool  $autoIncrement
-     * @return Column
      */
-    public function unsignedSmallInteger(string $column, bool $autoIncrement = false) : Column
+    public function unsignedSmallInteger(string $column, bool $autoIncrement = false): Column
     {
         return $this->smallInteger($column, $autoIncrement, true);
     }
 
     /**
      * Create a new unsigned medium integer (3-byte) column on the table.
-     *
-     * @param  string  $column
-     * @param  bool  $autoIncrement
-     * @return Column
      */
-    public function unsignedMediumInteger(string $column, bool $autoIncrement = false) : Column
+    public function unsignedMediumInteger(string $column, bool $autoIncrement = false): Column
     {
         return $this->mediumInteger($column, $autoIncrement, true);
     }
 
     /**
      * Create a new unsigned big integer (8-byte) column on the table.
-     *
-     * @param  string  $column
-     * @param  bool  $autoIncrement
-     * @return Column
      */
-    public function unsignedBigInteger(string $column, bool $autoIncrement = false) : Column
+    public function unsignedBigInteger(string $column, bool $autoIncrement = false): Column
     {
         return $this->bigInteger($column, $autoIncrement, true);
     }
 
     /**
      * Create a new float column on the table.
-     *
-     * @param  string  $column
-     * @param  int  $total
-     * @param  int  $places
-     * @return Column
      */
-    public function float(string $column, int $total = 8, int $places = 2) : Column
+    public function float(string $column, int $total = 8, int $places = 2): Column
     {
         return $this->addColumn('float', $column, compact('total', 'places'));
     }
 
     /**
      * Create a new double column on the table.
-     *
-     * @param  string  $column
-     * @param  int|null  $total
-     * @param  int|null  $places
-     * @return Column
      */
-    public function double(string $column, ?int $total = null, ?int $places = null) : Column
+    public function double(string $column, ?int $total = null, ?int $places = null): Column
     {
         return $this->addColumn('double', $column, compact('total', 'places'));
     }
 
     /**
      * Create a new decimal column on the table.
-     *
-     * @param  string  $column
-     * @param  int  $total
-     * @param  int  $places
-     * @return Column
      */
-    public function decimal(string $column, int $total = 8, int $places = 2) : Column
+    public function decimal(string $column, int $total = 8, int $places = 2): Column
     {
         return $this->addColumn('decimal', $column, compact('total', 'places'));
     }
 
     /**
      * Create a new unsigned decimal column on the table.
-     *
-     * @param  string  $column
-     * @param  int  $total
-     * @param  int  $places
-     * @return Column
      */
-    public function unsignedDecimal(string $column, int $total = 8, int $places = 2) : Column
+    public function unsignedDecimal(string $column, int $total = 8, int $places = 2): Column
     {
         return $this->addColumn('decimal', $column, [
             'total' => $total, 'places' => $places, 'unsigned' => true,
@@ -535,140 +480,96 @@ class Structure
 
     /**
      * Create a new boolean column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function boolean(string $column) : Column
+    public function boolean(string $column): Column
     {
         return $this->addColumn('boolean', $column);
     }
 
     /**
      * Create a new enum column on the table.
-     *
-     * @param  string  $column
-     * @param  array  $allowed
-     * @return Column
      */
-    public function enum(string $column, array $allowed) : Column
+    public function enum(string $column, array $allowed): Column
     {
         return $this->addColumn('enum', $column, compact('allowed'));
     }
 
     /**
      * Create a new set column on the table.
-     *
-     * @param  string  $column
-     * @param  array  $allowed
-     * @return Column
      */
-    public function set(string $column, array $allowed) : Column
+    public function set(string $column, array $allowed): Column
     {
         return $this->addColumn('set', $column, compact('allowed'));
     }
 
     /**
      * Create a new json column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function json(string $column) : Column
+    public function json(string $column): Column
     {
         return $this->addColumn('json', $column);
     }
 
     /**
      * Create a new jsonb column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function jsonb(string $column) : Column
+    public function jsonb(string $column): Column
     {
         return $this->addColumn('jsonb', $column);
     }
 
     /**
      * Create a new date column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function date(string $column) : Column
+    public function date(string $column): Column
     {
         return $this->addColumn('date', $column);
     }
 
     /**
      * Create a new date-time column on the table.
-     *
-     * @param  string  $column
-     * @param  int  $precision
-     * @return Column
      */
-    public function dateTime(string $column, int $precision = 0) : Column
+    public function dateTime(string $column, int $precision = 0): Column
     {
         return $this->addColumn('dateTime', $column, compact('precision'));
     }
 
     /**
      * Create a new date-time column (with time zone) on the table.
-     *
-     * @param  string  $column
-     * @param  int  $precision
-     * @return Column
      */
-    public function dateTimeTz(string $column, int $precision = 0) : Column
+    public function dateTimeTz(string $column, int $precision = 0): Column
     {
         return $this->addColumn('dateTimeTz', $column, compact('precision'));
     }
 
     /**
      * Create a new time column on the table.
-     *
-     * @param  string  $column
-     * @param  int  $precision
-     * @return Column
      */
-    public function time(string $column, int $precision = 0) : Column
+    public function time(string $column, int $precision = 0): Column
     {
         return $this->addColumn('time', $column, compact('precision'));
     }
 
     /**
      * Create a new time column (with time zone) on the table.
-     *
-     * @param  string  $column
-     * @param  int  $precision
-     * @return Column
      */
-    public function timeTz(string $column, int $precision = 0) : Column
+    public function timeTz(string $column, int $precision = 0): Column
     {
         return $this->addColumn('timeTz', $column, compact('precision'));
     }
 
     /**
      * Create a new timestamp column on the table.
-     *
-     * @param  string  $column
-     * @param  int  $precision
-     * @return Column
      */
-    public function timestamp(string $column, int $precision = 0) : Column
+    public function timestamp(string $column, int $precision = 0): Column
     {
         return $this->addColumn('timestamp', $column, compact('precision'));
     }
 
     /**
      * Create a new timestamp (with time zone) column on the table.
-     *
-     * @param  string  $column
-     * @param  int  $precision
-     * @return Column
      */
-    public function timestampTz(string $column, int $precision = 0) : Column
+    public function timestampTz(string $column, int $precision = 0): Column
     {
         return $this->addColumn('timestampTz', $column, compact('precision'));
     }
@@ -676,7 +577,6 @@ class Structure
     /**
      * Add nullable creation and update timestamps to the table.
      *
-     * @param  int  $precision
      * @return void
      */
     public function timestamps(int $precision = 0)
@@ -691,7 +591,6 @@ class Structure
      *
      * Alias for self::timestamps().
      *
-     * @param  int  $precision
      * @return void
      */
     public function nullableTimestamps(int $precision = 0)
@@ -702,7 +601,6 @@ class Structure
     /**
      * Add creation and update timestampTz columns to the table.
      *
-     * @param  int  $precision
      * @return void
      */
     public function timestampsTz(int $precision = 0)
@@ -714,167 +612,120 @@ class Structure
 
     /**
      * Create a new year column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function year(string $column) : Column
+    public function year(string $column): Column
     {
         return $this->addColumn('year', $column);
     }
 
     /**
      * Create a new binary column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function binary(string $column) : Column
+    public function binary(string $column): Column
     {
         return $this->addColumn('binary', $column);
     }
 
     /**
      * Create a new uuid column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function uuid(string $column) : Column
+    public function uuid(string $column): Column
     {
         return $this->addColumn('uuid', $column);
     }
 
     /**
      * Create a new IP address column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function ipAddress(string $column) : Column
+    public function ipAddress(string $column): Column
     {
         return $this->addColumn('ipAddress', $column);
     }
 
     /**
      * Create a new MAC address column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function macAddress(string $column) : Column
+    public function macAddress(string $column): Column
     {
         return $this->addColumn('macAddress', $column);
     }
 
     /**
      * Create a new geometry column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function geometry(string $column) : Column
+    public function geometry(string $column): Column
     {
         return $this->addColumn('geometry', $column);
     }
 
     /**
      * Create a new point column on the table.
-     *
-     * @param  string  $column
-     * @param  int|null  $srid
-     * @return Column
      */
-    public function point(string $column, ?int $srid = null) : Column
+    public function point(string $column, ?int $srid = null): Column
     {
         return $this->addColumn('point', $column, compact('srid'));
     }
 
     /**
      * Create a new linestring column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function lineString(string $column) : Column
+    public function lineString(string $column): Column
     {
         return $this->addColumn('linestring', $column);
     }
 
     /**
      * Create a new polygon column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function polygon(string $column) : Column
+    public function polygon(string $column): Column
     {
         return $this->addColumn('polygon', $column);
     }
 
     /**
      * Create a new geometrycollection column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function geometryCollection(string $column) : Column
+    public function geometryCollection(string $column): Column
     {
         return $this->addColumn('geometrycollection', $column);
     }
 
     /**
      * Create a new multipoint column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function multiPoint(string $column) : Column
+    public function multiPoint(string $column): Column
     {
         return $this->addColumn('multipoint', $column);
     }
 
     /**
      * Create a new multilinestring column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function multiLineString(string $column) : Column
+    public function multiLineString(string $column): Column
     {
         return $this->addColumn('multilinestring', $column);
     }
 
     /**
      * Create a new multipolygon column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function multiPolygon(string $column) : Column
+    public function multiPolygon(string $column): Column
     {
         return $this->addColumn('multipolygon', $column);
     }
 
     /**
      * Create a new multipolygon column on the table.
-     *
-     * @param  string  $column
-     * @return Column
      */
-    public function multiPolygonZ(string $column) : Column
+    public function multiPolygonZ(string $column): Column
     {
         return $this->addColumn('multipolygonz', $column);
     }
 
     /**
      * Create a new generated, computed column on the table.
-     *
-     * @param  string  $column
-     * @param  string  $expression
-     * @return Column
      */
-    public function computed(string $column, string $expression) : Column
+    public function computed(string $column, string $expression): Column
     {
         return $this->addColumn('computed', $column, compact('expression'));
     }
@@ -882,8 +733,6 @@ class Structure
     /**
      * Add the proper columns for a polymorphic table.
      *
-     * @param  string  $name
-     * @param  string|null  $indexName
      * @return void
      */
     public function morphs(string $name, ?string $indexName = null)
@@ -898,8 +747,6 @@ class Structure
     /**
      * Add nullable columns for a polymorphic table.
      *
-     * @param  string  $name
-     * @param  string|null  $indexName
      * @return void
      */
     public function nullableMorphs(string $name, ?string $indexName = null)
@@ -914,8 +761,6 @@ class Structure
     /**
      * Add the proper columns for a polymorphic table using UUIDs.
      *
-     * @param  string  $name
-     * @param  string|null  $indexName
      * @return void
      */
     public function uuidMorphs(string $name, ?string $indexName = null)
@@ -930,8 +775,6 @@ class Structure
     /**
      * Add nullable columns for a polymorphic table using UUIDs.
      *
-     * @param  string  $name
-     * @param  string|null  $indexName
      * @return void
      */
     public function nullableUuidMorphs(string $name, ?string $indexName = null)
@@ -956,13 +799,10 @@ class Structure
     /**
      * Add a new index command to the blueprint.
      *
-     * @param  string  $type
-     * @param  string|array  $columns
-     * @param  string  $index
-     * @param  string|null  $algorithm
-     * @return Column
+     * @param array|string $columns
+     * @param string       $index
      */
-    protected function indexCommand(string $type, $columns, ?string $index = null, ?string $algorithm = null) : Column
+    protected function indexCommand(string $type, $columns, ?string $index = null, ?string $algorithm = null): Column
     {
         $columns = (array) $columns;
 
@@ -972,7 +812,8 @@ class Structure
         $index = $index ?: $this->createIndexName($type, $columns);
 
         return $this->addCommand(
-            $type, compact('index', 'columns', 'algorithm')
+            $type,
+            compact('index', 'columns', 'algorithm')
         );
     }
 
@@ -996,9 +837,9 @@ class Structure
     /**
      * Create a default index name for the table.
      */
-    protected function createIndexName(string $type, array $columns):  string
+    protected function createIndexName(string $type, array $columns): string
     {
-        $index = strtolower($this->prefix.$this->table.'_'.implode('_', $columns).'_'.$type);
+        $index = strtolower($this->prefix . $this->table . '_' . implode('_', $columns) . '_' . $type);
 
         return str_replace(['-', '.'], '_', $index);
     }
@@ -1020,9 +861,7 @@ class Structure
      */
     public function removeColumn(string $name): self
     {
-        $this->columns = array_values(array_filter($this->columns, function ($c) use ($name) {
-            return $c['name'] != $name;
-        }));
+        $this->columns = array_values(array_filter($this->columns, static fn ($c) => $c['name'] !== $name));
 
         return $this;
     }
@@ -1047,7 +886,7 @@ class Structure
 
     /**
      * Recupere la table que la structure decrit.
-     * 
+     *
      * @internal utilisee par le `transformer`
      */
     public function getTable(): string
@@ -1059,7 +898,7 @@ class Structure
      * Get the columns on the schema.
      *
      * @return Column[]
-     * 
+     *
      * @internal utilisee par le `transformer`
      */
     public function getColumns(?bool $added = null): array
@@ -1067,7 +906,7 @@ class Structure
         if ($added === null) {
             return $this->columns;
         }
-        
+
         if ($added === true) {
             return $this->getAddedColumns();
         }
@@ -1079,7 +918,7 @@ class Structure
      * Get the commands on the schema.
      *
      * @return Column[]
-     * 
+     *
      * @internal utilisee par le `transformer`
      */
     public function getCommands(): array
@@ -1091,27 +930,23 @@ class Structure
      * Recupere les colones de la structure qui doivent etre ajoutees.
      *
      * @return Column[]
-     * 
+     *
      * @internal utilisee par le `transformer`
      */
     public function getAddedColumns(): array
     {
-        return array_filter($this->columns, function ($column) {
-            return ! $column->change;
-        });
+        return array_filter($this->columns, static fn ($column) => ! $column->change);
     }
 
     /**
      * Recupere les colones de la structure qui doivent etre modifiees.
      *
      * @return Column[]
-     * 
+     *
      * @internal utilisee par le `transformer`
      */
     public function getChangedColumns(): array
     {
-        return array_filter($this->columns, function ($column) {
-            return (bool) $column->change;
-        });
+        return array_filter($this->columns, static fn ($column) => (bool) $column->change);
     }
 }
