@@ -68,12 +68,12 @@ class MySQL extends BaseConnection
         } else {
             $this->dsn = true === $this->withDatabase ? sprintf(
                 'mysql:host=%s;port=%d;dbname=%s',
-                $this->host,
+                $this->hostname,
                 $this->port,
                 $this->database
             ) : sprintf(
                 'mysql:host=%s;port=%d',
-                $this->host,
+                $this->hostname,
                 $this->port
             );
             $db               = new PDO($this->dsn, $this->username, $this->password);
@@ -516,10 +516,10 @@ class MySQL extends BaseConnection
     public function affectedRows(): int
     {
         if (! $this->isPdo()) {
-            return $this->conn->affected_rows ?? 0;
+            return $this->result->affected_rows ?? 0;
         }
 
-        return $this->queryResult->rowCount();
+        return $this->result->rowCount();
     }
 
     /**
@@ -528,10 +528,10 @@ class MySQL extends BaseConnection
     public function numRows(): int
     {
         if (! $this->isPdo()) {
-            return $this->queryResult->num_rows ?? 0;
+            return $this->result->num_rows ?? 0;
         }
 
-        return $this->queryResult->rowCount();
+        return $this->result->rowCount();
     }
 
     /**

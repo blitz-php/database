@@ -187,6 +187,10 @@ class Database
             $class = "\\BlitzPHP\\Database\\{$class}";
         }
 
+        if (isset($params['host']) && ! isset($params['hostname'])) {
+            $params['hostname'] = $params['host'];
+        }
+        
         return new $class($params, ...$arguments);
     }
 }

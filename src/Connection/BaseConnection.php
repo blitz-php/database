@@ -60,7 +60,7 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Data Source Name / Connect string
      */
-    protected string $dsn;
+    protected string $dsn = '';
 
     /**
      * Port de la base de données
@@ -70,22 +70,22 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Nom d'hote
      */
-    protected string $hostname;
+    protected string $hostname = '';
 
     /**
      * Utilisateur de la base de données
      */
-    protected string $username;
+    protected string $username = '';
 
     /**
      * Mot de passe de l'utilisateur
      */
-    protected string $password;
+    protected string $password = '';
 
     /**
      * Nom de la base de données
      */
-    protected string $database;
+    protected string $database = '';
 
     /**
      * Pilote de la base de données
@@ -95,7 +95,7 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Sub-driver
      */
-    protected string $subdriver;
+    protected string $subdriver = '';
 
     /**
      * Prefixe des tables
@@ -159,7 +159,7 @@ abstract class BaseConnection implements ConnectionInterface
      *
      * @var mixed
      */
-    protected $lastQuery;
+    protected $lastQuery = null;
 
     /**
      * Connexion a la bd
@@ -352,6 +352,7 @@ abstract class BaseConnection implements ConnectionInterface
             // Connect to the database and set the connection ID
             $this->conn = $this->connect($this->persistent);
         } catch (Throwable $e) {
+            d(get_class($e));
             $connectionErrors[] = sprintf('Main connection [%s]: %s', $this->driver, $e->getMessage());
             $this->log('Error connecting to the database: ' . $e);
         }
@@ -1335,7 +1336,7 @@ abstract class BaseConnection implements ConnectionInterface
         }
 
         if (is_string($str) || (is_object($str) && method_exists($str, '__toString'))) {
-            return "'" . $this->escapeString($str) . "'";
+            return  $this->escapeString($str);
         }
 
         if (is_bool($str)) {
@@ -1551,7 +1552,7 @@ abstract class BaseConnection implements ConnectionInterface
         }
 
         if (false === ($sql = $this->_listColumns($table))) {
-            if ($this->DBDebug) {
+            if ($this->debug) {
                 throw new DatabaseException('This feature is not available for the database you are using.');
             }
 

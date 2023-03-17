@@ -68,19 +68,19 @@ class Postgre extends BaseBuilder
         $direction = strtoupper(trim($direction));
         if ($direction === 'RANDOM') {
             if (ctype_digit($field)) {
-                $orderBy = (float) ($field > 1 ? "0.{$field}" : $field);
+                $field = (float) ($field > 1 ? "0.{$field}" : $field);
             }
 
-            if (is_float($orderBy)) {
-                $this->db->simpleQuery("SET SEED {$orderBy}");
+            if (is_float($field)) {
+                $this->db->simpleQuery("SET SEED {$field}");
             }
 
-            $orderBy   = $this->randomKeyword[0];
+            $field     = $this->randomKeyword[0];
             $direction = '';
             $escape    = false;
         }
 
-        return parent::orderBy($orderBy, $direction, $escape);
+        return parent::orderBy($field, $direction, $escape);
     }
 
     /**
