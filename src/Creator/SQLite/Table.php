@@ -29,7 +29,7 @@ class Table
 {
     /**
      * All of the fields this table represents.
-     * 
+     *
      * @phpstan-var array<string, array<string, bool|int|string|null>>
      */
     protected array $fields = [];
@@ -351,6 +351,7 @@ class Table
      * @param array|bool $fields
      *
      * @return mixed
+     *
      * @phpstan-return ($fields is array ? array : mixed)
      */
     protected function formatFields($fields)

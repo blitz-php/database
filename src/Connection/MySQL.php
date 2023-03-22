@@ -546,10 +546,10 @@ class MySQL extends BaseConnection
     {
         if (! $this->isPdo()) {
             $this->conn->autocommit(true);
-            
+
             return true;
         }
-        
+
         return $this->conn->commit();
     }
 
@@ -560,7 +560,7 @@ class MySQL extends BaseConnection
     {
         if (! $this->isPdo()) {
             $this->conn->autocommit(true);
-     
+
             return true;
         }
 

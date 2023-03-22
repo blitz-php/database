@@ -160,7 +160,7 @@ abstract class BaseConnection implements ConnectionInterface
      *
      * @var mixed
      */
-    protected $lastQuery = null;
+    protected $lastQuery;
 
     /**
      * Connexion a la bd
@@ -1340,7 +1340,7 @@ abstract class BaseConnection implements ConnectionInterface
         }
 
         if (is_string($str) || (is_object($str) && method_exists($str, '__toString'))) {
-            return  $this->escapeString($str);
+            return $this->escapeString($str);
         }
 
         if (is_bool($str)) {

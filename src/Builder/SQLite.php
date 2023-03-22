@@ -9,7 +9,7 @@
  * the LICENSE file that was distributed with this source code.
  */
 
- namespace BlitzPHP\Database\Builder;
+namespace BlitzPHP\Database\Builder;
 
 /**
  * Builder pour SQLite
@@ -17,13 +17,13 @@
 class SQLite extends BaseBuilder
 {
     /**
-     * Les installations par défaut de SQLite n'autorisent pas 
+     * Les installations par défaut de SQLite n'autorisent pas
      * la limitation des clauses de suppression.
      */
     protected bool $canLimitDeletes = false;
 
     /**
-     * Les installations par défaut de SQLite n'autorisent pas 
+     * Les installations par défaut de SQLite n'autorisent pas
      * les requêtes de mise à jour limitées avec WHERE.
      */
     protected bool $canLimitWhereUpdates = false;
@@ -49,7 +49,7 @@ class SQLite extends BaseBuilder
     {
         return [
             'INSERT OR ',
-            ...parent::_replaceStatement($table, $keys, $values)
+            ...parent::_replaceStatement($table, $keys, $values),
         ];
     }
 

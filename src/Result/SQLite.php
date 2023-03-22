@@ -9,11 +9,10 @@
  * the LICENSE file that was distributed with this source code.
  */
 
- namespace BlitzPHP\Database\Result;
+namespace BlitzPHP\Database\Result;
 
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use Closure;
-use SQLite3;
 use SQLite3Result;
 use stdClass;
 
@@ -27,7 +26,7 @@ class SQLite extends BaseResult
      */
     protected $query;
 
-   /**
+    /**
      * {@inheritDoc}
      */
     protected function _countField(): int
@@ -64,7 +63,7 @@ class SQLite extends BaseResult
      */
     protected function _resultObject(): array
     {
-        return array_map(static fn($data) => (object) $data, $this->_resultArray());
+        return array_map(static fn ($data) => (object) $data, $this->_resultArray());
     }
 
     /**
@@ -73,6 +72,7 @@ class SQLite extends BaseResult
     public function fieldNames(): array
     {
         $fieldNames = [];
+
         for ($i = 0, $c = $this->countField(); $i < $c; $i++) {
             $fieldNames[] = $this->query->columnName($i);
         }
@@ -126,9 +126,9 @@ class SQLite extends BaseResult
      * internally before fetching results to make sure the result set
      * starts at zero.
      *
-     * @return mixed
-     *
      * @throws DatabaseException
+     *
+     * @return mixed
      */
     public function dataSeek(int $n = 0)
     {

@@ -599,11 +599,11 @@ class Runner
 
         $this->pushMessage(
             sprintf(
-            'Running: %s %s_%s',
-            $migration->namespace,
-            $migration->version,
-            $migration->class
-        ),
+                'Running: %s %s_%s',
+                $migration->namespace,
+                $migration->version,
+                $migration->class
+            ),
             'yellow'
         );
     }
@@ -619,11 +619,11 @@ class Runner
 
         $this->pushMessage(
             sprintf(
-            'Rolling back: %s %s_%s',
-            $history->namespace,
-            $history->version,
-            $history->class
-        ),
+                'Rolling back: %s %s_%s',
+                $history->namespace,
+                $history->version,
+                $history->class
+            ),
             'yellow'
         );
     }

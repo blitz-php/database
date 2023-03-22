@@ -180,7 +180,7 @@ class Database
             ['MySQL', 'Postgre', 'SQLite'],
             $driver
         );
-        
+
         $class = $class . '\\' . $driver;
 
         if (strpos($driver, '\\') === false) {
@@ -192,7 +192,7 @@ class Database
                 $params['hostname'] = $params['host'];
             }
         }
-        
+
         return new $class($params, ...$arguments);
     }
 }

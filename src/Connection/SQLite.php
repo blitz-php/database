@@ -9,7 +9,7 @@
  * the LICENSE file that was distributed with this source code.
  */
 
- namespace BlitzPHP\Database\Connection;
+namespace BlitzPHP\Database\Connection;
 
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use ErrorException;
@@ -53,7 +53,6 @@ class SQLite extends BaseConnection
         'code'    => 0,
     ];
 
-
     public function initialize()
     {
         parent::initialize();
@@ -70,9 +69,9 @@ class SQLite extends BaseConnection
     /**
      * Connect to the database.
      *
-     * @return SQLite3|PDO
-     *
      * @throws DatabaseException
+     *
+     * @return PDO|SQLite3
      */
     public function connect(bool $persistent = false)
     {
@@ -82,7 +81,8 @@ class SQLite extends BaseConnection
             if ($persistent && $this->debug) {
                 throw new DatabaseException('SQLite3 doesn\'t support persistent connections.');
             }
-            try {    
+
+            try {
                 $db = (! $this->password)
                     ? new SQLite3($this->database)
                     : new SQLite3($this->database, SQLITE3_OPEN_READWRITE | SQLITE3_OPEN_CREATE, $this->password);
@@ -95,10 +95,8 @@ class SQLite extends BaseConnection
         }
 
         return self::pushConnection('sqlite', $this, $db);
-
-        
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -278,9 +276,9 @@ class SQLite extends BaseConnection
     }
 
     /**
-     * @return array|false
-     *
      * @throws DatabaseException
+     *
+     * @return array|false
      */
     public function getFieldNames(string $table)
     {
@@ -322,9 +320,9 @@ class SQLite extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @return stdClass[]
-     *
      * @throws DatabaseException
+     *
+     * @return stdClass[]
      */
     protected function _fieldData(string $table): array
     {
@@ -357,9 +355,9 @@ class SQLite extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @return stdClass[]
-     *
      * @throws DatabaseException
+     *
+     * @return stdClass[]
      */
     protected function _indexData(string $table): array
     {
@@ -510,7 +508,6 @@ class SQLite extends BaseConnection
         }
 
         return $this->conn->commit();
-
     }
 
     /**

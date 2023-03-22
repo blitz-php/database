@@ -80,7 +80,7 @@ class Postgre extends BaseConnection
                 $this->hostname,
                 $this->port
             );
-            
+
             $db = new PDO($this->dsn, $this->username, $this->password);
         } else {
             $db = $persistent === true ? pg_pconnect($this->dsn) : pg_connect($this->dsn);
@@ -298,7 +298,7 @@ class Postgre extends BaseConnection
         /** @psalm-suppress NoValue I don't know why ERROR. */
         return parent::escape($str);
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -307,15 +307,15 @@ class Postgre extends BaseConnection
         if (is_bool($str)) {
             return $str;
         }
-        
+
         if (! $this->conn) {
             $this->initialize();
         }
-        
+
         if (! $this->isPdo()) {
             return pg_escape_string($this->conn, $str);
         }
-        
+
         return $this->conn->quote($str);
     }
 
