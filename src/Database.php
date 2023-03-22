@@ -176,19 +176,21 @@ class Database
     {
         $driver = str_ireplace('pdo', '', $driver);
         $driver = str_ireplace(
-            ['mysql', 'pgsql'],
-            ['MySQL', 'Postgre'],
+            ['mysql', 'pgsql', 'sqlite'],
+            ['MySQL', 'Postgre', 'SQLite'],
             $driver
         );
-
+        
         $class = $class . '\\' . $driver;
 
         if (strpos($driver, '\\') === false) {
             $class = "\\BlitzPHP\\Database\\{$class}";
         }
 
-        if (isset($params['host']) && ! isset($params['hostname'])) {
-            $params['hostname'] = $params['host'];
+        if (is_array($params)) {
+            if (isset($params['host']) && ! isset($params['hostname'])) {
+                $params['hostname'] = $params['host'];
+            }
         }
         
         return new $class($params, ...$arguments);

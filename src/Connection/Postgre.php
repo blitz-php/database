@@ -108,14 +108,12 @@ class Postgre extends BaseConnection
     }
 
     /**
-     * Keep or establish the connection if no queries have been sent for
-     * a length of time exceeding the server's idle timeout.
+     * {@inheritDoc}
      */
     public function reconnect()
     {
         if ($this->isPdo()) {
-            $this->close();
-            $this->initialize();
+            parent::reconnect();
         } elseif (pg_ping($this->conn) === false) {
             $this->conn = false;
         }
@@ -508,7 +506,7 @@ class Postgre extends BaseConnection
         if (empty($message)) {
             $message = $this->isPdo()
                 ? $this->conn->errorInfo()
-                : (pg_last_error($this->connID) ?: '');
+                : (pg_last_error($this->conn) ?: '');
         }
 
         return compact('code', 'message');

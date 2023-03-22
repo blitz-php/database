@@ -87,18 +87,14 @@ class BaseBuilder implements BuilderInterface
     /**
      * Certaines bases de données, comme SQLite, n'autorisent pas par défaut
      * la limitation des clauses de suppression.
-     *
-     * @var bool
      */
-    protected $canLimitDeletes = true;
+    protected bool $canLimitDeletes = true;
 
     /**
      * Certaines bases de données n'autorisent pas par défaut
      * les requêtes de mise à jour limitées avec WHERE.
-     *
-     * @var bool
      */
-    protected $canLimitWhereUpdates = true;
+    protected bool $canLimitWhereUpdates = true;
 
     /**
      * @var array Parametres de configuration de la base de donnees

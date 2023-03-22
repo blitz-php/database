@@ -15,6 +15,7 @@ use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Database\Query;
+use BlitzPHP\Database\Result\BaseResult;
 use BlitzPHP\Utilities\Helpers;
 use Closure;
 use Exception;
@@ -352,7 +353,6 @@ abstract class BaseConnection implements ConnectionInterface
             // Connect to the database and set the connection ID
             $this->conn = $this->connect($this->persistent);
         } catch (Throwable $e) {
-            d(get_class($e));
             $connectionErrors[] = sprintf('Main connection [%s]: %s', $this->driver, $e->getMessage());
             $this->log('Error connecting to the database: ' . $e);
         }
@@ -477,7 +477,11 @@ abstract class BaseConnection implements ConnectionInterface
      *
      * @return mixed
      */
-    abstract public function reconnect();
+    public function reconnect()
+    {
+        $this->close();
+        $this->initialize();
+    }
 
     /**
      * Returns the actual connection object. If both a 'read' and 'write'
@@ -1744,6 +1748,7 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Platform-specific field data information.
+     * Returns an array of objects with field data
      *
      * @see    getFieldData()
      */
@@ -1751,6 +1756,7 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Platform-specific index data.
+     * Returns an array of objects with index data
      *
      * @see    getIndexData()
      */
@@ -1758,6 +1764,7 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Platform-specific foreign keys data.
+     * Returns an array of objects with Foreign key data
      *
      * @see    getForeignKeyData()
      */

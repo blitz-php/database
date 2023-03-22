@@ -116,15 +116,6 @@ class MySQL extends BaseConnection
     /**
      * {@inheritDoc}
      */
-    public function reconnect()
-    {
-        $this->close();
-        $this->initialize();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     protected function _close()
     {
         if ($this->isPdo()) {
@@ -160,7 +151,7 @@ class MySQL extends BaseConnection
     }
 
     /**
-     * The name of the platform in use (MySQLi, mssql, etc)
+     * {@inheritDoc}
      */
     public function getPlatform(): string
     {
@@ -176,7 +167,7 @@ class MySQL extends BaseConnection
     }
 
     /**
-     * Returns a string containing the version of the database being used.
+     * {@inheritDoc}
      */
     public function getVersion(): string
     {
@@ -353,7 +344,7 @@ class MySQL extends BaseConnection
     }
 
     /**
-     * Returns an array of objects with field data
+     * {@inheritDoc}
      *
      * @throws DatabaseException
      *
@@ -385,7 +376,7 @@ class MySQL extends BaseConnection
     }
 
     /**
-     * Returns an array of objects with index data
+     * {@inheritDoc}
      *
      * @throws DatabaseException
      * @throws LogicException
@@ -435,7 +426,7 @@ class MySQL extends BaseConnection
     }
 
     /**
-     * Returns an array of objects with Foreign key data
+     * {@inheritDoc}
      *
      * @throws DatabaseException
      *
@@ -553,15 +544,13 @@ class MySQL extends BaseConnection
      */
     protected function _transCommit(): bool
     {
-        if ($this->conn->commit()) {
-            if (! $this->isPdo()) {
-                $this->conn->autocommit(true);
-            }
-
+        if (! $this->isPdo()) {
+            $this->conn->autocommit(true);
+            
             return true;
         }
-
-        return false;
+        
+        return $this->conn->commit();
     }
 
     /**
@@ -569,14 +558,12 @@ class MySQL extends BaseConnection
      */
     protected function _transRollback(): bool
     {
-        if ($this->conn->rollback()) {
-            if (! $this->isPdo()) {
-                $this->conn->autocommit(true);
-            }
-
+        if (! $this->isPdo()) {
+            $this->conn->autocommit(true);
+     
             return true;
         }
 
-        return false;
+        return $this->conn->rollback();
     }
 }

@@ -57,7 +57,7 @@ class Runner
     /**
      * Le groupe de la base de donnee a migrer.
      */
-    protected string $group;
+    protected string $group = '';
 
     /**
      * Le nom de la migration.
@@ -87,7 +87,7 @@ class Runner
     /**
      * Le filtre du groupe de la base de donnees.
      */
-    protected ?string $groupFilter;
+    protected ?string $groupFilter = null;
 
     /**
      * singleton
@@ -779,7 +779,7 @@ class Runner
             return true;
         }
 
-        // $this->setGroup($group);
+        $this->setGroup($group);
 
         if (! is_callable([$instance, $direction])) {
             $message = sprintf('The migration class is missing an "%s" method.', $direction);
