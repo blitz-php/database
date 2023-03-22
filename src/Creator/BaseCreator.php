@@ -494,9 +494,9 @@ class BaseCreator
     }
 
     /**
-     * @throws DatabaseException
-     *
      * @return BaseResult|bool|false|mixed|Query
+     *
+     * @throws DatabaseException
      */
     public function dropForeignKey(string $table, string $foreignName)
     {
@@ -518,9 +518,9 @@ class BaseCreator
     }
 
     /**
-     * @throws DatabaseException
-     *
      * @return mixed
+     *
+     * @throws DatabaseException
      */
     public function createTable(string $table, bool $ifNotExists = false, array $attributes = [])
     {
@@ -605,9 +605,9 @@ class BaseCreator
     }
 
     /**
-     * @throws DatabaseException
-     *
      * @return mixed
+     *
+     * @throws DatabaseException
      */
     public function dropTable(string $tableName, bool $ifExists = false, bool $cascade = false)
     {
@@ -671,9 +671,9 @@ class BaseCreator
     }
 
     /**
-     * @throws DatabaseException
-     *
      * @return mixed
+     *
+     * @throws DatabaseException
      */
     public function renameTable(string $tableName, string $newTableName)
     {
@@ -743,9 +743,9 @@ class BaseCreator
     }
 
     /**
-     * @throws DatabaseException
-     *
      * @return mixed
+     *
+     * @throws DatabaseException
      */
     public function dropColumn(string $table, array|string $columnName)
     {

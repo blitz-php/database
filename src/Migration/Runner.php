@@ -194,10 +194,10 @@ class Runner
      *
      * @param int $targetBatch Target batch number, or negative for a relative batch, 0 for all
      *
+     * @return mixed Current batch number on success, FALSE on failure or no migrations are found
+     *
      * @throws MigrationException
      * @throws RuntimeException
-     *
-     * @return mixed Current batch number on success, FALSE on failure or no migrations are found
      */
     public function regress(int $targetBatch = 0, ?string $group = null)
     {

@@ -272,7 +272,7 @@ class BaseBuilder implements BuilderInterface
 
             // from('test')->join('essai', ['test.id' => 'essai.test_id'])
             // Genere ...
-            //select * from prefix_test as test_222 inner join prefix_essai as essai_111 on test_222.id = essai_111.test_id
+            // select * from prefix_test as test_222 inner join prefix_essai as essai_111 on test_222.id = essai_111.test_id
 
             $key = $this->buildParseField($key);
 
@@ -1819,9 +1819,9 @@ class BaseBuilder implements BuilderInterface
     /**
      * Incremente un champ numerique par la valeur specifiee.
      *
-     * @throws DatabaseException
-     *
      * @return bool
+     *
+     * @throws DatabaseException
      */
     public function increment(string $column, int $value = 1)
     {
@@ -1841,9 +1841,9 @@ class BaseBuilder implements BuilderInterface
     /**
      * Decremente un champ numerique par la valeur specifiee.
      *
-     * @throws DatabaseException
-     *
      * @return bool
+     *
+     * @throws DatabaseException
      */
     public function decrement(string $column, int $value = 1)
     {
@@ -1964,7 +1964,7 @@ class BaseBuilder implements BuilderInterface
         if (! ctype_lower($segment)) {
             $segment = preg_replace('/\s+/u', '', ucwords($segment));
 
-            $segment = mb_strtolower(preg_replace('/(.)(?=[A-Z])/u', '$1' . '_', $segment), 'UTF-8');
+            $segment = mb_strtolower(preg_replace('/(.)(?=[A-Z])/u', '$1_', $segment), 'UTF-8');
         }
 
         // Once we have parsed out the columns and formatted the boolean operators we
@@ -2181,9 +2181,9 @@ class BaseBuilder implements BuilderInterface
      * @param string                      $join   Mot de jonction
      * @param bool                        $escape Réglage des valeurs d'échappement
      *
-     * @throws DatabaseException Pour une condition where invalide
-     *
      * @return string Condition sous forme de chaîne
+     *
+     * @throws DatabaseException Pour une condition where invalide
      */
     protected function parseCondition($field, $value = null, $join = '', $escape = true)
     {
@@ -2380,7 +2380,7 @@ class BaseBuilder implements BuilderInterface
             $parts = explode(' ', $result);
             $field = array_shift($parts);
 
-            $result = $aggregate . '(' . $this->db->escapeIdentifiers($field) . ')' . ' ' . implode(' ', $parts);
+            $result = $aggregate . '(' . $this->db->escapeIdentifiers($field) . ') ' . implode(' ', $parts);
         } else {
             $result = $this->db->escapeIdentifiers($result);
         }

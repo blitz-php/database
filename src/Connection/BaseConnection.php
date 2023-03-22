@@ -330,9 +330,9 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Initializes the database connection/settings.
      *
-     * @throws DatabaseException
-     *
      * @return mixed
+     *
+     * @throws DatabaseException
      */
     public function initialize()
     {
@@ -983,9 +983,9 @@ abstract class BaseConnection implements ConnectionInterface
      *
      * @param array|string $tableName
      *
-     * @throws DatabaseException
-     *
      * @return BaseBuilder
+     *
+     * @throws DatabaseException
      */
     public function table($tableName)
     {
@@ -1111,7 +1111,6 @@ abstract class BaseConnection implements ConnectionInterface
      * @param bool         $fieldExists        Supplied $item contains a column name?
      *
      * @return array|string
-     *
      * @phpstan-return ($item is array ? array : string)
      */
     public function protectIdentifiers($item, bool $prefixSingle = false, ?bool $protectIdentifiers = null, bool $fieldExists = true)
@@ -1442,16 +1441,16 @@ abstract class BaseConnection implements ConnectionInterface
         return strtolower($this->driver) . '_';
     }
 
-    //--------------------------------------------------------------------
+    // --------------------------------------------------------------------
     // META Methods
-    //--------------------------------------------------------------------
+    // --------------------------------------------------------------------
 
     /**
      * Returns an array of table names
      *
-     * @throws DatabaseException
-     *
      * @return array|bool
+     *
+     * @throws DatabaseException
      */
     public function listTables(bool $constrainByPrefix = false)
     {
@@ -1540,9 +1539,9 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Fetch Field Names
      *
-     * @throws DatabaseException
-     *
      * @return array|false
+     *
+     * @throws DatabaseException
      */
     public function getFieldNames(string $table)
     {
@@ -1702,7 +1701,6 @@ abstract class BaseConnection implements ConnectionInterface
      * Must return an array with keys 'code' and 'message':
      *
      * @return array<string, int|string|null>
-     *
      * @phpstan-return array{code: int|string|null, message: string|null}
      */
     abstract public function error(): array;

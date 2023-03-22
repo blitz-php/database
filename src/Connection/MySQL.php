@@ -45,9 +45,9 @@ class MySQL extends BaseConnection
     /**
      * Connect to the database.
      *
-     * @throws DatabaseException
-     *
      * @return mixed
+     *
+     * @throws DatabaseException
      */
     public function connect(bool $persistent = false)
     {
@@ -314,7 +314,7 @@ class MySQL extends BaseConnection
         // Escape LIKE condition wildcards
         return str_replace(
             [$this->likeEscapeChar, '%', '_'],
-            ['\\' . $this->likeEscapeChar, '\\' . '%', '\\' . '_'],
+            ['\\' . $this->likeEscapeChar, '\\%', '\\_'],
             $str
         );
     }
@@ -346,9 +346,9 @@ class MySQL extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @throws DatabaseException
-     *
      * @return stdClass[]
+     *
+     * @throws DatabaseException
      */
     protected function _fieldData(string $table): array
     {
@@ -378,10 +378,10 @@ class MySQL extends BaseConnection
     /**
      * {@inheritDoc}
      *
+     * @return stdClass[]
+     *
      * @throws DatabaseException
      * @throws LogicException
-     *
-     * @return stdClass[]
      */
     public function _indexData(string $table): array
     {
@@ -428,9 +428,9 @@ class MySQL extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @throws DatabaseException
-     *
      * @return stdClass[]
+     *
+     * @throws DatabaseException
      */
     public function _foreignKeyData(string $table): array
     {

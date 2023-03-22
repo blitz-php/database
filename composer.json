@@ -20,7 +20,7 @@
         "blitz-php/utilities": "dev-main"
     },
     "require-dev": {
-        "blitz-php/coding-standard": "^1.0",
+        "blitz-php/coding-standard": "^1.1",
         "phpstan/phpstan": "^1.4.7",
         "scrutinizer/ocular": "^1.8.1",
         "kahlan/kahlan": "^5.2"

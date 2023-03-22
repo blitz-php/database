@@ -50,7 +50,6 @@ class Postgre extends BaseConnection
      * {@inheritDoc}
      *
      * @return false|resource
-     *
      * @phpstan-return false|PgSqlConnection
      */
     public function connect(bool $persistent = false)
@@ -274,7 +273,6 @@ class Postgre extends BaseConnection
      * @param array|bool|float|int|object|string|null $str
      *
      * @return array|float|int|string
-     *
      * @phpstan-return ($str is array ? array : float|int|string)
      */
     public function escape($str)
@@ -356,9 +354,9 @@ class Postgre extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @throws DatabaseException
-     *
      * @return stdClass[]
+     *
+     * @throws DatabaseException
      */
     protected function _fieldData(string $table): array
     {
@@ -391,9 +389,9 @@ class Postgre extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @throws DatabaseException
-     *
      * @return stdClass[]
+     *
+     * @throws DatabaseException
      */
     protected function _indexData(string $table): array
     {
@@ -431,9 +429,9 @@ class Postgre extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @throws DatabaseException
-     *
      * @return stdClass[]
+     *
+     * @throws DatabaseException
      */
     protected function _foreignKeyData(string $table): array
     {

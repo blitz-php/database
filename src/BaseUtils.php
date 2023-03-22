@@ -59,9 +59,9 @@ abstract class BaseUtils
     /**
      * Liste les bases de données
      *
-     * @throws DatabaseException
-     *
      * @return array|bool
+     *
+     * @throws DatabaseException
      */
     public function listDatabases()
     {
@@ -103,9 +103,9 @@ abstract class BaseUtils
     /**
      * Optimiser la table
      *
-     * @throws DatabaseException
-     *
      * @return bool
+     *
+     * @throws DatabaseException
      */
     public function optimizeTable(string $tableName)
     {
@@ -125,9 +125,9 @@ abstract class BaseUtils
     /**
      * Optimiser la base de données
      *
-     * @throws DatabaseException
-     *
      * @return mixed
+     *
+     * @throws DatabaseException
      */
     public function optimizeDatabase()
     {
@@ -169,9 +169,9 @@ abstract class BaseUtils
     /**
      * Repair Table
      *
-     * @throws DatabaseException
-     *
      * @return mixed
+     *
+     * @throws DatabaseException
      */
     public function repairTable(string $tableName)
     {
@@ -258,9 +258,9 @@ abstract class BaseUtils
      *
      * @param array|string $params
      *
-     * @throws DatabaseException
-     *
      * @return mixed
+     *
+     * @throws DatabaseException
      */
     public function backup($params = [])
     {

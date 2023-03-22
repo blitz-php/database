@@ -69,9 +69,9 @@ class SQLite extends BaseConnection
     /**
      * Connect to the database.
      *
-     * @throws DatabaseException
-     *
      * @return PDO|SQLite3
+     *
+     * @throws DatabaseException
      */
     public function connect(bool $persistent = false)
     {
@@ -276,9 +276,9 @@ class SQLite extends BaseConnection
     }
 
     /**
-     * @throws DatabaseException
-     *
      * @return array|false
+     *
+     * @throws DatabaseException
      */
     public function getFieldNames(string $table)
     {
@@ -320,9 +320,9 @@ class SQLite extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @throws DatabaseException
-     *
      * @return stdClass[]
+     *
+     * @throws DatabaseException
      */
     protected function _fieldData(string $table): array
     {
@@ -355,9 +355,9 @@ class SQLite extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @throws DatabaseException
-     *
      * @return stdClass[]
+     *
+     * @throws DatabaseException
      */
     protected function _indexData(string $table): array
     {
