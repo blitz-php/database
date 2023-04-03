@@ -147,7 +147,11 @@ class BaseBuilder implements BuilderInterface
      */
     public function getTable(): string
     {
-        return $this->tableName ?? ($this->table[0] ?? '');
+        if (empty($this->tableName)) {
+            $this->tableName = $this->removeAlias(array_pop($this->table));
+        }
+
+        return (string) $this->tableName;
     }
 
     public function __clone()
@@ -2013,33 +2017,31 @@ class BaseBuilder implements BuilderInterface
 
         if ($this->crud === 'insert') {
             $this->setSql($this->_insertStatement(
-                $this->removeAlias(array_pop($this->table)),
+                $this->getTable(),
                 implode(',', $keys),
                 implode(',', $values)
             ));
         } elseif ($this->crud === 'replace') {
             $this->setSql($this->_replaceStatement(
-                $this->removeAlias(array_pop($this->table)),
+                $this->getTable(),
                 implode(',', $keys),
                 implode(',', $values)
             ));
         } elseif ($this->crud === 'delete') {
             $this->setSql([
                 'DELETE FROM',
-                $this->removeAlias(array_pop($this->table)),
+                $this->getTable(),
                 $this->where,
                 $this->order,
                 $this->limit,
                 $this->offset,
             ]);
         } elseif ($this->crud === 'truncate') {
-            $this->setSql($this->_truncateStatement(
-                $this->removeAlias(array_pop($this->table))
-            ));
+            $this->setSql($this->_truncateStatement($this->getTable()));
         } elseif ($this->crud === 'update') {
             $this->setSql([
                 'UPDATE',
-                $this->removeAlias(array_pop($this->table)),
+                $this->getTable(),
                 'SET',
                 implode(',', $values),
                 $this->where,
