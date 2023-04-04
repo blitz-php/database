@@ -12,7 +12,9 @@
 namespace BlitzPHP\Database\Migration;
 
 use BlitzPHP\Database\Migration\Definitions\Column;
+use BlitzPHP\Database\Migration\Definitions\ForeignId;
 use BlitzPHP\Database\Migration\Definitions\ForeignKey;
+use BlitzPHP\Utilities\Fluent;
 use Closure;
 
 /**
@@ -38,7 +40,7 @@ class Structure
     protected array $columns = [];
 
     /**
-     * @var \BlitzPHP\Utilities\Fluent[] Commandes qu'on souhaite executer sur la table.
+     * @var Fluent[] Commandes qu'on souhaite executer sur la table.
      */
     protected array $commands = [];
 
@@ -62,6 +64,11 @@ class Structure
      */
     public bool $temporary = false;
 
+    /**
+     * The column to add new columns after.
+     */
+    public string $after = '';
+
     public function __construct(string $table, ?Closure $callback = null, string $prefix = '')
     {
         $this->table  = $table;
@@ -75,7 +82,7 @@ class Structure
     /**
      * Indique qu'on veut ajouter une colonne a la table
      */
-    public function add(): Column
+    public function add(): Fluent
     {
         return $this->addCommand('add');
     }
@@ -83,7 +90,7 @@ class Structure
     /**
      * Indique qu'on veut creer la table.
      */
-    public function create(bool $ifNotExists = false): Column
+    public function create(bool $ifNotExists = false): Fluent
     {
         return $this->addCommand('create', compact('ifNotExists'));
     }
@@ -91,7 +98,7 @@ class Structure
     /**
      * Indique qu'on veut modifier la table.
      */
-    public function modify(): Column
+    public function modify(): Fluent
     {
         return $this->addCommand('modify');
     }
@@ -109,7 +116,7 @@ class Structure
     /**
      * Indique qu'on veut supprimer la table.
      */
-    public function drop(bool $ifExists = false): Column
+    public function drop(bool $ifExists = false): Fluent
     {
         if ($ifExists) {
             return $this->dropIfExists();
@@ -121,7 +128,7 @@ class Structure
     /**
      * Indique qu'on veut supprimer la table si elle existe.
      */
-    public function dropIfExists(): Column
+    public function dropIfExists(): Fluent
     {
         return $this->addCommand('dropIfExists');
     }
@@ -131,7 +138,7 @@ class Structure
      *
      * @param array|mixed $columns
      */
-    public function dropColumn($columns): Column
+    public function dropColumn($columns): Fluent
     {
         $columns = is_array($columns) ? $columns : func_get_args();
 
@@ -141,7 +148,7 @@ class Structure
     /**
      * Indique qu'on veut renommer un champs.
      */
-    public function renameColumn(string $from, string $to): Column
+    public function renameColumn(string $from, string $to): Fluent
     {
         return $this->addCommand('renameColumn', compact('from', 'to'));
     }
@@ -149,7 +156,7 @@ class Structure
     /**
      * Indique qu'on veut supprimer une cle primaire.
      */
-    public function dropPrimary(string|array|null $index = null): Column
+    public function dropPrimary(string|array|null $index = null): Fluent
     {
         return $this->dropIndexCommand('dropPrimary', 'primary', $index);
     }
@@ -157,7 +164,7 @@ class Structure
     /**
      * Indique qu'on veut supprimer une cle unique.
      */
-    public function dropUnique(string|array $index): Column
+    public function dropUnique(string|array $index): Fluent
     {
         return $this->dropIndexCommand('dropUnique', 'unique', $index);
     }
@@ -165,15 +172,23 @@ class Structure
     /**
      * Indique qu'on veut supprimer un index.
      */
-    public function dropIndex(string|array $index): Column
+    public function dropIndex(string|array $index): Fluent
     {
         return $this->dropIndexCommand('dropIndex', 'index', $index);
     }
 
     /**
+     * Indicate that the given fulltext index should be dropped.
+     */
+    public function dropFullText(string|array $index): Fluent
+    {
+        return $this->dropIndexCommand('dropFullText', 'fulltext', $index);
+    }
+
+    /**
      * Indique qu'on veut supprimer un index spacial.
      */
-    public function dropSpatialIndex(string|array $index): Column
+    public function dropSpatialIndex(string|array $index): Fluent
     {
         return $this->dropIndexCommand('dropSpatialIndex', 'spatialIndex', $index);
     }
@@ -181,15 +196,25 @@ class Structure
     /**
      * Indique qu'on veut supprimer une cle etrangere.
      */
-    public function dropForeign(string|array $index): Column
+    public function dropForeign(string|array $index): Fluent
     {
         return $this->dropIndexCommand('dropForeign', 'foreign', $index);
     }
 
     /**
+     * Indicate that the given column and foreign key should be dropped.
+     */
+    public function dropConstrainedForeignId(string $column): Column
+    {
+        $this->dropForeign([$column]);
+
+        return $this->dropColumn($column);
+    }
+
+    /**
      * Indique qu'on veut renommer un indexe.
      */
-    public function renameIndex(string $from, string $to): Column
+    public function renameIndex(string $from, string $to): Fluent
     {
         return $this->addCommand('renameIndex', compact('from', 'to'));
     }
@@ -211,6 +236,30 @@ class Structure
     }
 
     /**
+     * Indicate that the soft delete column should be dropped.
+     */
+    public function dropSoftDeletes(string $column = 'deleted_at'): void
+    {
+        $this->dropColumn($column);
+    }
+
+    /**
+     * Indicate that the soft delete column should be dropped.
+     */
+    public function dropSoftDeletesTz(string $column = 'deleted_at'): void
+    {
+        $this->dropSoftDeletes($column);
+    }
+
+    /**
+     * Indicate that the remember token column should be dropped.
+     */
+    public function dropRememberToken(): void
+    {
+        $this->dropColumn('remember_token');
+    }
+
+    /**
      * Indique qu'on veut supprimer les colones polymorphe.
      *
      * @return void
@@ -225,7 +274,7 @@ class Structure
     /**
      * Rennome la table avec le nom donné.
      */
-    public function rename(string $to): Column
+    public function rename(string $to): Fluent
     {
         return $this->addCommand('rename', compact('to'));
     }
@@ -233,7 +282,7 @@ class Structure
     /**
      * Specifie les clés primaire de la table.
      */
-    public function primary(string|array $columns, ?string $name = null, ?string $algorithm = null): Column
+    public function primary(string|array $columns, ?string $name = null, ?string $algorithm = null): Fluent
     {
         return $this->indexCommand('primary', $columns, $name, $algorithm);
     }
@@ -241,7 +290,7 @@ class Structure
     /**
      * Specifie un indexe unique pour la table.
      */
-    public function unique(string|array $columns, ?string $name = null, ?string $algorithm = null): Column
+    public function unique(string|array $columns, ?string $name = null, ?string $algorithm = null): Fluent
     {
         return $this->indexCommand('unique', $columns, $name, $algorithm);
     }
@@ -249,25 +298,43 @@ class Structure
     /**
      * Specifie un index pour la table.
      */
-    public function index(string|array $columns, ?string $name = null, ?string $algorithm = null): Column
+    public function index(string|array $columns, ?string $name = null, ?string $algorithm = null): Fluent
     {
         return $this->indexCommand('index', $columns, $name, $algorithm);
     }
 
     /**
+     * Specify an fulltext for the table.
+     */
+    public function fullText(string|array $columns, ?string $name = null, ?string $algorithm = null): Fluent
+    {
+        return $this->indexCommand('fulltext', $columns, $name, $algorithm);
+    }
+
+    /**
      * Specifie un index spacial pour la table.
      */
-    public function spatialIndex(string|array $columns, ?string $name = null): Column
+    public function spatialIndex(string|array $columns, ?string $name = null): Fluent
     {
         return $this->indexCommand('spatialIndex', $columns, $name);
     }
 
     /**
      * Specifie une clé étrangère pour la table.
+     *
+     * @return ForeignKey
      */
-    public function foreign(string|array $columns, ?string $name = null): ForeignKey|Column
+    public function foreign(string|array $columns, ?string $name = null): Fluent
     {
         return $this->indexCommand('foreign', $columns, $name);
+    }
+
+    /**
+     * Create a new auto-incrementing big integer (8-byte) column on the table.
+     */
+    public function id(string $column = 'id'): Column
+    {
+        return $this->bigIncrements($column);
     }
 
     /**
@@ -336,6 +403,14 @@ class Structure
         $length = max($length, 1);
 
         return $this->addColumn('string', $column, compact('length'));
+    }
+
+    /**
+     * Create a new tiny text column on the table.
+     */
+    public function tinyText(string $column): Column
+    {
+        return $this->addColumn('tinyText', $column);
     }
 
     /**
@@ -412,10 +487,8 @@ class Structure
 
     /**
      * Create a new unsigned tiny integer (1-byte) column on the table.
-     *
-     * @return Column
      */
-    public function unsignedTinyInteger(string $column, bool $autoIncrement = false)
+    public function unsignedTinyInteger(string $column, bool $autoIncrement = false): Column
     {
         return $this->tinyInteger($column, $autoIncrement, true);
     }
@@ -445,27 +518,62 @@ class Structure
     }
 
     /**
-     * Create a new float column on the table.
+     * Create a new unsigned big integer (8-byte) column on the table.
      */
-    public function float(string $column, int $total = 8, int $places = 2): Column
+    public function foreignId(string $column): ForeignId
     {
-        return $this->addColumn('float', $column, compact('total', 'places'));
+        return $this->addColumnDefinition(new ForeignId($this, [
+            'type'          => 'bigInteger',
+            'name'          => $column,
+            'autoIncrement' => false,
+            'unsigned'      => true,
+        ]));
+    }
+
+    /**
+     * Create a new float column on the table.
+     *
+     * @param mixed $unsigned
+     */
+    public function float(string $column, int $total = 8, int $places = 2, $unsigned = false): Column
+    {
+        return $this->addColumn('float', $column, compact('total', 'places', 'unsigned'));
     }
 
     /**
      * Create a new double column on the table.
+     *
+     * @param mixed $unsigned
      */
-    public function double(string $column, ?int $total = null, ?int $places = null): Column
+    public function double(string $column, ?int $total = null, ?int $places = null, $unsigned = false): Column
     {
-        return $this->addColumn('double', $column, compact('total', 'places'));
+        return $this->addColumn('double', $column, compact('total', 'places', 'unsigned'));
     }
 
     /**
      * Create a new decimal column on the table.
+     *
+     * @param mixed $unsigned
      */
-    public function decimal(string $column, int $total = 8, int $places = 2): Column
+    public function decimal(string $column, int $total = 8, int $places = 2, $unsigned = false): Column
     {
-        return $this->addColumn('decimal', $column, compact('total', 'places'));
+        return $this->addColumn('decimal', $column, compact('total', 'places', 'unsigned'));
+    }
+
+    /**
+     * Create a new unsigned float column on the table.
+     */
+    public function unsignedFloat(string $column, int $total = 8, int $places = 2): Column
+    {
+        return $this->float($column, $total, $places, true);
+    }
+
+    /**
+     * Create a new unsigned double column on the table.
+     */
+    public function unsignedDouble(string $column, ?int $total = null, ?int $places = null): Column
+    {
+        return $this->double($column, $total, $places, true);
     }
 
     /**
@@ -473,9 +581,7 @@ class Structure
      */
     public function unsignedDecimal(string $column, int $total = 8, int $places = 2): Column
     {
-        return $this->addColumn('decimal', $column, [
-            'total' => $total, 'places' => $places, 'unsigned' => true,
-        ]);
+        return $this->decimal($column, $total, $places, true);
     }
 
     /**
@@ -576,10 +682,8 @@ class Structure
 
     /**
      * Add nullable creation and update timestamps to the table.
-     *
-     * @return void
      */
-    public function timestamps(int $precision = 0)
+    public function timestamps(int $precision = 0): void
     {
         $this->timestamp('created_at', $precision)->nullable();
 
@@ -590,10 +694,8 @@ class Structure
      * Add nullable creation and update timestamps to the table.
      *
      * Alias for self::timestamps().
-     *
-     * @return void
      */
-    public function nullableTimestamps(int $precision = 0)
+    public function nullableTimestamps(int $precision = 0): void
     {
         $this->timestamps($precision);
     }
@@ -608,6 +710,22 @@ class Structure
         $this->timestampTz('created_at', $precision)->nullable();
 
         $this->timestampTz('updated_at', $precision)->nullable();
+    }
+
+    /**
+     * Add a "deleted at" timestamp for the table.
+     */
+    public function softDeletes(string $column = 'deleted_at', int $precision = 0): Column
+    {
+        return $this->timestamp($column, $precision)->nullable();
+    }
+
+    /**
+     * Add a "deleted at" timestampTz for the table.
+     */
+    public function softDeletesTz(string $column = 'deleted_at', int $precision = 0): Column
+    {
+        return $this->timestampTz($column, $precision)->nullable();
     }
 
     /**
@@ -635,9 +753,40 @@ class Structure
     }
 
     /**
+     * Create a new UUID column on the table with a foreign key constraint.
+     */
+    public function foreignUuid(string $column): ForeignId
+    {
+        return $this->addColumnDefinition(new ForeignId($this, [
+            'type' => 'uuid',
+            'name' => $column,
+        ]));
+    }
+
+    /**
+     * Create a new ULID column on the table.
+     */
+    public function ulid(string $column = 'uuid', int $length = 26): Column
+    {
+        return $this->char($column, $length);
+    }
+
+    /**
+     * Create a new ULID column on the table with a foreign key constraint.
+     */
+    public function foreignUlid(string $column, int $length = 26): ForeignId
+    {
+        return $this->addColumnDefinition(new ForeignId($this, [
+            'type'   => 'char',
+            'name'   => $column,
+            'length' => $length,
+        ]));
+    }
+
+    /**
      * Create a new IP address column on the table.
      */
-    public function ipAddress(string $column): Column
+    public function ipAddress(string $column = 'ip_address'): Column
     {
         return $this->addColumn('ipAddress', $column);
     }
@@ -645,7 +794,7 @@ class Structure
     /**
      * Create a new MAC address column on the table.
      */
-    public function macAddress(string $column): Column
+    public function macAddress(string $column = 'mac_address'): Column
     {
         return $this->addColumn('macAddress', $column);
     }
@@ -732,10 +881,8 @@ class Structure
 
     /**
      * Add the proper columns for a polymorphic table.
-     *
-     * @return void
      */
-    public function morphs(string $name, ?string $indexName = null)
+    public function morphs(string $name, ?string $indexName = null): void
     {
         $this->string("{$name}_type");
 
@@ -746,10 +893,32 @@ class Structure
 
     /**
      * Add nullable columns for a polymorphic table.
-     *
-     * @return void
      */
-    public function nullableMorphs(string $name, ?string $indexName = null)
+    public function nullableMorphs(string $name, ?string $indexName = null): void
+    {
+        $this->string("{$name}_type")->nullable();
+
+        $this->unsignedBigInteger("{$name}_id")->nullable();
+
+        $this->index(["{$name}_type", "{$name}_id"], $indexName);
+    }
+
+    /**
+     * Add the proper columns for a polymorphic table using numeric IDs (incremental).
+     */
+    public function numericMorphs(string $name, ?string $indexName = null): void
+    {
+        $this->string("{$name}_type");
+
+        $this->unsignedBigInteger("{$name}_id");
+
+        $this->index(["{$name}_type", "{$name}_id"], $indexName);
+    }
+
+    /**
+     * Add nullable columns for a polymorphic table using numeric IDs (incremental).
+     */
+    public function nullableNumericMorphs(string $name, ?string $indexName = null): void
     {
         $this->string("{$name}_type")->nullable();
 
@@ -760,10 +929,8 @@ class Structure
 
     /**
      * Add the proper columns for a polymorphic table using UUIDs.
-     *
-     * @return void
      */
-    public function uuidMorphs(string $name, ?string $indexName = null)
+    public function uuidMorphs(string $name, ?string $indexName = null): void
     {
         $this->string("{$name}_type");
 
@@ -774,10 +941,8 @@ class Structure
 
     /**
      * Add nullable columns for a polymorphic table using UUIDs.
-     *
-     * @return void
      */
-    public function nullableUuidMorphs(string $name, ?string $indexName = null)
+    public function nullableUuidMorphs(string $name, ?string $indexName = null): void
     {
         $this->string("{$name}_type")->nullable();
 
@@ -787,22 +952,49 @@ class Structure
     }
 
     /**
-     * Adds the `remember_token` column to the table.
-     *
-     * @return Column
+     * Add the proper columns for a polymorphic table using ULIDs.
      */
-    public function rememberToken()
+    public function ulidMorphs(string $name, ?string $indexName = null): void
+    {
+        $this->string("{$name}_type");
+
+        $this->ulid("{$name}_id");
+
+        $this->index(["{$name}_type", "{$name}_id"], $indexName);
+    }
+
+    /**
+     * Add nullable columns for a polymorphic table using ULIDs.
+     */
+    public function nullableUlidMorphs(string $name, ?string $indexName = null): void
+    {
+        $this->string("{$name}_type")->nullable();
+
+        $this->ulid("{$name}_id")->nullable();
+
+        $this->index(["{$name}_type", "{$name}_id"], $indexName);
+    }
+
+    /**
+     * Adds the `remember_token` column to the table.
+     */
+    public function rememberToken(): Column
     {
         return $this->string('remember_token', 100)->nullable();
     }
 
     /**
-     * Add a new index command to the blueprint.
-     *
-     * @param array|string $columns
-     * @param string       $index
+     * Add a comment to the table.
      */
-    protected function indexCommand(string $type, $columns, ?string $index = null, ?string $algorithm = null): Column
+    public function comment(string $comment): Fluent
+    {
+        return $this->addCommand('tableComment', compact('comment'));
+    }
+
+    /**
+     * Add a new index command to the structure.
+     */
+    protected function indexCommand(string $type, array|string $columns, ?string $index = null, ?string $algorithm = null): Fluent
     {
         $columns = (array) $columns;
 
@@ -820,7 +1012,7 @@ class Structure
     /**
      * Cree une nouvelle commande de suppression d'indexe dans la structure.
      */
-    protected function dropIndexCommand(string $command, string $type, string|array $index): Column
+    protected function dropIndexCommand(string $command, string $type, string|array $index): Fluent
     {
         $columns = [];
 
@@ -849,11 +1041,9 @@ class Structure
      */
     public function addColumn(string $type, string $name, array $parameters = []): Column
     {
-        $this->columns[] = $column = new Column(
+        return $this->addColumnDefinition(new Column(
             array_merge(compact('type', 'name'), $parameters)
-        );
-
-        return $column;
+        ));
     }
 
     /**
@@ -867,9 +1057,37 @@ class Structure
     }
 
     /**
+     * Add the columns from the callback after the given column.
+     */
+    public function after(string $column, Closure $callback): void
+    {
+        $this->after = $column;
+
+        $callback($this);
+
+        $this->after = null;
+    }
+
+    /**
+     * Add a new column definition to the structure.
+     */
+    protected function addColumnDefinition(Column $definition): Column
+    {
+        $this->columns[] = $definition;
+
+        if ($this->after) {
+            $definition->after($this->after);
+
+            $this->after = $definition->name;
+        }
+
+        return $definition;
+    }
+
+    /**
      * Ajoute une nouvelle commande a la structure
      */
-    protected function addCommand(string $name, array $parameters = []): Column
+    protected function addCommand(string $name, array $parameters = []): Fluent
     {
         $this->commands[] = $command = $this->createCommand($name, $parameters);
 
@@ -879,9 +1097,9 @@ class Structure
     /**
      * Cree une nouvelle commande
      */
-    protected function createCommand(string $name, array $parameters = []): Column
+    protected function createCommand(string $name, array $parameters = []): Fluent
     {
-        return new Column(array_merge(compact('name'), $parameters));
+        return new Fluent(array_merge(compact('name'), $parameters));
     }
 
     /**
@@ -917,7 +1135,7 @@ class Structure
     /**
      * Get the commands on the schema.
      *
-     * @return Column[]
+     * @return Fluent[]
      *
      * @internal utilisee par le `transformer`
      */

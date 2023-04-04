@@ -28,7 +28,7 @@ abstract class Migration
     /**
      * Nom du group a utiliser pour lexecuter les migrations
      */
-    protected ?string $group = null;
+    protected string $group = 'default';
 
     /**
      * Definition des etapes d'execution d'une migration.

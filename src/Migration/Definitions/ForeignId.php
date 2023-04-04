@@ -12,6 +12,7 @@
 namespace BlitzPHP\Database\Migration\Definitions;
 
 use BlitzPHP\Database\Migration\Structure;
+use BlitzPHP\Utilities\Fluent;
 use BlitzPHP\Utilities\Str;
 
 /**
@@ -38,16 +39,20 @@ class ForeignId extends Column
 
     /**
      * Cree une contrainte de cle etrangere sur cette colonne "id" conventionellement a la table referencee.
+     *
+     * @return ForeignKey
      */
-    public function constrained(?string $table = null, string $column = 'id'): ForeignKey
+    public function constrained(?string $table = null, string $column = 'id'): Fluent
     {
         return $this->references($column)->on($table ?? Str::of($this->name)->beforeLast('_' . $column)->plural());
     }
 
     /**
      * Specifie quelle colone cet ID etrangere reference danson another table.
+     *
+     * @return ForeignKey
      */
-    public function references(string $column): ForeignKey
+    public function references(string $column): Fluent
     {
         return $this->structure->foreign($this->name)->references($column);
     }

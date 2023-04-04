@@ -17,6 +17,7 @@ use BlitzPHP\Database\Database;
 use BlitzPHP\Database\Exceptions\MigrationException;
 use BlitzPHP\Database\Migration\Definitions\Column;
 use BlitzPHP\Utilities\Collection;
+use BlitzPHP\Utilities\Fluent;
 
 /**
  * Transforme les objets de structure en elements compatible avec le Creator
@@ -79,8 +80,8 @@ class Transformer
                     $command->columns,
                     $command->on,
                     $command->references,
-                    $command->onUpdate,
-                    $command->onDelete,
+                    $command->onUpdate ?? '',
+                    $command->onDelete ?? '',
                     $command->index
                 );
             } elseif ($command->name === 'primary') {
@@ -196,7 +197,7 @@ class Transformer
      */
     private function getCommands(Structure $structure): array
     {
-        $commands = Collection::make($structure->getCommands())->map(static fn (Column $command) => $command->getAttributes())->all();
+        $commands = Collection::make($structure->getCommands())->map(static fn (Fluent $command) => $command->getAttributes())->all();
 
         return array_map(static fn ($command) => (object) $command, $commands);
     }

@@ -276,6 +276,7 @@ class SQLite extends BaseCreator
      */
     public function addForeignKey(string|array $fieldName = '', string $tableName = '', string|array $tableField = '', string $onUpdate = '', string $onDelete = '', string $fkName = ''): self
     {
+        $fkName = '';
         if ($fkName === '') {
             return parent::addForeignKey($fieldName, $tableName, $tableField, $onUpdate, $onDelete, $fkName);
         }
