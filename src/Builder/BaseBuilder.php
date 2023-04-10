@@ -17,7 +17,7 @@ use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Connection\MySQL as MySQLConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
-use BlitzPHP\Utilities\Arr;
+use BlitzPHP\Utilities\Iterable\Arr;
 use InvalidArgumentException;
 use PDO;
 
