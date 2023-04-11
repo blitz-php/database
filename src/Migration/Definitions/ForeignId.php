@@ -13,7 +13,7 @@ namespace BlitzPHP\Database\Migration\Definitions;
 
 use BlitzPHP\Database\Migration\Structure;
 use BlitzPHP\Utilities\Fluent;
-use BlitzPHP\Utilities\Str;
+use BlitzPHP\Utilities\String\Text;
 
 /**
  * @credit <a href="https://laravel.com">Laravel Framework - Illuminate\Database\Schema\ForeignIdDefinition</a>
@@ -44,7 +44,7 @@ class ForeignId extends Column
      */
     public function constrained(?string $table = null, string $column = 'id'): Fluent
     {
-        return $this->references($column)->on($table ?? Str::of($this->name)->beforeLast('_' . $column)->plural());
+        return $this->references($column)->on($table ?? Text::of($this->name)->beforeLast('_' . $column)->plural());
     }
 
     /**
