@@ -17,7 +17,7 @@
     "minimum-stability": "dev",
     "require": {
         "php": ">=8.0",
-        "blitz-php/utilities": "dev-main"
+        "blitz-php/traits": "^1"
     },
     "require-dev": {
         "blitz-php/coding-standard": "^1.1",
