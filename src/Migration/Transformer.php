@@ -17,7 +17,7 @@ use BlitzPHP\Database\Database;
 use BlitzPHP\Database\Exceptions\MigrationException;
 use BlitzPHP\Database\Migration\Definitions\Column;
 use BlitzPHP\Utilities\Collection;
-use BlitzPHP\Utilities\Fluent;
+use BlitzPHP\Utilities\Support\Fluent;
 
 /**
  * Transforme les objets de structure en elements compatible avec le Creator

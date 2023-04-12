@@ -12,7 +12,7 @@
 namespace BlitzPHP\Database\Migration\Definitions;
 
 use BlitzPHP\Database\Migration\Structure;
-use BlitzPHP\Utilities\Fluent;
+use BlitzPHP\Utilities\Support\Fluent;
 use BlitzPHP\Utilities\String\Text;
 
 /**

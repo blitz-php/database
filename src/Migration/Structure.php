@@ -14,7 +14,7 @@ namespace BlitzPHP\Database\Migration;
 use BlitzPHP\Database\Migration\Definitions\Column;
 use BlitzPHP\Database\Migration\Definitions\ForeignId;
 use BlitzPHP\Database\Migration\Definitions\ForeignKey;
-use BlitzPHP\Utilities\Fluent;
+use BlitzPHP\Utilities\Support\Fluent;
 use Closure;
 
 /**

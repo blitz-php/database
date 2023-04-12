@@ -11,7 +11,7 @@
 
 namespace BlitzPHP\Database\Migration\Definitions;
 
-use BlitzPHP\Utilities\Fluent;
+use BlitzPHP\Utilities\Support\Fluent;
 
 /**
  * Definition des colonnes de la struture de migrations

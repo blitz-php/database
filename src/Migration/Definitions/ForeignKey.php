@@ -11,7 +11,7 @@
 
 namespace BlitzPHP\Database\Migration\Definitions;
 
-use BlitzPHP\Utilities\Fluent;
+use BlitzPHP\Utilities\Support\Fluent;
 
 /**
  * @method $this references(array|string $columns) Specifie la/les colone(s)                                                                de reference

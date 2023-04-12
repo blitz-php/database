@@ -11,7 +11,7 @@
 
 namespace BlitzPHP\Database\Migration\Definitions;
 
-use BlitzPHP\Utilities\Fluent;
+use BlitzPHP\Utilities\Support\Fluent;
 
 /**
  * @method $this deferrable(bool $value = true) Specifie que l'index unique est deferrable (PostgreSQL)
