@@ -370,6 +370,10 @@ class BaseBuilder implements BuilderInterface
 
         if (is_array($field)) {
             foreach ($field as $key => $val) {
+                if (is_int($key)) {
+                    $key = $val;
+                    $val = $value;
+                }
                 unset($field[$key]);
                 $field[$this->buildParseField($key)] = $val;
             }
@@ -1646,21 +1650,23 @@ class BaseBuilder implements BuilderInterface
      */
     final public function count(string $field = '*', ?string $key = null, int $expire = 0)
     {
-        if (! empty($this->distinct) || ! empty($this->groups)) {
-            // Nous devons sauvegarder le SELECT d'origine au cas où 'Prefix' serait utilisé
-            $select = $this->sql();
+        $builder = clone $this;
 
-            $this->table = ['( ' . $select . ' ) BLITZ_count_all_results'];
-            $statement   = $this->select('COUNT(' . $field . ') As num_rows');
+        if (! empty($builder->distinct) || ! empty($builder->groups)) {
+            // Nous devons sauvegarder le SELECT d'origine au cas où 'Prefix' serait utilisé
+            $select = $builder->sql();
+
+            $builder->table = ['( ' . $select . ' ) BLITZ_count_all_results'];
+            $statement   = $builder->select('COUNT(' . $field . ') As num_rows');
 
             // Restaurer la partie SELECT
-            $this->setSql($select);
+            $builder->setSql($select);
             unset($select);
         } else {
-            $statement = $this->select('COUNT(' . $field . ') As num_rows');
+            $statement = $builder->select('COUNT(' . $field . ') As num_rows');
         }
 
-        if ($this->testMode) {
+        if ($builder->testMode) {
             return $statement->sql();
         }
 
@@ -1823,11 +1829,9 @@ class BaseBuilder implements BuilderInterface
     /**
      * Incremente un champ numerique par la valeur specifiee.
      *
-     * @return bool
-     *
      * @throws DatabaseException
      */
-    public function increment(string $column, int $value = 1)
+    public function increment(string $column, int|float $value = 1): bool
     {
         $column = $this->db->protectIdentifiers($column);
 
@@ -1845,11 +1849,9 @@ class BaseBuilder implements BuilderInterface
     /**
      * Decremente un champ numerique par la valeur specifiee.
      *
-     * @return bool
-     *
      * @throws DatabaseException
      */
-    public function decrement(string $column, int $value = 1)
+    public function decrement(string $column, int|float $value = 1): bool
     {
         $column = $this->db->protectIdentifiers($column);
 

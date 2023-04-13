@@ -86,7 +86,7 @@ class Postgre extends BaseBuilder
     /**
      * {@inheritDoc}
      */
-    public function increment(string $column, int $value = 1)
+    public function increment(string $column, int|float $value = 1): bool
     {
         $column = $this->db->protectIdentifiers($column);
 
@@ -104,7 +104,7 @@ class Postgre extends BaseBuilder
     /**
      * {@inheritDoc}
      */
-    public function decrement(string $column, int $value = 1)
+    public function decrement(string $column, int|float $value = 1): bool
     {
         $column = $this->db->protectIdentifiers($column);
 
