@@ -186,6 +186,8 @@ class BaseBuilder implements BuilderInterface
             $this->table[] = $this->db->makeTableName($table);
         }
 
+        $this->table = array_unique($this->table);
+
         return $this;
     }
 
@@ -923,7 +925,7 @@ class BaseBuilder implements BuilderInterface
             $direction = in_array($direction, ['ASC', 'DESC'], true) ? ' ' . $direction : '';
         }
 
-        $this->order .= $join . ($escape ? $this->db->escapeIdentifiers($field) : $field) . $direction;
+        $this->order .= $join . ($escape ? $this->buildParseField($field) : $field) . $direction;
 
         return $this->asCrud('select');
     }
@@ -1650,7 +1652,7 @@ class BaseBuilder implements BuilderInterface
      */
     final public function count(string $field = '*', ?string $key = null, int $expire = 0)
     {
-        $builder = clone $this;
+        $builder = $this;
 
         if (! empty($builder->distinct) || ! empty($builder->groups)) {
             // Nous devons sauvegarder le SELECT d'origine au cas où 'Prefix' serait utilisé
