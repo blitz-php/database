@@ -18,6 +18,7 @@ use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Connection\MySQL as MySQLConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Utilities\Iterable\Arr;
+use BlitzPHP\Utilities\String\Text;
 use InvalidArgumentException;
 use PDO;
 
@@ -1259,6 +1260,10 @@ class BaseBuilder implements BuilderInterface
      */
     public function select($fields = '*', ?int $limit = null, ?int $offset = null): self
     {
+        if (empty($fields)) {
+            $fields = ['*'];
+        }
+        
         if ($limit !== null) {
             $this->limit($limit, $offset);
         }
@@ -1271,7 +1276,7 @@ class BaseBuilder implements BuilderInterface
             $val = $this->buildParseField($val);
         }
 
-        $this->fields[] = implode(',', $fields);
+        $this->fields[] = implode(', ', array_map('trim', $fields));
 
         return $this->asCrud('select');
     }
@@ -1999,7 +2004,7 @@ class BaseBuilder implements BuilderInterface
             $this->reset();
         }
 
-        return $sql;
+        return  preg_replace('/\s+/', ' ', $sql);
     }
 
     /**
@@ -2356,7 +2361,15 @@ class BaseBuilder implements BuilderInterface
      */
     private function buildParseField(string $field): string
     {
+        $parts     = explode(' ', $field);
+        $field     = array_shift($parts);
+        $operator  = implode(' ', $parts);
         $aggregate = null;
+
+        if ($operator !== '' && !Text::contains($operator, ['%', '!%', '@', '!@', '<', '>', '<=', '>=', '<>', '=', '!=', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN'])) {
+            $field    = implode(' ', [$field, $operator]);
+            $operator = '';
+        }
 
         if (preg_match('/^(AVG|COUNT|MAX|MIN|SUM)\S?\(([a-zA-Z0-9\*_\.]+)\)/isU', $field, $matches)) {
             $aggregate = $matches[1];
@@ -2365,19 +2378,17 @@ class BaseBuilder implements BuilderInterface
 
         $field = explode('.', $field);
 
-        if (count($field) === 2) {
-            $operator = '';
-            if ($field[0][0] === '|') {
-                $field[0] = substr($field[0], 1);
-                $operator = '|';
-            }
+        $or = '';
+        if ($field[0][0] === '|') {
+            $field[0] = substr($field[0], 1);
+            $or = '|';
+        }
 
+        if (count($field) === 2) {    
             [$field[0]] = $this->db->getTableAlias($field[0]);
             if (empty($field[0])) {
                 $field[0] = $this->db->prefixTable($field[0]);
             }
-
-            $field[0] = $operator . $field[0];
         }
 
         $result = implode('.', $field);
@@ -2391,7 +2402,7 @@ class BaseBuilder implements BuilderInterface
             $result = $this->db->escapeIdentifiers($result);
         }
 
-        return $result;
+        return $or . trim($result) . ' ' . trim($operator);
     }
 
     /**
