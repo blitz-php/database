@@ -2365,10 +2365,18 @@ class BaseBuilder implements BuilderInterface
         $field     = array_shift($parts);
         $operator  = implode(' ', $parts);
         $aggregate = null;
-
+        $alias     = '';
+        
         if ($operator !== '' && !Text::contains($operator, ['%', '!%', '@', '!@', '<', '>', '<=', '>=', '<>', '=', '!=', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN'])) {
-            $field    = implode(' ', [$field, $operator]);
-            $operator = '';
+            if (Text::contains($operator, ['as', ' '], true)) {
+                $parts    = explode(' ', $operator);
+                $alias    = $parts[1] ?? '';
+                $operator = '';
+            }
+            else {
+                $field    = implode(' ', [$field, $operator]);
+                $operator = '';
+            }
         }
 
         if (preg_match('/^(AVG|COUNT|MAX|MIN|SUM)\S?\(([a-zA-Z0-9\*_\.]+)\)/isU', $field, $matches)) {
@@ -2402,7 +2410,11 @@ class BaseBuilder implements BuilderInterface
             $result = $this->db->escapeIdentifiers($result);
         }
 
-        return $or . trim($result) . ' ' . trim($operator);
+        if ($alias !== '') {
+            $alias = ' As ' . $this->db->escapeIdentifiers($alias);
+        }
+
+        return $or . trim($result) . $alias . ' ' . trim($operator);
     }
 
     /**

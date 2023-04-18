@@ -61,4 +61,9 @@ describe("Database / Query Builder : Alias", function() {
         $builder = $this->builder->from('jobs j')->like('j.name', 'veloper');
         expect($builder->sql())->toBe('SELECT * FROM db_jobs As j WHERE j.name LIKE \'%veloper%\'');           
     });
+
+    it(": Alias simple avec le préfixe table", function() {
+        $builder = $this->builder->from('articles a')->select('articles.user_id as user')->where('articles.id', 1);
+        expect($builder->sql())->toBe('SELECT a.user_id As user FROM articles As a WHERE a.id = 1');  
+    });
 });
