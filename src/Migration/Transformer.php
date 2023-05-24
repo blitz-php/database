@@ -16,7 +16,7 @@ use BlitzPHP\Database\Creator\BaseCreator;
 use BlitzPHP\Database\Database;
 use BlitzPHP\Database\Exceptions\MigrationException;
 use BlitzPHP\Database\Migration\Definitions\Column;
-use BlitzPHP\Utilities\Collection;
+use BlitzPHP\Utilities\Helpers;
 use BlitzPHP\Utilities\Support\Fluent;
 
 /**
@@ -187,7 +187,7 @@ class Transformer
      */
     private function getColumns(Structure $structure, ?bool $added = null): array
     {
-        $columns = Collection::make($structure->getColumns($added))->map(static fn (Column $column) => $column->getAttributes())->all();
+        $columns = Helpers::collect($structure->getColumns($added))->map(static fn (Column $column) => $column->getAttributes())->all();
 
         return array_map(static fn ($column) => (object) $column, $columns);
     }
@@ -197,7 +197,7 @@ class Transformer
      */
     private function getCommands(Structure $structure): array
     {
-        $commands = Collection::make($structure->getCommands())->map(static fn (Fluent $command) => $command->getAttributes())->all();
+        $commands = Helpers::collect($structure->getCommands())->map(static fn (Fluent $command) => $command->getAttributes())->all();
 
         return array_map(static fn ($command) => (object) $command, $commands);
     }
@@ -233,7 +233,7 @@ class Transformer
             $definition['null'] = true;
         }
         if ($this->is($column, 'unique')) {
-            $definition['unique'] = true;
+            // $definition['unique'] = true;
         }
         if ($this->is($column, 'unsigned')) {
             $definition['unsigned'] = true;
