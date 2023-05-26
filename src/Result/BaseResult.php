@@ -54,7 +54,7 @@ abstract class BaseResult implements ResultInterface
         $this->query = &$query;
         $this->db    = &$db;
 
-        $db->triggerEvent($this);
+        $db->triggerEvent($this, 'db:result');
     }
 
     /**
@@ -63,6 +63,18 @@ abstract class BaseResult implements ResultInterface
     protected function isPdo(): bool
     {
         return $this->db->isPdo();
+    }
+
+    /**
+     * Recupere le code sql qui a conduit a ce resultat
+     */
+    public function sql(): string
+    {
+        if ($this->isPdo()) {
+            return $this->query->queryString;
+        }
+
+        return '';
     }
 
     /**
@@ -320,6 +332,7 @@ abstract class BaseResult implements ResultInterface
             'affected_rows' => $this->affectedRows(),
             'num_rows'      => $this->numRows(),
             'insert_id'     => $this->insertID(),
+            'sql'           => $this->sql(),
         ]);
     }
 

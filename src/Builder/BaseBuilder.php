@@ -2342,6 +2342,20 @@ class BaseBuilder implements BuilderInterface
     }
 
     /**
+     * Liste des functions sql
+     */
+    public static function sqlFunctions(): array
+    {
+        return [
+            'AVG', 'COUNT', 'FIRST', 'LAST', 'MAX', 'MIN', 'SUM',
+            'UCASE', 'LCASE', 'MID', 'LEN', 'ROUND', 'NOW', 'FORMAT',
+            'LENGTH', 'UPPER', 'LOWER', 'CONCAT',
+            'CURRENT_DATE', 'CURRENT_TIME', 'YEAR', 'MONTH', 'DAY',
+            'CAST', 'CONVERT', 'TO_DATE', 'TO_TIME', 'TO_TIMESTAMP'
+        ];
+    }
+
+    /**
      * Defini le type d'action CRUD à éffectuer
      *
      * @internal
@@ -2379,7 +2393,7 @@ class BaseBuilder implements BuilderInterface
             }
         }
 
-        if (preg_match('/^(AVG|COUNT|MAX|MIN|SUM)\S?\(([a-zA-Z0-9\*_\.]+)\)/isU', $field, $matches)) {
+        if (preg_match('/^('. implode('|', static::sqlFunctions()) .')\S?\(([a-zA-Z0-9\*_\.]+)\)/isU', $field, $matches)) {
             $aggregate = $matches[1];
             $field     = str_replace($aggregate . '(' . $matches[2] . ')', $matches[2], $field);
         }
