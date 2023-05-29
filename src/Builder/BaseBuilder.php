@@ -1263,7 +1263,7 @@ class BaseBuilder implements BuilderInterface
         if (empty($fields)) {
             $fields = ['*'];
         }
-        
+
         if ($limit !== null) {
             $this->limit($limit, $offset);
         }
@@ -1395,7 +1395,7 @@ class BaseBuilder implements BuilderInterface
      * @param array|object|string $data    Tableau ou objet de clés et de valeurs, ou chaîne littérale
      * @param bool                $execute Spécifié si nous voulons exécuter directement la requête
      *
-     * @return BaseResult|self|string|bool
+     * @return BaseResult|bool|self|string
      */
     public function update(array|string|object $data = [], bool $escape = true, bool $execute = true)
     {
@@ -1664,7 +1664,7 @@ class BaseBuilder implements BuilderInterface
             $select = $builder->sql();
 
             $builder->table = ['( ' . $select . ' ) BLITZ_count_all_results'];
-            $statement   = $builder->select('COUNT(' . $field . ') As num_rows');
+            $statement      = $builder->select('COUNT(' . $field . ') As num_rows');
 
             // Restaurer la partie SELECT
             $builder->setSql($select);
@@ -2004,7 +2004,7 @@ class BaseBuilder implements BuilderInterface
             $this->reset();
         }
 
-        return  preg_replace('/\s+/', ' ', $sql);
+        return preg_replace('/\s+/', ' ', $sql);
     }
 
     /**
@@ -2049,8 +2049,9 @@ class BaseBuilder implements BuilderInterface
             $this->setSql($this->_truncateStatement($this->getTable()));
         } elseif ($this->crud === 'update') {
             $sets = array_combine($keys, $values);
+
             foreach ($sets as $k => $v) {
-                $sets[$k] = "$k = $v";
+                $sets[$k] = "{$k} = {$v}";
             }
             $this->setSql([
                 'UPDATE',
@@ -2355,7 +2356,7 @@ class BaseBuilder implements BuilderInterface
             'UCASE', 'LCASE', 'MID', 'LEN', 'ROUND', 'NOW', 'FORMAT',
             'LENGTH', 'UPPER', 'LOWER', 'CONCAT',
             'CURRENT_DATE', 'CURRENT_TIME', 'YEAR', 'MONTH', 'DAY',
-            'CAST', 'CONVERT', 'TO_DATE', 'TO_TIME', 'TO_TIMESTAMP'
+            'CAST', 'CONVERT', 'TO_DATE', 'TO_TIME', 'TO_TIMESTAMP',
         ];
     }
 
@@ -2384,20 +2385,19 @@ class BaseBuilder implements BuilderInterface
         $operator  = implode(' ', $parts);
         $aggregate = null;
         $alias     = '';
-        
-        if ($operator !== '' && !Text::contains($operator, ['%', '!%', '@', '!@', '<', '>', '<=', '>=', '<>', '=', '!=', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN'])) {
+
+        if ($operator !== '' && ! Text::contains($operator, ['%', '!%', '@', '!@', '<', '>', '<=', '>=', '<>', '=', '!=', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN'])) {
             if (Text::contains($operator, ['as', ' '], true)) {
                 $parts    = explode(' ', $operator);
                 $alias    = $parts[1] ?? '';
                 $operator = '';
-            }
-            else {
+            } else {
                 $field    = implode(' ', [$field, $operator]);
                 $operator = '';
             }
         }
 
-        if (preg_match('/^('. implode('|', static::sqlFunctions()) .')\S?\(([a-zA-Z0-9\*_\.]+)\)/isU', $field, $matches)) {
+        if (preg_match('/^(' . implode('|', static::sqlFunctions()) . ')\S?\(([a-zA-Z0-9\*_\.]+)\)/isU', $field, $matches)) {
             $aggregate = $matches[1];
             $field     = str_replace($aggregate . '(' . $matches[2] . ')', $matches[2], $field);
         }
@@ -2407,10 +2407,10 @@ class BaseBuilder implements BuilderInterface
         $or = '';
         if ($field[0][0] === '|') {
             $field[0] = substr($field[0], 1);
-            $or = '|';
+            $or       = '|';
         }
 
-        if (count($field) === 2) {    
+        if (count($field) === 2) {
             [$field[0]] = $this->db->getTableAlias($field[0]);
             if (empty($field[0])) {
                 $field[0] = $this->db->prefixTable($field[0]);

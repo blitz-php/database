@@ -12,8 +12,8 @@
 namespace BlitzPHP\Database\Migration\Definitions;
 
 use BlitzPHP\Database\Migration\Structure;
-use BlitzPHP\Utilities\Support\Fluent;
 use BlitzPHP\Utilities\String\Text;
+use BlitzPHP\Utilities\Support\Fluent;
 
 /**
  * @credit <a href="https://laravel.com">Laravel Framework - Illuminate\Database\Schema\ForeignIdDefinition</a>
