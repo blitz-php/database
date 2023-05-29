@@ -34,42 +34,42 @@ class DataException extends RuntimeException implements ExceptionInterface
         }
     }
 
-    public static function forInvalidMethodTriggered(string $method)
+    public static function invalidMethodTriggered(string $method)
     {
         return new static($method . ' is not a valid Model Event callback.');
     }
 
-    public static function forEmptyDataset(string $mode)
+    public static function emptyDataset(string $mode)
     {
         return new static('There is no data to ' . $mode . '.');
     }
 
-    public static function forEmptyPrimaryKey(string $mode)
+    public static function emptyPrimaryKey(string $mode)
     {
         return new static('There is no primary key defined when trying to make ' . $mode . '.');
     }
 
-    public static function forInvalidArgument(string $argument)
+    public static function invalidArgument(string $argument)
     {
         return new static('You must provide a valid ' . $argument . '.');
     }
 
-    public static function forInvalidAllowedFields(string $model)
+    public static function invalidAllowedFields(string $model)
     {
         return new static('Allowed fields must be specified for model: ' . $model);
     }
 
-    public static function forTableNotFound(string $table)
+    public static function tableNotFound(string $table)
     {
         return new static('Table `' . $table . '` was not found in the current database.');
     }
 
-    public static function forEmptyInputGiven(string $argument)
+    public static function emptyInputGiven(string $argument)
     {
         return new static('Empty statement is given for the field `' . $argument . '`');
     }
 
-    public static function forFindColumnHaveMultipleColumns()
+    public static function findColumnHaveMultipleColumns()
     {
         return new static('Only single column allowed in Column name.');
     }

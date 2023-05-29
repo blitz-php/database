@@ -149,7 +149,7 @@ class BaseBuilder implements BuilderInterface
     public function getTable(): string
     {
         if (empty($this->tableName)) {
-            $this->tableName = $this->removeAlias(array_pop($this->table));
+            $this->tableName = $this->removeAlias(array_reverse($this->table)[0] ?? '');
         }
 
         return (string) $this->tableName;
@@ -1395,7 +1395,7 @@ class BaseBuilder implements BuilderInterface
      * @param array|object|string $data    Tableau ou objet de clés et de valeurs, ou chaîne littérale
      * @param bool                $execute Spécifié si nous voulons exécuter directement la requête
      *
-     * @return BaseResult|self|string
+     * @return BaseResult|self|string|bool
      */
     public function update(array|string|object $data = [], bool $escape = true, bool $execute = true)
     {
@@ -2048,11 +2048,15 @@ class BaseBuilder implements BuilderInterface
         } elseif ($this->crud === 'truncate') {
             $this->setSql($this->_truncateStatement($this->getTable()));
         } elseif ($this->crud === 'update') {
+            $sets = array_combine($keys, $values);
+            foreach ($sets as $k => $v) {
+                $sets[$k] = "$k = $v";
+            }
             $this->setSql([
                 'UPDATE',
                 $this->getTable(),
                 'SET',
-                implode(',', $values),
+                implode(',', $sets),
                 $this->where,
                 $this->order,
                 $this->limit,
