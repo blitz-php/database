@@ -868,11 +868,11 @@ abstract class BaseConnection implements ConnectionInterface
 
         // The query() function will set this flag to FALSE in the event that a query failed
         if ($this->transStatus === false || $this->transFailure === true) {
-            $this->transRollback();
+            $this->rollback();
 
-            // If we are NOT running in strict mode, we will reset
-            // the _trans_status flag so that subsequent groups of
-            // transactions will be permitted.
+            // Si nous ne fonctionnons PAS en mode strict, 
+            // nous réinitialiserons l'indicateur _trans_status afin que les 
+            // groupes de transactions suivants soient autorisés.
             if ($this->transStrict === false) {
                 $this->transStatus = true;
             }
@@ -880,7 +880,7 @@ abstract class BaseConnection implements ConnectionInterface
             return false;
         }
 
-        return $this->transCommit();
+        return $this->commit();
     }
 
     /**
@@ -894,13 +894,13 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Demarre la transaction
      */
-    public function transBegin(bool $testMode = false): bool
+    public function beginTransaction(bool $testMode = false): bool
     {
         if (! $this->transEnabled) {
             return false;
         }
 
-        // When transactions are nested we only begin/commit/rollback the outermost ones
+        // Lorsque les transactions sont imbriquées, nous ne commençons/validons/annulons que les plus externes
         if ($this->transDepth > 0) {
             $this->transDepth++;
 
@@ -926,15 +926,23 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
+     * @deprecated 2.0. Utilisez beginTransaction a la place
+     */
+    public function transBegin(bool $testMode = false): bool
+    {
+        return $this->beginTransaction($testMode);
+    }
+
+    /**
      * Valide la transaction
      */
-    public function transCommit(): bool
+    public function commit(): bool
     {
         if (! $this->transEnabled || $this->transDepth === 0) {
             return false;
         }
 
-        // When transactions are nested we only begin/commit/rollback the outermost ones
+        // Lorsque les transactions sont imbriquées, nous ne commençons/validons/annulons que les plus externes
         if ($this->transDepth > 1 || $this->_transCommit()) {
             $this->transDepth--;
 
@@ -945,15 +953,23 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
+     * @deprecated 2.0. Utilisez commit() a la place
+     */
+    public function transCommit(): bool
+    {
+        return $this->commit();
+    }
+
+    /**
      * Annule la transaction
      */
-    public function transRollback(): bool
+    public function rollback(): bool
     {
         if (! $this->transEnabled || $this->transDepth === 0) {
             return false;
         }
 
-        // When transactions are nested we only begin/commit/rollback the outermost ones
+        // Lorsque les transactions sont imbriquées, nous ne commençons/validons/annulons que les plus externes
         if ($this->transDepth > 1 || $this->_transRollback()) {
             $this->transDepth--;
 
@@ -961,6 +977,14 @@ abstract class BaseConnection implements ConnectionInterface
         }
 
         return false;
+    }
+
+    /**
+     * @deprecated 2.0. Utilisez rollback a la place
+     */
+    public function transRollback(): bool
+    {
+        return $this->rollback();
     }
 
     /**
