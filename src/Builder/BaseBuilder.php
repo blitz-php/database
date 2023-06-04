@@ -70,6 +70,7 @@ class BaseBuilder implements BuilderInterface
     protected string $crud        = 'select';
     protected array $query_keys   = [];
     protected array $query_values = [];
+    protected array $compileWhere = [];
 
     /**
      * @var BaseResult
@@ -153,13 +154,6 @@ class BaseBuilder implements BuilderInterface
         }
 
         return (string) $this->tableName;
-    }
-
-    public function __clone()
-    {
-        $new = $this;
-
-        return $new->reset();
     }
 
     /**
@@ -388,7 +382,9 @@ class BaseBuilder implements BuilderInterface
             }
         }
 
-        $this->where .= $this->parseCondition($field, $value, $join, $escape);
+        $where                 = $this->parseCondition($field, $value, $join, $escape);
+        $this->where          .= $where;
+        $this->compileWhere[]  = $where;
 
         return $this;
     }
@@ -883,6 +879,14 @@ class BaseBuilder implements BuilderInterface
     final public function orNotBetween(string $field, $value1, $value2): self
     {
         return $this->orWhereNotBetween($field, $value1, $value2);
+    }
+
+    /**
+     * Recupere l'ensemble des where sous forme de tableau
+     */
+    final public function getCompiledWhere(): array
+    {
+        return $this->compileWhere;
     }
 
     /**
