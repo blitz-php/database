@@ -854,7 +854,7 @@ abstract class BaseConnection implements ConnectionInterface
             return false;
         }
 
-        return $this->transBegin($testMode);
+        return $this->beginTransaction($testMode);
     }
 
     /**
@@ -1001,6 +1001,33 @@ abstract class BaseConnection implements ConnectionInterface
      * Annulle la transaction
      */
     abstract protected function _transRollback(): bool;
+
+    /**
+     * Execute une Closure dans une transaction.
+     *
+     * @throws \Throwable
+     */
+    public function transaction(Closure $callback, int $attempts = 1): mixed
+    {
+        for ($currentAttempt = 1; $currentAttempt <= $attempts; $currentAttempt++) {
+            try {
+                $this->beginTransaction();
+                $callbackResult = $callback($this);
+                $this->commit();
+
+                return $callbackResult;
+
+            } catch (\Throwable $th) {
+                $this->rollback();
+
+                if ($currentAttempt === $attempts) {
+                    throw $th;
+                } else {
+                    continue;
+                }
+            }
+        }
+    }
 
     /**
      * Retourne une nouvelle instance non partagee du query builder pour cette connexion.
