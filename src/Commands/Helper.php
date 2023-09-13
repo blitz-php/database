@@ -11,9 +11,9 @@
 
 namespace BlitzPHP\Database\Commands;
 
+use BlitzPHP\Contracts\Database\ConnectionResolverInterface;
 use BlitzPHP\Database\Migration\Runner;
-use BlitzPHP\Db\Database;
-use BlitzPHP\Container\Services;
+use BlitzPHP\Database\Config\Services;
 
 /**
  * Aide a l'initialisation de la bd
@@ -27,7 +27,7 @@ class Helper
      */
     public static function connectionInfo(array|string|null $group = null): array
     {
-        return Database::connectionInfo($group);
+        return Services::container()->get(ConnectionResolverInterface::class)->connectionInfo($group);
     }
 
     /**
