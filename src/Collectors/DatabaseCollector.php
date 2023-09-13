@@ -13,6 +13,7 @@ namespace BlitzPHP\Database\Collectors;
 
 use BlitzPHP\Contracts\Event\EventInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
+use BlitzPHP\Database\ConnectionResolver;
 use BlitzPHP\Debug\Toolbar\Collectors\BaseCollector;
 
 /**
@@ -219,6 +220,6 @@ class DatabaseCollector extends BaseCollector
      */
     private function getConnections()
     {
-        $this->connections = \BlitzPHP\Db\Database::getConnections();
+        $this->connections = ConnectionResolver::getConnections();
     }
 }
