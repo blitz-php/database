@@ -151,12 +151,12 @@ class Transformer
                 $process = true;
             } elseif ($command->name === 'foreign') {
                 $this->creator->addForeignKey(
-                    $command->columns,
-                    $command->on,
-                    $command->references,
-                    $command->onUpdate,
-                    $command->onDelete,
-                    $command->index
+                    $command->columns ?? '',
+                    $command->on ?? '',
+                    $command->references ?? '',
+                    $command->onUpdate ?? '',
+                    $command->onDelete ?? '',
+                    $command->index ?? ''
                 );
                 $process = true;
             }
