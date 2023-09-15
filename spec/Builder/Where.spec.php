@@ -38,4 +38,29 @@ describe("Query Builder : Where", function() {
             expect($builder->sql())->toBe('SELECT * FROM users As u WHERE name != \'John\' OR name = \'Doe\'');
         });  
     });
+
+    describe('whereNull', function(){
+        it(": WhereNull simple", function() {
+            $builder = $this->builder->from('users u')->whereNull('name');
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE name IS NULL');
+        });  
+        
+        it(": WhereNull multiple", function() {
+            $builder = $this->builder->from('users u')->whereNull(['name', 'surname']);
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE name IS NULL AND surname IS NULL');
+            
+            $builder = $this->builder->from('users u')->whereNull('name')->whereNull('surname');
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE name IS NULL AND surname IS NULL');
+        }); 
+
+        it(": WhereNull multiple avec une autre condition", function() {
+            $builder = $this->builder->from('users u')->whereNull('name')->where('surname', 'blitz');
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE name IS NULL AND surname = \'blitz\'');
+        });  
+
+        it(": orWhereNull multiple avec une autre condition", function() {
+            $builder = $this->builder->from('users u')->where('surname', 'blitz')->orWhereNull('name');
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE surname = \'blitz\' OR name IS NULL');
+        });  
+    });
 });

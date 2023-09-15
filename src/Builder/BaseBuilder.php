@@ -2407,7 +2407,7 @@ class BaseBuilder implements BuilderInterface
         $aggregate = null;
         $alias     = '';
 
-        if ($operator !== '' && ! Text::contains($operator, ['%', '!%', '@', '!@', '<', '>', '<=', '>=', '<>', '=', '!=', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN'])) {
+        if ($operator !== '' && ! Text::contains($operator, ['%', '!%', '@', '!@', '<', '>', '<=', '>=', '<>', '=', '!=', 'IS NULL', 'IS NOT NULL', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN'])) {
             if (Text::contains($operator, ['as', ' '], true)) {
                 $parts    = explode(' ', $operator);
                 $alias    = $parts[1] ?? '';
@@ -2494,7 +2494,9 @@ class BaseBuilder implements BuilderInterface
     private function buildInCallbackParam($param, string $method): string
     {
         if (is_callable($param)) {
-            $param = $param(clone $this);
+            $clone = clone $this;
+            $clone->reset();
+            $param = $param($clone);
         }
 
         if (is_array($param)) {
