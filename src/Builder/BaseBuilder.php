@@ -19,6 +19,7 @@ use BlitzPHP\Database\Connection\MySQL as MySQLConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Utilities\Iterable\Arr;
 use BlitzPHP\Utilities\String\Text;
+use Closure;
 use InvalidArgumentException;
 use PDO;
 
@@ -358,11 +359,21 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param array|string|callable $field Un nom de champ ou un tableau de champs et de valeurs.
      * @param mixed        $value Une valeur de champ à comparer
      */
     public function where($field, $value = null, bool $escape = true): self
     {
+        if ($field instanceof Closure) {     
+            $clone = clone $this;
+            $clone->where = '';
+            if (is_a($r = call_user_func($field, $clone), self::class)) {
+                $clone = $r;
+            }
+
+            $field = '( ' . trim(str_ireplace('WHERE', '', $clone->where)) . ' )';
+        }
+
         $join = empty($this->where) ? 'WHERE' : '';
 
         if (is_array($field)) {
@@ -2384,6 +2395,12 @@ class BaseBuilder implements BuilderInterface
      */
     private function buildParseField(string $field): string
     {
+        $or = '';
+        if ($field[0] === '|') {
+            $field = substr($field, 1);
+            $or    = '|';
+        }
+
         $parts     = explode(' ', $field);
         $field     = array_shift($parts);
         $operator  = implode(' ', $parts);
@@ -2407,12 +2424,6 @@ class BaseBuilder implements BuilderInterface
         }
 
         $field = explode('.', $field);
-
-        $or = '';
-        if ($field[0][0] === '|') {
-            $field[0] = substr($field[0], 1);
-            $or       = '|';
-        }
 
         if (count($field) === 2) {
             [$field[0]] = $this->db->getTableAlias($field[0]);
