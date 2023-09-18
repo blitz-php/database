@@ -1001,6 +1001,22 @@ class BaseBuilder implements BuilderInterface
     }
 
     /**
+     * Ajoutez une clause « order by » pour un horodatage à la requête.
+     */
+    final public function latest(array|string $column = 'created_at', bool $escape = true): self
+    {
+        return $this->sortDesc($column, $escape);
+    } 
+
+    /**
+     * Ajoutez une clause « order by » pour un horodatage à la requête.
+     */
+    public function oldest(array|string $column = 'created_at', bool $escape = true): self
+    {
+        return $this->sortAsc($column, $escape);
+    }
+
+    /**
      * Ajoute des champs à regrouper.
      *
      * @param string|string[] $field Nom de champ ou tableau de noms de champs
