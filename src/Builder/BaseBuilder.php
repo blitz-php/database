@@ -2379,15 +2379,29 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Liste des functions sql
+     * 
+     * @see https://sqlpro.developpez.com/cours/sqlaz/fonctions/
      */
     public static function sqlFunctions(): array
     {
         return [
-            'AVG', 'COUNT', 'FIRST', 'LAST', 'MAX', 'MIN', 'SUM',
-            'UCASE', 'LCASE', 'MID', 'LEN', 'ROUND', 'NOW', 'FORMAT',
-            'LENGTH', 'UPPER', 'LOWER', 'CONCAT',
-            'CURRENT_DATE', 'CURRENT_TIME', 'YEAR', 'MONTH', 'DAY',
-            'CAST', 'CONVERT', 'TO_DATE', 'TO_TIME', 'TO_TIMESTAMP',
+            /** Agrégations statistique */
+            'AVG', 'COUNT', 'MAX', 'MIN', 'SUM', 'EVERY', 'SOME', 'ANY',
+            /** Fonctions systeme */
+            'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP', 'CURRENT_USER', 'SESSION_USER', 'SYSTEM_USER', 'CURDATE', 'CURTIME', 'DATABASE', 'TODAY', 'NOW', 'GETDATE', 'SYSDATE', 'USER', 'VERSION', 
+            /** Fonctions générales */
+            'CAST', 'COALESCE', 'NULLIF', 'OCTET_LENGTH', 'DATALENGTH', 'DECODE', 'GREATEST', 'IFNULL', 'LEAST', 'LENGTH', 'NVL', 'TO_DATE', 'TO_CHAR', 'TO_NUMBER',
+            /** Fonctions de chaines */
+            'CHAR_LENGTH', 'CHARACTER_LENGTH', 'COLLATE', 'CONCATENATE', 'CONVERT', 'LIKE', 'LOWER', 'POSITION', 'SUBSTRING', 'TRANSLATE', 'TO_CHAR', 'TRIM', 'UPPER', 
+            'CHAR', 'CHAR_OCTET_LENGTH', 'CHARACTER_MAXIMUM_LENGTH', 'CHARACTER_OCTET_LENGTH', 'CONCAT', 'ILIKE', 'INITCAP', 'INSTR', 'LCASE', 'LOCATE', 'LPAD', 'LTRIM', 
+            'NCHAR', 'PATINDEX', 'REPLACE', 'REVERSE', 'RPAD', 'RTRIM', 'SPACE', 'SUBSTR', 'UCASE', 'SIMILAR',
+            /** Fonctions numériques */
+            'ABS', 'ASCII', 'ASIN', 'ATAN', 'CEILING', 'COS', 'COT', 'EXP', 'FLOOR', 'LN', 'LOG10', 'LOG', 'MOD', 'PI', 'POWER', 'RAND', 'ROUND', 'SIGN', 'SIN', 'SQRT', 'TAN', 'TRUNC', 'TRUNCATE', 'UNICODE',
+            /** Fonctions temporelles */
+            'EXTRACT', 'INTERVAL', 'OVERLAPS', 'ADDDATE', 'AGE', 'DATE_ADD', 'DATE_FORMAT', 'DATE_PART', 'DATE_SUB', 'DATEADD', 'DATEDIFF', 'DATENAME', 'DATEPART', 'DAY', 'DAYNAME', 'DAYOFMONTH', 'DAYOFWEEK', 
+            'DAYOFYEAR', 'HOUR', 'LAST_DAY', 'MINUTE', 'MONTH', 'MONTH_BETWEEN', 'MONTHNAME', 'NEXT_DAY', 'SECOND', 'SUBDATE', 'WEEK', 'YEAR',
+
+            'TO_TIME', 'TO_TIMESTAMP', 'FIRST', 'LAST', 'MID', 'LEN', 'FORMAT',            
         ];
     }
 
