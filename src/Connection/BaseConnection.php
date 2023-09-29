@@ -118,12 +118,12 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Character set
      */
-    protected string $charset = 'utf8';
+    protected string $charset = 'utf8mb4';
 
     /**
      * Collation
      */
-    protected string $collation = 'utf8_general_ci';
+    protected string $collation = 'utf8mb4_general_ci';
 
     /**
      * Swap Prefix

@@ -188,25 +188,21 @@ class Runner
     }
 
     /**
-     * Migrate down to a previous batch
+     * Migrer vers un lot précédent
      *
-     * Calls each migration step required to get to the provided batch
+     * Appelle chaque étape de migration requise pour accéder au lot fourni
      *
-     * @param int $targetBatch Target batch number, or negative for a relative batch, 0 for all
+     * @param int $targetBatch Numéro de lot cible, ou négatif pour un lot relatif, 0 pour tous
      *
-     * @return mixed Current batch number on success, FALSE on failure or no migrations are found
+     * @return bool Vrai en cas de succès, FAUX en cas d'échec ou aucune migration n'est trouvée
      *
      * @throws MigrationException
      * @throws RuntimeException
      */
-    public function regress(int $targetBatch = 0, ?string $group = null)
+    public function regress(int $targetBatch = 0): bool
     {
         if (! $this->enabled) {
             throw MigrationException::disabledMigrations();
-        }
-
-        if ($group !== null) {
-            $this->setGroup($group);
         }
 
         $this->ensureTable();
