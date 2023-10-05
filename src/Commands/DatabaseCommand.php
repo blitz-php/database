@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file is part of Blitz PHP framework.
+ * This file is part of Blitz PHP framework - Database Layer.
  *
  * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
  *
@@ -17,6 +17,9 @@ use BlitzPHP\Contracts\Database\ConnectionResolverInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
 use Psr\Log\LoggerInterface;
 
+/**
+ * @property BaseConnection $db
+ */
 abstract class DatabaseCommand extends Command
 {
     /**
@@ -29,7 +32,7 @@ abstract class DatabaseCommand extends Command
      */
     protected $service = 'Service de gestion de base de données';
 
-    protected BaseConnection $db;
+    private ?BaseConnection $_db = null;
 
     /**
      * @param Console         $app    Application Console
@@ -38,6 +41,23 @@ abstract class DatabaseCommand extends Command
     public function __construct(Console $app, LoggerInterface $logger,  protected ConnectionResolverInterface $resolver)
     {
         parent::__construct($app, $logger);
-        $this->db = $resolver->connection();
+    }
+
+    public function __get($name)
+    {
+        if (method_exists($this, $name)) {
+            return call_user_func([$this, $name]);
+        }
+
+        return parent::__get($name);
+    }
+
+    protected function db(): BaseConnection
+    {
+        if (null === $this->_db) {
+            $this->_db = $this->resolver->connection();
+        }
+
+        return $this->_db;
     }
 }
