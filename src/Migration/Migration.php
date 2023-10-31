@@ -65,7 +65,7 @@ abstract class Migration
     /**
      * Cree une nouvelle table dans la structure.
      */
-    final protected function create(string $table, callable|bool $ifNotExists, ?callable $callback = null): void
+    final protected function create(string $table, bool|callable $ifNotExists, ?callable $callback = null): void
     {
         if (is_callable($ifNotExists)) {
             $callback    = $ifNotExists;

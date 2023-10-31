@@ -50,7 +50,7 @@ class Generator
     /**
      * Recupere une valeur generee
      */
-    public function getValue(string|array $config): mixed
+    public function getValue(array|string $config): mixed
     {
         if (! is_array($config)) {
             $config = [$config];

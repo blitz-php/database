@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file is part of Blitz PHP framework.
+ * This file is part of Blitz PHP framework - Database Layer.
  *
  * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
  *
@@ -79,7 +79,7 @@ class CreateDatabase extends DatabaseCommand
             $config['database'] = $name;
 
             if ($name !== ':memory:') {
-                $dbName = strpos($name, DIRECTORY_SEPARATOR) === false ? STORAGE_PATH . 'app' . DS . $name : $name;
+                $dbName = ! str_contains($name, DIRECTORY_SEPARATOR) ? STORAGE_PATH . 'app' . DS . $name : $name;
 
                 if (is_file($dbName)) {
                     $this->error("La base de données \"{$dbName}\" existe déjà.");

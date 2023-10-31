@@ -24,9 +24,8 @@ class DatabaseProvider extends AbstractProvider
     public static function definitions(): array
     {
         return [
-            ConnectionResolverInterface::class => fn () => new ConnectionResolver(),
-            ConnectionInterface::class         => fn (ConnectionResolverInterface $resolver) => $resolver->connect(),
-        ];        
+            ConnectionResolverInterface::class => static fn () => new ConnectionResolver(),
+            ConnectionInterface::class         => static fn (ConnectionResolverInterface $resolver) => $resolver->connect(),
+        ];
     }
-
 }

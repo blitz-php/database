@@ -82,7 +82,7 @@ abstract class BaseResult implements ResultInterface
      *
      * @alias self::result()
      */
-    public function all(int|string|null $type = PDO::FETCH_OBJ): array
+    public function all(null|int|string $type = PDO::FETCH_OBJ): array
     {
         return $this->result($type);
     }
@@ -90,7 +90,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function first(int|string|null $type = PDO::FETCH_OBJ)
+    public function first(null|int|string $type = PDO::FETCH_OBJ)
     {
         $records = $this->result($type);
 
@@ -100,13 +100,11 @@ abstract class BaseResult implements ResultInterface
     /**
      * Recupere le premier resultat d'une requete en BD
      *
-     * @param int|string $type
-     *
      * @return mixed
      *
      * @alias self::first()
      */
-    public function one(int|string|null $type = PDO::FETCH_OBJ)
+    public function one(null|int|string $type = PDO::FETCH_OBJ)
     {
         return $this->first($type);
     }
@@ -114,7 +112,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function last(int|string|null $type = PDO::FETCH_OBJ)
+    public function last(null|int|string $type = PDO::FETCH_OBJ)
     {
         $records = $this->all($type);
 
@@ -128,7 +126,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function next(int|string|null $type = PDO::FETCH_OBJ)
+    public function next(null|int|string $type = PDO::FETCH_OBJ)
     {
         $records = $this->result($type);
 
@@ -142,7 +140,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function previous(int|string|null $type = PDO::FETCH_OBJ)
+    public function previous(null|int|string $type = PDO::FETCH_OBJ)
     {
         $records = $this->result($type);
 
@@ -160,7 +158,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function row(int $index, int|string|null $type = PDO::FETCH_OBJ)
+    public function row(int $index, null|int|string $type = PDO::FETCH_OBJ)
     {
         $records = $this->result($type);
 
@@ -186,7 +184,7 @@ abstract class BaseResult implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function result(int|string|null $type = PDO::FETCH_OBJ): array
+    public function result(null|int|string $type = PDO::FETCH_OBJ): array
     {
         if (null === $type) {
             $type = PDO::FETCH_OBJ;

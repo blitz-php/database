@@ -38,7 +38,7 @@ abstract class DatabaseCommand extends Command
      * @param Console         $app    Application Console
      * @param LoggerInterface $logger Le Logger à utiliser
      */
-    public function __construct(Console $app, LoggerInterface $logger,  protected ConnectionResolverInterface $resolver)
+    public function __construct(Console $app, LoggerInterface $logger, protected ConnectionResolverInterface $resolver)
     {
         parent::__construct($app, $logger);
     }

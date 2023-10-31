@@ -368,7 +368,7 @@ class BaseCreator
                 ]);
                 $this->addKey('id', true);
             } else {
-                if (strpos($field, ' ') === false) {
+                if (! str_contains($field, ' ')) {
                     throw new InvalidArgumentException('Field information is required for that operation.');
                 }
 
@@ -404,7 +404,7 @@ class BaseCreator
      *
      * @throws DatabaseException
      */
-    public function addForeignKey(string|array $fieldName = '', string $tableName = '', string|array $tableField = '', string $onUpdate = '', string $onDelete = '', string $fkName = ''): self
+    public function addForeignKey(array|string $fieldName = '', string $tableName = '', array|string $tableField = '', string $onUpdate = '', string $onDelete = '', string $fkName = ''): self
     {
         $fieldName  = (array) $fieldName;
         $tableField = (array) $tableField;
@@ -619,7 +619,7 @@ class BaseCreator
             return false;
         }
 
-        if ($this->db->prefix && strpos($tableName, $this->db->prefix) === 0) {
+        if ($this->db->prefix && str_starts_with($tableName, $this->db->prefix)) {
             $tableName = substr($tableName, strlen($this->db->prefix));
         }
 

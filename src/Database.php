@@ -77,7 +77,7 @@ class Database
             throw new InvalidArgumentException('You must supply the parameter: alias.');
         }
 
-        if (! empty($params['dsn']) && strpos($params['dsn'], '://') !== false) {
+        if (! empty($params['dsn']) && str_contains($params['dsn'], '://')) {
             $params = $this->parseDSN($params);
         }
 
@@ -183,7 +183,7 @@ class Database
 
         $class = $class . '\\' . $driver;
 
-        if (strpos($driver, '\\') === false) {
+        if (! str_contains($driver, '\\')) {
             $class = "\\BlitzPHP\\Database\\{$class}";
         }
 

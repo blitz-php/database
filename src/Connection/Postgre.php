@@ -414,10 +414,10 @@ class Postgre extends BaseConnection
             $_fields     = explode(',', preg_replace('/^.*\((.+?)\)$/', '$1', trim($row->indexdef)));
             $obj->fields = array_map(static fn ($v) => trim($v), $_fields);
 
-            if (strpos($row->indexdef, 'CREATE UNIQUE INDEX pk') === 0) {
+            if (str_starts_with($row->indexdef, 'CREATE UNIQUE INDEX pk')) {
                 $obj->type = 'PRIMARY';
             } else {
-                $obj->type = (strpos($row->indexdef, 'CREATE UNIQUE') === 0) ? 'UNIQUE' : 'INDEX';
+                $obj->type = (str_starts_with($row->indexdef, 'CREATE UNIQUE')) ? 'UNIQUE' : 'INDEX';
             }
 
             $retVal[$obj->name] = $obj;
@@ -560,7 +560,7 @@ class Postgre extends BaseConnection
         }
 
         // If UNIX sockets are used, we shouldn't set a port
-        if (strpos($this->hostname, '/') !== false) {
+        if (str_contains($this->hostname, '/')) {
             $this->port = '';
         }
 
@@ -588,6 +588,7 @@ class Postgre extends BaseConnection
         if ($this->database !== '' && $this->withDatabase) {
             $this->dsn .= "dbname={$this->database} ";
         }
+
         // We don't have these options as elements in our standard configuration
         // array, but they might be set by parse_url() if the configuration was
         // provided via string> Example:

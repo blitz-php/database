@@ -221,11 +221,11 @@ class Transformer
             }
             $definition['type'] = $definition['type'][0];
         }
-        if (strpos($definition['type'], '|') !== false) {
+        if (str_contains($definition['type'], '|')) {
             $parts              = explode('|', $definition['type']);
             $definition['type'] = $parts[(int) $this->is($column, 'primary')];
         }
-        if (strpos($definition['type'], '{precision}') !== false) {
+        if (str_contains($definition['type'], '{precision}')) {
             $definition['type'] = str_replace('{precision}', $column->precision, $definition['type']);
         }
 

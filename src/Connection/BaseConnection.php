@@ -292,12 +292,12 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Instance de la LoggerInterface pour logger les problemes de connexion
      */
-    protected LoggerInterface|null $logger;
+    protected ?LoggerInterface $logger;
 
     /**
      * Gestionnaire d'evenement
      */
-    protected object|null $event;
+    protected ?object $event;
 
     /**
      * Saves our connection settings.
@@ -870,8 +870,8 @@ abstract class BaseConnection implements ConnectionInterface
         if ($this->transStatus === false || $this->transFailure === true) {
             $this->rollback();
 
-            // Si nous ne fonctionnons PAS en mode strict, 
-            // nous réinitialiserons l'indicateur _trans_status afin que les 
+            // Si nous ne fonctionnons PAS en mode strict,
+            // nous réinitialiserons l'indicateur _trans_status afin que les
             // groupes de transactions suivants soient autorisés.
             if ($this->transStrict === false) {
                 $this->transStatus = true;
@@ -1005,7 +1005,7 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Execute une Closure dans une transaction.
      *
-     * @throws \Throwable
+     * @throws Throwable
      */
     public function transaction(Closure $callback, int $attempts = 1): mixed
     {
@@ -1016,15 +1016,14 @@ abstract class BaseConnection implements ConnectionInterface
                 $this->commit();
 
                 return $callbackResult;
-
-            } catch (\Throwable $th) {
+            } catch (Throwable $th) {
                 $this->rollback();
 
                 if ($currentAttempt === $attempts) {
                     throw $th;
-                } else {
-                    continue;
                 }
+
+                continue;
             }
         }
     }
@@ -1214,7 +1213,7 @@ abstract class BaseConnection implements ConnectionInterface
         // Break the string apart if it contains periods, then insert the table prefix
         // in the correct location, assuming the period doesn't indicate that we're dealing
         // with an alias. While we're at it, we will escape the components
-        if (strpos($item, '.') !== false) {
+        if (str_contains($item, '.')) {
             return $this->protectDotItem($item, $alias, $protectIdentifiers, $fieldExists);
         }
 
@@ -1226,11 +1225,11 @@ abstract class BaseConnection implements ConnectionInterface
         // Is there a table prefix? If not, no need to insert it
         if ($this->prefix !== '') {
             // Verify table prefix and replace if necessary
-            if ($this->swapPre !== '' && strpos($item, $this->swapPre) === 0) {
+            if ($this->swapPre !== '' && str_starts_with($item, $this->swapPre)) {
                 $item = preg_replace('/^' . $this->swapPre . '(\S+?)/', $this->prefix . '\\1', $item);
             }
             // Do we prefix an item with no segments?
-            elseif ($prefixSingle === true && strpos($item, $this->prefix) !== 0) {
+            elseif ($prefixSingle === true && ! str_starts_with($item, $this->prefix)) {
                 $item = $this->prefix . $item;
             }
         }
@@ -1292,11 +1291,11 @@ abstract class BaseConnection implements ConnectionInterface
             }
 
             // Verify table prefix and replace if necessary
-            if ($this->swapPre !== '' && strpos($parts[$i], $this->swapPre) === 0) {
+            if ($this->swapPre !== '' && str_starts_with($parts[$i], $this->swapPre)) {
                 $parts[$i] = preg_replace('/^' . $this->swapPre . '(\S+?)/', $this->prefix . '\\1', $parts[$i]);
             }
             // We only add the table prefix if it does not already exist
-            elseif (strpos($parts[$i], $this->prefix) !== 0) {
+            elseif (! str_starts_with($parts[$i], $this->prefix)) {
                 $parts[$i] = $this->prefix . $parts[$i];
             }
 
@@ -1338,7 +1337,7 @@ abstract class BaseConnection implements ConnectionInterface
         if (ctype_digit($item)
             || $item[0] === "'"
             || ($this->escapeChar !== '"' && $item[0] === '"')
-            || strpos($item, '(') !== false) {
+            || str_contains($item, '(')) {
             return $item;
         }
 
@@ -1357,7 +1356,7 @@ abstract class BaseConnection implements ConnectionInterface
         }
 
         foreach ($this->reservedIdentifiers as $id) {
-            if (strpos($item, '.' . $id) !== false) {
+            if (str_contains($item, '.' . $id)) {
                 return preg_replace(
                     '/' . $this->pregEscapeChar[0] . '?([^' . $this->pregEscapeChar[1] . '\.]+)' . $this->pregEscapeChar[1] . '?\./i',
                     $this->pregEscapeChar[2] . '$1' . $this->pregEscapeChar[3] . '.',
@@ -1469,7 +1468,7 @@ abstract class BaseConnection implements ConnectionInterface
     {
         $driver = $this->getDriverFunctionPrefix();
 
-        if (strpos($driver, $functionName) === false) {
+        if (! str_contains($driver, $functionName)) {
             $functionName = $driver . $functionName;
         }
 

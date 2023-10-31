@@ -156,7 +156,7 @@ class Structure
     /**
      * Indique qu'on veut supprimer une cle primaire.
      */
-    public function dropPrimary(string|array|null $index = null): Fluent
+    public function dropPrimary(null|array|string $index = null): Fluent
     {
         return $this->dropIndexCommand('dropPrimary', 'primary', $index);
     }
@@ -164,7 +164,7 @@ class Structure
     /**
      * Indique qu'on veut supprimer une cle unique.
      */
-    public function dropUnique(string|array $index): Fluent
+    public function dropUnique(array|string $index): Fluent
     {
         return $this->dropIndexCommand('dropUnique', 'unique', $index);
     }
@@ -172,7 +172,7 @@ class Structure
     /**
      * Indique qu'on veut supprimer un index.
      */
-    public function dropIndex(string|array $index): Fluent
+    public function dropIndex(array|string $index): Fluent
     {
         return $this->dropIndexCommand('dropIndex', 'index', $index);
     }
@@ -180,7 +180,7 @@ class Structure
     /**
      * Indicate that the given fulltext index should be dropped.
      */
-    public function dropFullText(string|array $index): Fluent
+    public function dropFullText(array|string $index): Fluent
     {
         return $this->dropIndexCommand('dropFullText', 'fulltext', $index);
     }
@@ -188,7 +188,7 @@ class Structure
     /**
      * Indique qu'on veut supprimer un index spacial.
      */
-    public function dropSpatialIndex(string|array $index): Fluent
+    public function dropSpatialIndex(array|string $index): Fluent
     {
         return $this->dropIndexCommand('dropSpatialIndex', 'spatialIndex', $index);
     }
@@ -196,7 +196,7 @@ class Structure
     /**
      * Indique qu'on veut supprimer une cle etrangere.
      */
-    public function dropForeign(string|array $index): Fluent
+    public function dropForeign(array|string $index): Fluent
     {
         return $this->dropIndexCommand('dropForeign', 'foreign', $index);
     }
@@ -282,7 +282,7 @@ class Structure
     /**
      * Specifie les clés primaire de la table.
      */
-    public function primary(string|array $columns, ?string $name = null, ?string $algorithm = null): Fluent
+    public function primary(array|string $columns, ?string $name = null, ?string $algorithm = null): Fluent
     {
         return $this->indexCommand('primary', $columns, $name, $algorithm);
     }
@@ -290,7 +290,7 @@ class Structure
     /**
      * Specifie un indexe unique pour la table.
      */
-    public function unique(string|array $columns, ?string $name = null, ?string $algorithm = null): Fluent
+    public function unique(array|string $columns, ?string $name = null, ?string $algorithm = null): Fluent
     {
         return $this->indexCommand('unique', $columns, $name, $algorithm);
     }
@@ -298,7 +298,7 @@ class Structure
     /**
      * Specifie un index pour la table.
      */
-    public function index(string|array $columns, ?string $name = null, ?string $algorithm = null): Fluent
+    public function index(array|string $columns, ?string $name = null, ?string $algorithm = null): Fluent
     {
         return $this->indexCommand('index', $columns, $name, $algorithm);
     }
@@ -306,7 +306,7 @@ class Structure
     /**
      * Specify an fulltext for the table.
      */
-    public function fullText(string|array $columns, ?string $name = null, ?string $algorithm = null): Fluent
+    public function fullText(array|string $columns, ?string $name = null, ?string $algorithm = null): Fluent
     {
         return $this->indexCommand('fulltext', $columns, $name, $algorithm);
     }
@@ -314,7 +314,7 @@ class Structure
     /**
      * Specifie un index spacial pour la table.
      */
-    public function spatialIndex(string|array $columns, ?string $name = null): Fluent
+    public function spatialIndex(array|string $columns, ?string $name = null): Fluent
     {
         return $this->indexCommand('spatialIndex', $columns, $name);
     }
@@ -324,7 +324,7 @@ class Structure
      *
      * @return ForeignKey
      */
-    public function foreign(string|array $columns, ?string $name = null): Fluent
+    public function foreign(array|string $columns, ?string $name = null): Fluent
     {
         return $this->indexCommand('foreign', $columns, $name);
     }
@@ -1012,7 +1012,7 @@ class Structure
     /**
      * Cree une nouvelle commande de suppression d'indexe dans la structure.
      */
-    protected function dropIndexCommand(string $command, string $type, string|array $index): Fluent
+    protected function dropIndexCommand(string $command, string $type, array|string $index): Fluent
     {
         $columns = [];
 

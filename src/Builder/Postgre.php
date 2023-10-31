@@ -51,7 +51,7 @@ class Postgre extends BaseBuilder
     /**
      * {@inheritDoc}
      */
-    public function orderBy(string|array $field, string $direction = 'ASC', bool $escape = true): self
+    public function orderBy(array|string $field, string $direction = 'ASC', bool $escape = true): self
     {
         if (is_array($field)) {
             foreach ($field as $key => $item) {
@@ -86,7 +86,7 @@ class Postgre extends BaseBuilder
     /**
      * {@inheritDoc}
      */
-    public function increment(string $column, int|float $value = 1): bool
+    public function increment(string $column, float|int $value = 1): bool
     {
         $column = $this->db->protectIdentifiers($column);
 
@@ -104,7 +104,7 @@ class Postgre extends BaseBuilder
     /**
      * {@inheritDoc}
      */
-    public function decrement(string $column, int|float $value = 1): bool
+    public function decrement(string $column, float|int $value = 1): bool
     {
         $column = $this->db->protectIdentifiers($column);
 
@@ -199,7 +199,7 @@ class Postgre extends BaseBuilder
      *
      * @throws DatabaseException
      */
-    public function update(array|string|object $data = [], bool $escape = true, bool $execute = true)
+    public function update(array|object|string $data = [], bool $escape = true, bool $execute = true)
     {
         if (! empty($this->limit)) {
             throw new DatabaseException('PostgreSQL does not allow LIMITs on UPDATE queries.');

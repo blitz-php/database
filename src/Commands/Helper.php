@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file is part of Blitz PHP framework.
+ * This file is part of Blitz PHP framework - Database Layer.
  *
  * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
  *
@@ -12,8 +12,8 @@
 namespace BlitzPHP\Database\Commands;
 
 use BlitzPHP\Contracts\Database\ConnectionResolverInterface;
-use BlitzPHP\Database\Migration\Runner;
 use BlitzPHP\Database\Config\Services;
+use BlitzPHP\Database\Migration\Runner;
 
 /**
  * Aide a l'initialisation de la bd
@@ -25,7 +25,7 @@ class Helper
      *
      * @return array [group, configuration]
      */
-    public static function connectionInfo(array|string|null $group = null): array
+    public static function connectionInfo(null|array|string $group = null): array
     {
         return Services::container()->get(ConnectionResolverInterface::class)->connectionInfo($group);
     }

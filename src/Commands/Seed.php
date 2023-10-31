@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file is part of Blitz PHP framework.
+ * This file is part of Blitz PHP framework - Database Layer.
  *
  * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
  *
@@ -11,8 +11,8 @@
 
 namespace BlitzPHP\Database\Commands;
 
-use BlitzPHP\Database\Seeder\Seeder;
 use BlitzPHP\Container\Services;
+use BlitzPHP\Database\Seeder\Seeder;
 use InvalidArgumentException;
 
 /**

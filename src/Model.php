@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file is part of Blitz PHP framework.
+ * This file is part of Blitz PHP framework - Database Layer.
  *
  * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
  *
@@ -270,7 +270,7 @@ abstract class Model
      *
      * @throws ReflectionException
      */
-    public function create(array|object|null $data = null, bool $returnID = true)
+    public function create(null|array|object $data = null, bool $returnID = true)
     {
         if (! empty($this->tempData['data'])) {
             if (empty($data)) {
@@ -544,7 +544,7 @@ abstract class Model
      * @throws InvalidArgumentException
      * @throws ReflectionException
      */
-    protected function transformDataToArray(array|object|null $data, string $type): array
+    protected function transformDataToArray(null|array|object $data, string $type): array
     {
         if (! in_array($type, ['insert', 'update'], true)) {
             throw new InvalidArgumentException(sprintf('Invalid type "%s" used upon transforming data to array.', $type));

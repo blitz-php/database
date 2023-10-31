@@ -188,7 +188,7 @@ class SQLite extends BaseCreator
      */
     protected function _processColumn(array $field): string
     {
-        if ($field['type'] === 'TEXT' && strpos($field['length'], "('") === 0) {
+        if ($field['type'] === 'TEXT' && str_starts_with($field['length'], "('")) {
             $field['type'] .= ' CHECK(' . $this->db->escapeIdentifiers($field['name'])
                 . ' IN ' . $field['length'] . ')';
         }
@@ -274,7 +274,7 @@ class SQLite extends BaseCreator
     /**
      * {@inheritDoc}
      */
-    public function addForeignKey(string|array $fieldName = '', string $tableName = '', string|array $tableField = '', string $onUpdate = '', string $onDelete = '', string $fkName = ''): self
+    public function addForeignKey(array|string $fieldName = '', string $tableName = '', array|string $tableField = '', string $onUpdate = '', string $onDelete = '', string $fkName = ''): self
     {
         $fkName = '';
         if ($fkName === '') {

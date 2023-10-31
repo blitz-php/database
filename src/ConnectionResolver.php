@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file is part of Blitz PHP framework.
+ * This file is part of Blitz PHP framework - Database Layer.
  *
  * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
  *
@@ -43,7 +43,7 @@ class ConnectionResolver implements ConnectionResolverInterface
     {
         return $this->connect($name ?: $this->defaultConnection);
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -77,7 +77,7 @@ class ConnectionResolver implements ConnectionResolverInterface
     /**
      * {@inheritDoc}
      */
-    public function connectionInfo(array|string|null $group = null): array
+    public function connectionInfo(null|array|string $group = null): array
     {
         if (is_array($group)) {
             $config = $group;
@@ -93,15 +93,15 @@ class ConnectionResolver implements ConnectionResolverInterface
             $group = on_test() ? 'test' : (on_prod() ? 'production' : 'development');
         }
 
-        if (! isset($config[$group]) && strpos($group, 'custom-') === false) {
+        if (! isset($config[$group]) && ! str_contains($group, 'custom-')) {
             $group = 'default';
         }
 
-        if (is_string($group) && ! isset($config[$group]) && strpos($group, 'custom-') !== 0) {
+        if (is_string($group) && ! isset($config[$group]) && ! str_starts_with($group, 'custom-')) {
             throw new InvalidArgumentException($group . ' is not a valid database connection group.');
         }
 
-        if (strpos($group, 'custom-') !== false) {
+        if (str_contains($group, 'custom-')) {
             $config = [$group => $config];
         }
 

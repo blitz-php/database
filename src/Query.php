@@ -169,8 +169,6 @@ class Query
      * for it's start and end values. If no end value is present, will
      * use the current time to determine total duration.
      *
-     * @param float $end
-     *
      * @return $this
      */
     public function setDuration(float $start, ?float $end = null)

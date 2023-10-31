@@ -56,7 +56,7 @@ class BaseBuilder implements BuilderInterface
 
     protected string $tableName   = '';
     protected array $table        = [];
-    protected array  $fields      = [];
+    protected array $fields       = [];
     protected string $where       = '';
     protected array $params       = [];
     protected array $joins        = [];
@@ -340,7 +340,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param string|string[] $table Table à joindre
      */
-    final public function naturalJoin(string|array $table): self
+    final public function naturalJoin(array|string $table): self
     {
         if (! ($this->db instanceof MySQLConnection)) {
             throw new DatabaseException('The natural join is only available on MySQL driver');
@@ -359,15 +359,15 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|string|callable $field Un nom de champ ou un tableau de champs et de valeurs.
-     * @param mixed        $value Une valeur de champ à comparer
+     * @param array|callable|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param mixed                 $value Une valeur de champ à comparer
      */
     public function where($field, $value = null, bool $escape = true): self
     {
-        if ($field instanceof Closure) {     
-            $clone = clone $this;
+        if ($field instanceof Closure) {
+            $clone        = clone $this;
             $clone->where = '';
-            if (is_a($r = call_user_func($field, $clone), self::class)) {
+            if (is_a($r = $field($clone), self::class)) {
                 $clone = $r;
             }
 
@@ -388,14 +388,14 @@ class BaseBuilder implements BuilderInterface
         } else {
             $field = $this->buildParseField($field);
 
-            if ($escape === false && is_string($value) && strpos($value, '.') !== false) {
+            if ($escape === false && is_string($value) && str_contains($value, '.')) {
                 $value = $this->buildParseField($value);
             }
         }
 
-        $where                 = $this->parseCondition($field, $value, $join, $escape);
-        $this->where          .= $where;
-        $this->compileWhere[]  = $where;
+        $where = $this->parseCondition($field, $value, $join, $escape);
+        $this->where .= $where;
+        $this->compileWhere[] = $where;
 
         return $this;
     }
@@ -915,7 +915,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param string|string[] $field Un nom de champ ou un tableau de champs
      */
-    public function orderBy(string|array $field, string $direction = 'ASC', bool $escape = true): self
+    public function orderBy(array|string $field, string $direction = 'ASC', bool $escape = true): self
     {
         if (is_array($field)) {
             foreach ($field as $key => $item) {
@@ -953,7 +953,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @alias self::orderBy()
      */
-    final public function order(string|array $field, string $direction = 'ASC', bool $escape = true): self
+    final public function order(array|string $field, string $direction = 'ASC', bool $escape = true): self
     {
         return $this->orderBy($field, $direction, $escape);
     }
@@ -963,7 +963,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param string|string[] $field Un nom de champ ou un tableau de champs
      */
-    final public function sortAsc(string|array $field, bool $escape = true): self
+    final public function sortAsc(array|string $field, bool $escape = true): self
     {
         return $this->orderBy($field, 'ASC', $escape);
     }
@@ -973,7 +973,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param string|string[] $field Un nom de champ ou un tableau de champs
      */
-    final public function sortDesc(string|array $field, bool $escape = true): self
+    final public function sortDesc(array|string $field, bool $escape = true): self
     {
         return $this->orderBy($field, 'DESC', $escape);
     }
@@ -1001,15 +1001,15 @@ class BaseBuilder implements BuilderInterface
     }
 
     /**
-     * Ajoutez une clause « order by » pour un horodatage à la requête.
+     * Ajoutez une clause « order by » pour un horodatage à la requête.
      */
     final public function latest(array|string $column = 'created_at', bool $escape = true): self
     {
         return $this->sortDesc($column, $escape);
-    } 
+    }
 
     /**
-     * Ajoutez une clause « order by » pour un horodatage à la requête.
+     * Ajoutez une clause « order by » pour un horodatage à la requête.
      */
     public function oldest(array|string $column = 'created_at', bool $escape = true): self
     {
@@ -1428,7 +1428,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @return BaseResult|bool|self|string
      */
-    public function update(array|string|object $data = [], bool $escape = true, bool $execute = true)
+    public function update(array|object|string $data = [], bool $escape = true, bool $execute = true)
     {
         $this->crud = 'update';
 
@@ -1820,7 +1820,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @return mixed|mixed[] La valeur du/des champs
      */
-    final public function value(string|array $name, ?string $key = null, int $expire = 0)
+    final public function value(array|string $name, ?string $key = null, int $expire = 0)
     {
         $row = $this->first(PDO::FETCH_OBJ, $key, $expire);
 
@@ -1844,7 +1844,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @return mixed[] La/les valeurs du/des champs
      */
-    final public function values(string|array $name, ?string $key = null, int $expire = 0): array
+    final public function values(array|string $name, ?string $key = null, int $expire = 0): array
     {
         $rows = $this->all(PDO::FETCH_OBJ, $key, $expire);
 
@@ -1869,7 +1869,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @throws DatabaseException
      */
-    public function increment(string $column, int|float $value = 1): bool
+    public function increment(string $column, float|int $value = 1): bool
     {
         $column = $this->db->protectIdentifiers($column);
 
@@ -1889,7 +1889,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @throws DatabaseException
      */
-    public function decrement(string $column, int|float $value = 1): bool
+    public function decrement(string $column, float|int $value = 1): bool
     {
         $column = $this->db->protectIdentifiers($column);
 
@@ -2261,7 +2261,7 @@ class BaseBuilder implements BuilderInterface
         }
 
         $operator = '';
-        if (strpos($field, ' ') !== false) {
+        if (str_contains($field, ' ')) {
             $parts    = explode(' ', $field);
             $field    = array_shift($parts);
             $operator = implode(' ', $parts);
@@ -2297,7 +2297,7 @@ class BaseBuilder implements BuilderInterface
         }
 
         if (is_array($value)) {
-            if (strpos($operator, '@') === false) {
+            if (! str_contains($operator, '@')) {
                 $condition = ' IN ';
             }
             $value = '(' . implode(',', array_map(fn ($val) => $escape === true ? $this->db->quote($val) : $val, $value)) . ')';
@@ -2379,7 +2379,7 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Liste des functions sql
-     * 
+     *
      * @see https://sqlpro.developpez.com/cours/sqlaz/fonctions/
      */
     public static function sqlFunctions(): array
@@ -2388,20 +2388,20 @@ class BaseBuilder implements BuilderInterface
             /** Agrégations statistique */
             'AVG', 'COUNT', 'MAX', 'MIN', 'SUM', 'EVERY', 'SOME', 'ANY',
             /** Fonctions systeme */
-            'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP', 'CURRENT_USER', 'SESSION_USER', 'SYSTEM_USER', 'CURDATE', 'CURTIME', 'DATABASE', 'TODAY', 'NOW', 'GETDATE', 'SYSDATE', 'USER', 'VERSION', 
+            'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP', 'CURRENT_USER', 'SESSION_USER', 'SYSTEM_USER', 'CURDATE', 'CURTIME', 'DATABASE', 'TODAY', 'NOW', 'GETDATE', 'SYSDATE', 'USER', 'VERSION',
             /** Fonctions générales */
             'CAST', 'COALESCE', 'NULLIF', 'OCTET_LENGTH', 'DATALENGTH', 'DECODE', 'GREATEST', 'IFNULL', 'LEAST', 'LENGTH', 'NVL', 'TO_DATE', 'TO_CHAR', 'TO_NUMBER',
             /** Fonctions de chaines */
-            'CHAR_LENGTH', 'CHARACTER_LENGTH', 'COLLATE', 'CONCATENATE', 'CONVERT', 'LIKE', 'LOWER', 'POSITION', 'SUBSTRING', 'TRANSLATE', 'TO_CHAR', 'TRIM', 'UPPER', 
-            'CHAR', 'CHAR_OCTET_LENGTH', 'CHARACTER_MAXIMUM_LENGTH', 'CHARACTER_OCTET_LENGTH', 'CONCAT', 'ILIKE', 'INITCAP', 'INSTR', 'LCASE', 'LOCATE', 'LPAD', 'LTRIM', 
+            'CHAR_LENGTH', 'CHARACTER_LENGTH', 'COLLATE', 'CONCATENATE', 'CONVERT', 'LIKE', 'LOWER', 'POSITION', 'SUBSTRING', 'TRANSLATE', 'TO_CHAR', 'TRIM', 'UPPER',
+            'CHAR', 'CHAR_OCTET_LENGTH', 'CHARACTER_MAXIMUM_LENGTH', 'CHARACTER_OCTET_LENGTH', 'CONCAT', 'ILIKE', 'INITCAP', 'INSTR', 'LCASE', 'LOCATE', 'LPAD', 'LTRIM',
             'NCHAR', 'PATINDEX', 'REPLACE', 'REVERSE', 'RPAD', 'RTRIM', 'SPACE', 'SUBSTR', 'UCASE', 'SIMILAR',
             /** Fonctions numériques */
             'ABS', 'ASCII', 'ASIN', 'ATAN', 'CEILING', 'COS', 'COT', 'EXP', 'FLOOR', 'LN', 'LOG10', 'LOG', 'MOD', 'PI', 'POWER', 'RAND', 'ROUND', 'SIGN', 'SIN', 'SQRT', 'TAN', 'TRUNC', 'TRUNCATE', 'UNICODE',
             /** Fonctions temporelles */
-            'EXTRACT', 'INTERVAL', 'OVERLAPS', 'ADDDATE', 'AGE', 'DATE_ADD', 'DATE_FORMAT', 'DATE_PART', 'DATE_SUB', 'DATEADD', 'DATEDIFF', 'DATENAME', 'DATEPART', 'DAY', 'DAYNAME', 'DAYOFMONTH', 'DAYOFWEEK', 
+            'EXTRACT', 'INTERVAL', 'OVERLAPS', 'ADDDATE', 'AGE', 'DATE_ADD', 'DATE_FORMAT', 'DATE_PART', 'DATE_SUB', 'DATEADD', 'DATEDIFF', 'DATENAME', 'DATEPART', 'DAY', 'DAYNAME', 'DAYOFMONTH', 'DAYOFWEEK',
             'DAYOFYEAR', 'HOUR', 'LAST_DAY', 'MINUTE', 'MONTH', 'MONTH_BETWEEN', 'MONTHNAME', 'NEXT_DAY', 'SECOND', 'SUBDATE', 'WEEK', 'YEAR',
 
-            'TO_TIME', 'TO_TIMESTAMP', 'FIRST', 'LAST', 'MID', 'LEN', 'FORMAT',            
+            'TO_TIME', 'TO_TIMESTAMP', 'FIRST', 'LAST', 'MID', 'LEN', 'FORMAT',
         ];
     }
 
@@ -2545,7 +2545,7 @@ class BaseBuilder implements BuilderInterface
      */
     private function removeAlias(string $from): string
     {
-        if (strpos($from, ' ') !== false) {
+        if (str_contains($from, ' ')) {
             // si l'alias est écrit avec le mot-clé AS, supprimez-le
             $from = preg_replace('/\s+AS\s+/i', ' ', $from);
 
