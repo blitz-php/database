@@ -1309,6 +1309,14 @@ class BaseBuilder implements BuilderInterface
 
         $this->fields[] = implode(', ', array_map('trim', $fields));
 
+        if (is_int($num = array_search('*', $this->fields))) {
+            $temp               = $this->fields[$num];
+            $this->fields[$num] = $this->fields[0];
+            $this->fields[0]    = $temp;
+        }
+
+        $this->fields = array_unique($this->fields);
+
         return $this->asCrud('select');
     }
 
