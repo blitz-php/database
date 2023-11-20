@@ -756,6 +756,10 @@ abstract class BaseConnection implements ConnectionInterface
 
         // resultID is not false, so it must be successful
         if ($this->isWriteType($sql)) {
+            if ($this->result instanceof PDOStatement) {
+                $this->result->closeCursor();
+            }
+            
             return true;
         }
 
