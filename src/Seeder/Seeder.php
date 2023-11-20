@@ -52,7 +52,7 @@ abstract class Seeder
      */
     protected bool $silent = false;
 
-    public function __construct(private BaseConnection $db)
+    public function __construct(protected BaseConnection $db)
     {
     }
 
