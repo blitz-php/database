@@ -19,6 +19,7 @@ use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Exceptions\DataException;
 use BlitzPHP\Database\Result\BaseResult;
 use BlitzPHP\Utilities\Date;
+use Closure;
 use InvalidArgumentException;
 use ReflectionClass;
 use ReflectionProperty;
@@ -141,6 +142,14 @@ abstract class Model
      * @var string
      */
     protected $primaryKey = 'id';
+
+    /**
+     * Le format dans lequel les résultats doivent être renvoyés.
+     * Ce format sera surchargé si les méthodes as* sont utilisées.
+     *
+     * @var string
+     */
+    protected string $returnType = 'array';
 
     /**
      * Primary Key value when inserting and useAutoIncrement is false.
@@ -354,6 +363,40 @@ abstract class Model
         }
 
         return $response;
+    }    
+
+    /**
+     * Boucle sur les enregistrements par lots, ce qui vous permet d'opérer sur eux.
+     * Fonctionne avec $this->builder pour obtenir la sélection compilée afin de déterminer les lignes sur lesquelles opérer.
+     * Cette méthode ne fonctionne qu'avec les dbCalls.
+     *
+     * @throws DataException
+     */
+    public function chunk(int $size, Closure $userFunc)
+    {
+        $total  = (clone $this->builder())->count();
+        $offset = 0;
+
+        while ($offset <= $total) {
+            $builder = clone $this->builder();
+            $rows    = $builder->limit($size, $offset)->all($this->returnType);
+
+            if (! $rows) {
+                throw DataException::emptyDataset('chunk');
+            }
+
+            $offset += $size;
+
+            if (empty($rows)) {
+                continue;
+            }
+
+            foreach ($rows as $row) {
+                if ($userFunc($row) === false) {
+                    return;
+                }
+            }
+        }
     }
 
     /**
