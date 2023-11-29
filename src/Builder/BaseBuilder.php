@@ -1303,6 +1303,10 @@ class BaseBuilder implements BuilderInterface
             $fields = explode(',', $fields);
         }
 
+        if ($fields === ['*'] && ! empty($this->fields)) {
+            $fields = [];
+        }
+
         foreach ($fields as &$val) {
             $val = $this->buildParseField($val);
         }
@@ -1315,6 +1319,7 @@ class BaseBuilder implements BuilderInterface
             $this->fields[0]    = $temp;
         }
 
+        $this->fields = array_filter($this->fields);
         $this->fields = array_unique($this->fields);
 
         return $this->asCrud('select');
