@@ -28,7 +28,7 @@ class Services extends BaseServices
             return static::$instances[BaseBuilder::class];
         }
 
-        return static::$instances[BaseBuilder::class] = new BaseBuilder(static::database($group));
+        return static::$instances[BaseBuilder::class] = Database::builder(static::database($group));
     }
 
     /**

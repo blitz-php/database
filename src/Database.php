@@ -12,6 +12,7 @@
 namespace BlitzPHP\Database;
 
 use BlitzPHP\Contracts\Database\ConnectionInterface;
+use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Creator\BaseCreator;
 use InvalidArgumentException;
@@ -91,6 +92,18 @@ class Database
     }
 
     /**
+     * Renvoie une instance Builder adaptee au pilote et prêt à l'emploi.
+     *
+     * @throws InvalidArgumentException
+     *
+     * @uses self::loadBuilder
+     */
+    public static function builder(ConnectionInterface $db): BaseBuilder
+    {
+        return self::instance()->loadBuilder($db);
+    }
+
+    /**
      * Renvoie une instance Creator adaptee au pilote et prêt à l'emploi.
      *
      * @throws InvalidArgumentException
@@ -112,6 +125,18 @@ class Database
         }
 
         return $this->initDriver($db->driver, 'Creator', $db);
+    }
+
+    /**
+     * Crée une instance Builder pour le type de base de données actuel.
+     */
+    public function loadBuilder(ConnectionInterface $db): BaseBuilder
+    {
+        if (! $db->conn) {
+            $db->initialize();
+        }
+
+        return $this->initDriver($db->driver, 'Builder', $db);
     }
 
     /**
@@ -170,7 +195,7 @@ class Database
      * @param array|object $argument
      * @param mixed        $params
      *
-     * @return BaseConnection|BaseCreator|BaseUtils
+     * @return BaseConnection|BaseCreator|BaseUtils|BaseBuilder
      */
     protected function initDriver(string $driver, string $class, $params, ...$arguments): object
     {
