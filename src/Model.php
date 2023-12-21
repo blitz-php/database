@@ -146,8 +146,6 @@ abstract class Model
     /**
      * Le format dans lequel les résultats doivent être renvoyés.
      * Ce format sera surchargé si les méthodes as* sont utilisées.
-     *
-     * @var string
      */
     protected string $returnType = 'array';
 
@@ -363,7 +361,7 @@ abstract class Model
         }
 
         return $response;
-    }    
+    }
 
     /**
      * Boucle sur les enregistrements par lots, ce qui vous permet d'opérer sur eux.

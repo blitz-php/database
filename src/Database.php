@@ -195,7 +195,7 @@ class Database
      * @param array|object $argument
      * @param mixed        $params
      *
-     * @return BaseConnection|BaseCreator|BaseUtils|BaseBuilder
+     * @return BaseBuilder|BaseConnection|BaseCreator|BaseUtils
      */
     protected function initDriver(string $driver, string $class, $params, ...$arguments): object
     {

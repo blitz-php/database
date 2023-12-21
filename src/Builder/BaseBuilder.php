@@ -1313,7 +1313,7 @@ class BaseBuilder implements BuilderInterface
 
         $this->fields[] = implode(', ', array_map('trim', $fields));
 
-        if (is_int($num = array_search('*', $this->fields))) {
+        if (is_int($num = array_search('*', $this->fields, true))) {
             $temp               = $this->fields[$num];
             $this->fields[$num] = $this->fields[0];
             $this->fields[0]    = $temp;

@@ -759,7 +759,7 @@ abstract class BaseConnection implements ConnectionInterface
             if ($this->result instanceof PDOStatement) {
                 $this->result->closeCursor();
             }
-            
+
             return true;
         }
 
