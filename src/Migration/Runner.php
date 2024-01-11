@@ -95,6 +95,11 @@ class Runner
     private static $_instance;
 
     /**
+     * Longueur par défaut des champs de type chaînes (varchar/char) pour les migrations.
+     */
+    public static int $defaultStringLength = 255;
+
+    /**
      * Constructor.
      *
      * When passing in $db, you may pass any of the following to connect:
@@ -123,6 +128,14 @@ class Runner
         }
 
         return self::$_instance;
+    }
+
+    /**
+     * Définir la longueur de la chaîne par défaut pour les migrations.
+     */
+    public static function defaultStringLength(int $length): void
+    {
+        static::$defaultStringLength = $length;
     }
 
     /**

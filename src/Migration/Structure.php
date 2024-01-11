@@ -388,9 +388,9 @@ class Structure
     /**
      * Create a new char column on the table.
      */
-    public function char(string $column, int $length = 255): Column
+    public function char(string $column, ?int $length = null): Column
     {
-        $length = max($length, 1);
+        $length = max($length ?: Runner::$defaultStringLength, 1);
 
         return $this->addColumn('char', $column, compact('length'));
     }
@@ -398,9 +398,9 @@ class Structure
     /**
      * Create a new string column on the table.
      */
-    public function string(string $column, int $length = 255): Column
+    public function string(string $column, ?int $length = null): Column
     {
-        $length = max($length, 1);
+        $length = max($length ?: Runner::$defaultStringLength, 1);
 
         return $this->addColumn('string', $column, compact('length'));
     }
