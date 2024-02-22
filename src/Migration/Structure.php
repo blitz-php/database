@@ -204,7 +204,7 @@ class Structure
     /**
      * Indicate that the given column and foreign key should be dropped.
      */
-    public function dropConstrainedForeignId(string $column): Column
+    public function dropConstrainedForeignId(string $column): Fluent
     {
         $this->dropForeign([$column]);
 
