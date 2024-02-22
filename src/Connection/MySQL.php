@@ -492,13 +492,13 @@ class MySQL extends BaseConnection
     /**
      * Insert ID
      */
-    public function insertID(): int
+    public function insertID(?string $table = null): int
     {
         if (! $this->isPdo()) {
             return $this->conn->insert_id;
         }
 
-        return $this->conn->lastInsertId();
+        return $this->conn->lastInsertId($table);
     }
 
     /**

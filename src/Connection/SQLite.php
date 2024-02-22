@@ -477,13 +477,13 @@ class SQLite extends BaseConnection
     /**
      * Insert ID
      */
-    public function insertID(): int
+    public function insertID(?string $table = null): int
     {
         if (! $this->isPdo()) {
             return $this->conn->lastInsertRowID();
         }
 
-        return $this->conn->lastInsertId();
+        return $this->conn->lastInsertId($table);
     }
 
     /**
