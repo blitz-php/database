@@ -17,6 +17,7 @@ use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Connection\MySQL as MySQLConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
+use BlitzPHP\Database\Result\BaseResult;
 use BlitzPHP\Utilities\Iterable\Arr;
 use BlitzPHP\Utilities\String\Text;
 use Closure;

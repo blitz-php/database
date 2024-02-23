@@ -273,7 +273,7 @@ abstract class Model
      *
      * @param bool $returnID Si l'ID de l'element inséré doit être retourné ou non.
      *
-     * @return BaseResult|int
+     * @return bool|int|null
      *
      * @throws ReflectionException
      */
@@ -299,11 +299,10 @@ abstract class Model
         $this->escape   = $this->tempData['escape'] ?? [];
         $this->tempData = [];
 
-        /** @var BaseResult $inserted */
-        $inserted = $this->builder()->insert($data);
+        $builder = $this->builder();
 
-        if ($returnID) {
-            return $inserted->lastId();
+        if ($returnID && true === $inserted = $builder->insert($data)) {
+            return $this->db->lastId($builder->getTable());
         }
 
         return $inserted;
