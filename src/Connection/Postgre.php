@@ -514,7 +514,7 @@ class Postgre extends BaseConnection
      * {@inheritDoc}
      */
     public function insertID(?string $table = null)
-    {        
+    {
         if ($this->isPdo()) {
             return $this->conn->lastInsertId($table);
         }

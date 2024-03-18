@@ -11,12 +11,12 @@
 
 namespace BlitzPHP\Database\Validation;
 
+use BackedEnum;
 use BlitzPHP\Contracts\Database\BuilderInterface;
 use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Contracts\Support\Arrayable;
-use BlitzPHP\Wolke\Entity;
-use BackedEnum;
 use BlitzPHP\Database\Builder\BaseBuilder;
+use BlitzPHP\Wolke\Entity;
 use Closure;
 
 trait DatabaseRule
@@ -50,22 +50,22 @@ trait DatabaseRule
         }
 
         if (class_exists(Entity::class) && is_subclass_of($table, Entity::class)) {
-            $model = new $table;
+            $model = new $table();
 
             if (str_contains($model->getTable(), '.')) {
                 return $table;
             }
 
-            return implode('.', array_map(fn (string $part) => trim($part, '.'), array_filter([$model->getConnectionName(), $model->getTable()])));
+            return implode('.', array_map(static fn (string $part) => trim($part, '.'), array_filter([$model->getConnectionName(), $model->getTable()])));
         }
 
         return $table;
     }
 
     /**
-     * Définissez une contrainte « where » sur la requête.
+     * Définissez une contrainte « where » sur la requête.
      *
-     * @param Arrayable|BackedEnum|Closure|array|string|int|bool|null $value
+     * @param array|Arrayable|BackedEnum|bool|Closure|int|string|null $value
      */
     public function where(Closure|string $column, $value = null): self
     {
@@ -77,7 +77,7 @@ trait DatabaseRule
             return $this->using($column);
         }
 
-        if (is_null($value)) {
+        if (null === $value) {
             return $this->whereNull($column);
         }
 
@@ -93,7 +93,7 @@ trait DatabaseRule
     /**
      * Définissez une contrainte "where not" sur la requête.
      *
-     * @param Arrayable|BackedEnum|array|string $value
+     * @param array|Arrayable|BackedEnum|string $value
      */
     public function whereNot(string $column, $value): self
     {
@@ -105,7 +105,7 @@ trait DatabaseRule
             $value = $value->value;
         }
 
-        return $this->where($column .' !=', $value);
+        return $this->where($column . ' !=', $value);
     }
 
     /**
@@ -117,7 +117,7 @@ trait DatabaseRule
     }
 
     /**
-     * Définissez une contrainte « where not null » sur la requête.
+     * Définissez une contrainte « where not null » sur la requête.
      */
     public function whereNotNull(string $column): self
     {
@@ -125,25 +125,25 @@ trait DatabaseRule
     }
 
     /**
-     * Définissez une contrainte « where in » sur la requête.
+     * Définissez une contrainte « where in » sur la requête.
      *
-     * @param Arrayable|BackedEnum|array  $values
+     * @param array|Arrayable|BackedEnum $values
      */
     public function whereIn(string $column, $values): self
     {
-        return $this->where(function ($query) use ($column, $values) {
+        return $this->where(static function ($query) use ($column, $values) {
             $query->whereIn($column, $values);
         });
     }
 
     /**
-     * Définissez une contrainte « where not in » sur la requête.
+     * Définissez une contrainte « where not in » sur la requête.
      *
-     * @param Arrayable|BackedEnum|array $values
+     * @param array|Arrayable|BackedEnum $values
      */
     public function whereNotIn(string $column, $values): self
     {
-        return $this->where(function ($query) use ($column, $values) {
+        return $this->where(static function ($query) use ($column, $values) {
             $query->whereNotIn($column, $values);
         });
     }
@@ -201,7 +201,7 @@ trait DatabaseRule
         foreach ($this->getWheres() as $field => $value) {
             if ($value === 'NULL') {
                 $builder = $builder->whereNull($field);
-            } else if ($value === 'NOT_NULL') {
+            } elseif ($value === 'NOT_NULL') {
                 $builder = $builder->whereNotNull($field);
             } else {
                 $builder = $builder->where($field, $value);

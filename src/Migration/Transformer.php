@@ -76,21 +76,21 @@ class Transformer
 
         foreach ($commands as $command) {
             if ($command->name === 'foreign') {
-				$onDelete = match(true) {
-					($command->cascadeOnDelete ?? null)  === true => 'cascade',
-					($command->restrictOnDelete ?? null) === true => 'restrict',
-					($command->nullOnDelete ?? null)     === true => 'set null',
-					($command->noActionOnDelete ?? null) === true => 'no action',
-					default => $command->onDelete ?? ''
-				};
-				$onUpdate= match(true) {
-					($command->cascadeOnUpdate ?? null)  === true => 'cascade',
-					($command->restrictOnUpdate ?? null) === true => 'restrict',
-					($command->nullOnUpdate ?? null)     === true => 'set null',
-					($command->noActionOnUpdate ?? null) === true => 'no action',
-					default => $command->onUpdate ?? ''
-				};
-				
+                $onDelete = match (true) {
+                    ($command->cascadeOnDelete ?? null) === true  => 'cascade',
+                    ($command->restrictOnDelete ?? null) === true => 'restrict',
+                    ($command->nullOnDelete ?? null) === true     => 'set null',
+                    ($command->noActionOnDelete ?? null) === true => 'no action',
+                    default                                       => $command->onDelete ?? ''
+                };
+                $onUpdate = match (true) {
+                    ($command->cascadeOnUpdate ?? null) === true  => 'cascade',
+                    ($command->restrictOnUpdate ?? null) === true => 'restrict',
+                    ($command->nullOnUpdate ?? null) === true     => 'set null',
+                    ($command->noActionOnUpdate ?? null) === true => 'no action',
+                    default                                       => $command->onUpdate ?? ''
+                };
+
                 $this->creator->addForeignKey(
                     $command->columns,
                     $command->on,

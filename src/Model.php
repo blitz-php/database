@@ -17,7 +17,6 @@ use BlitzPHP\Contracts\Database\ConnectionResolverInterface;
 use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Exceptions\DataException;
-use BlitzPHP\Database\Result\BaseResult;
 use BlitzPHP\Utilities\Date;
 use Closure;
 use InvalidArgumentException;

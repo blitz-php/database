@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file is part of Blitz PHP framework.
+ * This file is part of Blitz PHP framework - Database Layer.
  *
  * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
  *
@@ -19,9 +19,7 @@ class Exists extends AbstractRule
     use DatabaseRule;
 
     protected $message        = ':attribute :value do not exist';
-
     protected $fillableParams = ['table', 'column'];
-
 
     public function check($value): bool
     {
