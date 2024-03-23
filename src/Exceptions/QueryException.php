@@ -20,15 +20,15 @@ class QueryException extends PDOException
     /**
      * Create a new query exception instance.
      *
-     * @param  string  $connectionName The database connection name.
-     * @param  string  $sql The SQL for the query.
-     * @param  array  $bindings The bindings for the query.
+     * @param string $connectionName The database connection name.
+     * @param string $sql            The SQL for the query.
+     * @param array  $bindings       The bindings for the query.
      */
     public function __construct(public string $connectionName, protected string $sql, protected array $bindings, Throwable $previous)
     {
         parent::__construct('', 0, $previous);
 
-        $this->code = $previous->getCode();
+        $this->code    = $previous->getCode();
         $this->message = $this->formatMessage($connectionName, $sql, $bindings, $previous);
 
         if ($previous instanceof PDOException) {
@@ -39,9 +39,9 @@ class QueryException extends PDOException
     /**
      * Format the SQL error message.
      */
-    protected function formatMessage(string $connectionName, string $sql, array $bindings, Throwable $previous):  string
+    protected function formatMessage(string $connectionName, string $sql, array $bindings, Throwable $previous): string
     {
-        return $previous->getMessage().' (Connection: '.$connectionName.', SQL: '. Text::replaceArray('?', $bindings, $sql).')';
+        return $previous->getMessage() . ' (Connection: ' . $connectionName . ', SQL: ' . Text::replaceArray('?', $bindings, $sql) . ')';
     }
 
     /**

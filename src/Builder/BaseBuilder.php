@@ -893,34 +893,34 @@ class BaseBuilder implements BuilderInterface
     }
 
     /**
-    * Génère la partie WHERE de la requête sur des champs.
-    * Sépare plusieurs appels avec 'AND'.
-    *
-    * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
-    */
-   final public function whereColumn(array|string $field, ?string $compare = null): self
-   {
-       if (is_string($field)) {
-           if (empty($compare)) {
-               throw new InvalidArgumentException('Le champ de comparaison n\'a pas été renseigné');
-           }
+     * Génère la partie WHERE de la requête sur des champs.
+     * Sépare plusieurs appels avec 'AND'.
+     *
+     * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
+     */
+    final public function whereColumn(array|string $field, ?string $compare = null): self
+    {
+        if (is_string($field)) {
+            if (empty($compare)) {
+                throw new InvalidArgumentException('Le champ de comparaison n\'a pas été renseigné');
+            }
 
-           $field = [$field => $compare];
-       }
-       
-       return $this->where($field, null, false);
-   }
+            $field = [$field => $compare];
+        }
 
-   /**
-    * Génère la partie WHERE de la requête sur des champs.
-    * Sépare plusieurs appels avec 'OR'.
-    *
-    * @param array|string $field Un nom de champ ou un tableau de champs et de valeurs.
-    * @param mixed        $match Une valeur de champ à comparer
-    * @param string       $side  Côté sur lequel sera ajouté le caractère '%' si necessaire
-    */
-   final public function orWhereColumn(array|string $field, ?string $compare = null): self
-   {
+        return $this->where($field, null, false);
+    }
+
+    /**
+     * Génère la partie WHERE de la requête sur des champs.
+     * Sépare plusieurs appels avec 'OR'.
+     *
+     * @param array|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param mixed        $match Une valeur de champ à comparer
+     * @param string       $side  Côté sur lequel sera ajouté le caractère '%' si necessaire
+     */
+    final public function orWhereColumn(array|string $field, ?string $compare = null): self
+    {
         if (! is_array($field)) {
             $field = [$field => $compare];
         }
@@ -931,47 +931,47 @@ class BaseBuilder implements BuilderInterface
         }
 
         return $this->whereColumn($field);
-   }
+    }
 
-   /**
-    * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
-    * Sépare plusieurs appels avec 'AND'.
-    *
-    * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
-    */
-   final public function notWhereColumn(array|string $field, ?string $compare = null): self
-   {
-       if (! is_array($field)) {
-           $field = [$field => $compare];
-       }
+    /**
+     * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
+     * Sépare plusieurs appels avec 'AND'.
+     *
+     * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
+     */
+    final public function notWhereColumn(array|string $field, ?string $compare = null): self
+    {
+        if (! is_array($field)) {
+            $field = [$field => $compare];
+        }
 
-       foreach ($field as $key => $value) {
-           $field[$key . ' !='] = $value;
-           unset($field[$key]);
-       }
+        foreach ($field as $key => $value) {
+            $field[$key . ' !='] = $value;
+            unset($field[$key]);
+        }
 
-       return $this->whereColumn($field);
-   }
+        return $this->whereColumn($field);
+    }
 
-   /**
-    * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
-    * Sépare plusieurs appels avec 'AND'.
-    *
-    * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
-    */
-   final public function whereNotColumn(array|string $field, ?string $compare = null): self
-   {
-       return $this->notWhereColumn($field, $compare);
-   }
+    /**
+     * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
+     * Sépare plusieurs appels avec 'AND'.
+     *
+     * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
+     */
+    final public function whereNotColumn(array|string $field, ?string $compare = null): self
+    {
+        return $this->notWhereColumn($field, $compare);
+    }
 
-   /**
-    * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
-    * Sépare plusieurs appels avec 'OR'.
-    *
-    * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
-    */
+    /**
+     * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
+     * Sépare plusieurs appels avec 'OR'.
+     *
+     * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
+     */
     final public function orWhereNotColumn(array|string $field, ?string $compare = null): self
-   {
+    {
         if (! is_array($field)) {
             $field = [$field => $compare];
         }
@@ -982,18 +982,18 @@ class BaseBuilder implements BuilderInterface
         }
 
         return $this->whereColumn($field);
-   }
+    }
 
-   /**
-    * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
-    * Sépare plusieurs appels avec 'OR'.
-    *
-    * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
-    */
-   final public function orNotWhereColumn(array|string $field, ?string $compare = null): self
-   {
+    /**
+     * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
+     * Sépare plusieurs appels avec 'OR'.
+     *
+     * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
+     */
+    final public function orNotWhereColumn(array|string $field, ?string $compare = null): self
+    {
         return $this->orWhereNotColumn($field, $compare);
-   }
+    }
 
     /**
      * Recupere l'ensemble des where sous forme de tableau
@@ -2476,17 +2476,17 @@ class BaseBuilder implements BuilderInterface
      */
     protected function resetSelect()
     {
-        $this->params    = [];   
-        $this->where     = '';
-        $this->fields    = [];
-        $this->joins     = [];
-        $this->groups    = '';
-        $this->having    = '';
-        $this->order     = '';
-        $this->distinct  = '';
-        $this->limit     = '';
-        $this->offset    = '';
-    
+        $this->params   = [];
+        $this->where    = '';
+        $this->fields   = [];
+        $this->joins    = [];
+        $this->groups   = '';
+        $this->having   = '';
+        $this->order    = '';
+        $this->distinct = '';
+        $this->limit    = '';
+        $this->offset   = '';
+
         if (! empty($this->db)) {
             $this->db->setAliasedTables([]);
         }
@@ -2733,7 +2733,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Construit une sous requete
      */
-    protected function buildSubquery(self|Closure $builder, bool $wrapped = false, string $alias = ''): string
+    protected function buildSubquery(Closure|self $builder, bool $wrapped = false, string $alias = ''): string
     {
         if ($builder instanceof Closure) {
             $builder($builder = $this->db->newQuery());
