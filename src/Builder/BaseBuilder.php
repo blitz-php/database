@@ -189,6 +189,19 @@ class BaseBuilder implements BuilderInterface
     }
 
     /**
+     * @param BaseBuilder $from
+     */
+    public function fromSubquery(BuilderInterface $from, string $alias = ''): self
+    {
+        $table = $this->buildSubquery($from, true, $alias);
+
+        $this->db->addTableAlias($alias);
+        $this->table[] = $table;
+
+        return $this;
+    }
+
+    /**
      *Génère la partie FROM de la requête
      *
      * @param string|string[]|null $from
@@ -206,24 +219,6 @@ class BaseBuilder implements BuilderInterface
     final public function into(string $table): self
     {
         return $this->table($table);
-    }
-
-    public function fromSubquery(BuilderInterface $builder, string $alias = ''): self
-    {
-        if ($builder === $this) {
-            throw new DatabaseException('The subquery cannot be the same object as the main query object.');
-        }
-
-        $subquery = '(' . strtr($builder->sql(), "\n", ' ') . ')';
-
-        $alias = trim($alias);
-        if ($alias !== '') {
-            $subquery .= ' ' . $this->db->escapeIdentifiers($alias);
-        }
-
-        $this->table = [$subquery];
-
-        return $this;
     }
 
     /**
@@ -384,6 +379,10 @@ class BaseBuilder implements BuilderInterface
                     $val = $value;
                 }
                 unset($field[$key]);
+
+                if ($escape === false && is_string($val) && str_contains($val, '.')) {
+                    $val = $this->buildParseField($val);
+                }
                 $field[$this->buildParseField($key)] = $val;
             }
         } else {
@@ -894,6 +893,109 @@ class BaseBuilder implements BuilderInterface
     }
 
     /**
+    * Génère la partie WHERE de la requête sur des champs.
+    * Sépare plusieurs appels avec 'AND'.
+    *
+    * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
+    */
+   final public function whereColumn(array|string $field, ?string $compare = null): self
+   {
+       if (is_string($field)) {
+           if (empty($compare)) {
+               throw new InvalidArgumentException('Le champ de comparaison n\'a pas été renseigné');
+           }
+
+           $field = [$field => $compare];
+       }
+       
+       return $this->where($field, null, false);
+   }
+
+   /**
+    * Génère la partie WHERE de la requête sur des champs.
+    * Sépare plusieurs appels avec 'OR'.
+    *
+    * @param array|string $field Un nom de champ ou un tableau de champs et de valeurs.
+    * @param mixed        $match Une valeur de champ à comparer
+    * @param string       $side  Côté sur lequel sera ajouté le caractère '%' si necessaire
+    */
+   final public function orWhereColumn(array|string $field, ?string $compare = null): self
+   {
+        if (! is_array($field)) {
+            $field = [$field => $compare];
+        }
+
+        foreach ($field as $key => $value) {
+            $field['|' . $key] = $value;
+            unset($field[$key]);
+        }
+
+        return $this->whereColumn($field);
+   }
+
+   /**
+    * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
+    * Sépare plusieurs appels avec 'AND'.
+    *
+    * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
+    */
+   final public function notWhereColumn(array|string $field, ?string $compare = null): self
+   {
+       if (! is_array($field)) {
+           $field = [$field => $compare];
+       }
+
+       foreach ($field as $key => $value) {
+           $field[$key . ' !='] = $value;
+           unset($field[$key]);
+       }
+
+       return $this->whereColumn($field);
+   }
+
+   /**
+    * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
+    * Sépare plusieurs appels avec 'AND'.
+    *
+    * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
+    */
+   final public function whereNotColumn(array|string $field, ?string $compare = null): self
+   {
+       return $this->notWhereColumn($field, $compare);
+   }
+
+   /**
+    * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
+    * Sépare plusieurs appels avec 'OR'.
+    *
+    * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
+    */
+    final public function orWhereNotColumn(array|string $field, ?string $compare = null): self
+   {
+        if (! is_array($field)) {
+            $field = [$field => $compare];
+        }
+
+        foreach ($field as $key => $value) {
+            $field['|' . $key . ' !='] = $value;
+            unset($field[$key]);
+        }
+
+        return $this->whereColumn($field);
+   }
+
+   /**
+    * Génère la partie WHERE (de type WHERE x NOT y) de la requête sur des champs.
+    * Sépare plusieurs appels avec 'OR'.
+    *
+    * @param array|string $field Un nom de champ 1 ou un tableau de champs ['champ1' => 'champ2', 'champ3' => 'champ4'].
+    */
+   final public function orNotWhereColumn(array|string $field, ?string $compare = null): self
+   {
+        return $this->orWhereNotColumn($field, $compare);
+   }
+
+    /**
      * Recupere l'ensemble des where sous forme de tableau
      */
     final public function getCompiledWhere(): array
@@ -1314,16 +1416,17 @@ class BaseBuilder implements BuilderInterface
 
         $this->fields[] = implode(', ', array_map('trim', $fields));
 
-        if (is_int($num = array_search('*', $this->fields, true))) {
-            $temp               = $this->fields[$num];
-            $this->fields[$num] = $this->fields[0];
-            $this->fields[0]    = $temp;
-        }
-
-        $this->fields = array_filter($this->fields);
-        $this->fields = array_unique($this->fields);
-
         return $this->asCrud('select');
+    }
+
+    /**
+     * Ajoute une sous requete a la selection
+     */
+    public function selectSubquery(BaseBuilder $subquery, string $as): self
+    {
+        $this->fields[] = $this->buildSubquery($subquery, true, $as);
+
+        return $this;
     }
 
     /**
@@ -2109,20 +2212,7 @@ class BaseBuilder implements BuilderInterface
                 $this->offset,
             ]);
         } elseif ($this->crud === 'select') {
-            $this->setSql([
-                'SELECT',
-                $this->distinct,
-                implode(', ', ! empty($this->fields) ? $this->fields : ['*']),
-                $this->table === [null] ? '' : 'FROM',
-                implode(', ', $this->table),
-                implode(' ', $this->joins),
-                $this->where,
-                $this->groups,
-                $this->having,
-                $this->order,
-                $this->limit,
-                $this->offset,
-            ]);
+            $this->setSql($this->compileSelect());
         }
 
         return $this;
@@ -2219,6 +2309,42 @@ class BaseBuilder implements BuilderInterface
         }
 
         return '';
+    }
+
+    /**
+     * Compiles la requete SELECT et renvoie le sql correspondant
+     */
+    protected function compileSelect(bool $reset = true): string
+    {
+        if (is_int($num = array_search('*', $this->fields, true))) {
+            $temp               = $this->fields[$num];
+            $this->fields[$num] = $this->fields[0];
+            $this->fields[0]    = $temp;
+        }
+
+        $this->fields = array_filter($this->fields);
+        $this->fields = array_unique($this->fields);
+
+        $select = $this->makeSql([
+            'SELECT',
+            $this->distinct,
+            implode(', ', ! empty($this->fields) ? $this->fields : ['*']),
+            $this->table === [null] ? '' : 'FROM',
+            implode(', ', $this->table),
+            implode(' ', $this->joins),
+            $this->where,
+            $this->groups,
+            $this->having,
+            $this->order,
+            $this->limit,
+            $this->offset,
+        ]);
+
+        if ($reset === true) {
+            $this->resetSelect();
+        }
+
+        return $select;
     }
 
     /**
@@ -2343,6 +2469,32 @@ class BaseBuilder implements BuilderInterface
         $this->sql       = '';
 
         return $this->asCrud('select');
+    }
+
+    /**
+     * Réinitialise les propriétés du builder liees a la selection des donnees.
+     */
+    protected function resetSelect()
+    {
+        $this->params    = [];   
+        $this->where     = '';
+        $this->fields    = [];
+        $this->joins     = [];
+        $this->groups    = '';
+        $this->having    = '';
+        $this->order     = '';
+        $this->distinct  = '';
+        $this->limit     = '';
+        $this->offset    = '';
+    
+        if (! empty($this->db)) {
+            $this->db->setAliasedTables([]);
+        }
+
+        if (! empty($this->table)) {
+            $this->tableName = '';
+            // $this->from(array_shift($this->table), true);
+        }
     }
 
     /**
@@ -2568,5 +2720,40 @@ class BaseBuilder implements BuilderInterface
         }
 
         return $from;
+    }
+
+    /**
+     * Verifie si on a affaire a une sous requete
+     */
+    protected function isSubquery(mixed $value): bool
+    {
+        return $value instanceof BaseBuilder || $value instanceof Closure;
+    }
+
+    /**
+     * Construit une sous requete
+     */
+    protected function buildSubquery(self|Closure $builder, bool $wrapped = false, string $alias = ''): string
+    {
+        if ($builder instanceof Closure) {
+            $builder($builder = $this->db->newQuery());
+        }
+
+        if ($builder === $this) {
+            throw new DatabaseException('The subquery cannot be the same object as the main query object.');
+        }
+
+        $subquery = strtr($builder->compileSelect(false), "\n", ' ');
+
+        if ($wrapped) {
+            $subquery = '(' . $subquery . ')';
+            $alias    = trim($alias);
+
+            if ($alias !== '') {
+                $subquery .= ' ' . ($this->db->protectIdentifiers ? $this->db->escapeIdentifiers($alias) : $alias);
+            }
+        }
+
+        return $subquery;
     }
 }
