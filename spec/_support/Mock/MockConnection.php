@@ -176,8 +176,10 @@ class MockConnection extends BaseConnection
 
     /**
      * Insert ID
+     *
+     * @return int|string
      */
-    public function insertID(): int
+    public function insertID(?string $table = null)
     {
         return $this->conn->insert_id;
     }
