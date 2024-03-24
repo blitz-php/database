@@ -263,6 +263,11 @@ abstract class BaseConnection implements ConnectionInterface
     protected array $aliasedTables = [];
 
     /**
+     * Specifie si on ajoute un hash a l'alias de table lorsqu'aucun alias n'est defini
+     */
+    public static bool $useHashedAliases = true;
+
+    /**
      * Query Class
      */
     protected string $queryClass = Query::class;
@@ -550,6 +555,10 @@ abstract class BaseConnection implements ConnectionInterface
 
         [$alias, $table] = $this->getTableAlias($table);
 
+        if ($alias === $table) {
+            return $this->prefixTable($table);
+        }
+
         return $this->prefixTable($table) . ' As ' . $this->escapeIdentifiers($alias);
     }
 
@@ -571,7 +580,7 @@ abstract class BaseConnection implements ConnectionInterface
                     $alias = trim($matches[1]);
                     $table = str_replace($matches[0], '', $table);
                 } else {
-                    $alias = $table . '_' . uniqid();
+                    $alias = $table . (static::$useHashedAliases ? '_' . uniqid() : '');
                 }
             } else {
                 $key = array_search($table, $this->aliasedTables, true);
@@ -580,7 +589,7 @@ abstract class BaseConnection implements ConnectionInterface
                     $alias = $this->aliasedTables[$key];
                     $table = $key;
                 } else {
-                    $alias = $table . '_' . uniqid();
+                    $alias = $table . (static::$useHashedAliases ? '_' . uniqid() : '');
                 }
             }
 
@@ -593,7 +602,7 @@ abstract class BaseConnection implements ConnectionInterface
             }
         }
 
-        return [$this->aliasedTables[$table], $table];
+        return [$this->aliasedTables[$table] ?? $table, $table];
     }
 
     /**
