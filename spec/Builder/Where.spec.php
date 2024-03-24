@@ -1,7 +1,11 @@
 <?php
 
 use BlitzPHP\Database\Builder\BaseBuilder;
+use BlitzPHP\Database\Builder\MySQL as MySQLBuilder;
+use BlitzPHP\Database\Builder\Postgre as PostgreBuilder;
+use BlitzPHP\Database\Builder\SQLite as SQLiteBuilder;
 use BlitzPHP\Database\Spec\Mock\MockConnection;
+use BlitzPHP\Utilities\Date;
 
 describe("Query Builder : Where", function() {
 
@@ -171,5 +175,79 @@ describe("Query Builder : Where", function() {
             expect($builder->sql())->toBe('SELECT * FROM users As u WHERE surname = \'blitz\' OR name IS NOT NULL');
         });
         
+    });
+
+    describe('whereDate', function(){
+        beforeEach(function() {
+            $this->builder = new MySQLBuilder(new MockConnection([]));
+        });
+
+        it(": WhereDate simple", function() {
+            $builder = $this->builder->from('users u')->whereDate('created_at', Date::now());
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE DATE(created_at) = \'' . Date::now()->format('Y-m-d') . '\'');
+            
+            $builder = $this->builder->from('users u')->whereDate('created_at', '2024-03-24');
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE DATE(created_at) = '2024-03-24'");
+            
+            $builder = $this->builder->from('users u')->whereDate('created_at', 1711269528);
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE DATE(created_at) = '2024-03-24'");
+        });
+
+        it(": WhereDate multiple", function() {
+            $builder = $this->builder->from('users u')->whereDate('created_at', Date::now())->whereDate('updated_at', '2024-03-24');
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE DATE(created_at) = '" . Date::now()->format('Y-m-d') . "' AND DATE(updated_at) = '2024-03-24'");
+
+            $builder = $this->builder->from('users u')->whereDate([
+                'created_at' => 1711269528,
+                'updated_at' => '2024-03-25'
+            ]);
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE DATE(created_at) = '2024-03-24' AND DATE(updated_at) = '2024-03-25'");
+        });  
+        
+        it(": WhereDate avec condition personnalisee", function() {
+            $builder = $this->builder->from('users u')->whereDate('created_at >=', Date::now())->whereDate('updated_at <', '2024-03-24');
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE DATE(created_at) >= '" . Date::now()->format('Y-m-d') . "' AND DATE(updated_at) < '2024-03-24'");
+
+            $builder = $this->builder->from('users u')->whereDate([
+                'created_at >' => 1711269528,
+                'updated_at !=' => '2024-03-25'
+            ]);
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE DATE(created_at) > '2024-03-24' AND DATE(updated_at) != '2024-03-25'");
+        }); 
+
+        it(": OrWhereDate", function() {
+            $builder = $this->builder->from('users u')->whereDate('created_at >=', Date::now())->orWhereDate('updated_at <', '2024-03-24');
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE DATE(created_at) >= '" . Date::now()->format('Y-m-d') . "' OR DATE(updated_at) < '2024-03-24'");
+
+            $builder = $this->builder->from('users u')->orWhereDate([
+                'created_at >' => 1711269528,
+                'updated_at !=' => '2024-03-25'
+            ]);
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE DATE(created_at) > '2024-03-24' OR DATE(updated_at) != '2024-03-25'");
+        });  
+
+        it(": WhereDate SQLite", function() {
+            $builder = new SQLiteBuilder(new MockConnection([]));
+            $builder = $builder->from('users u')->whereDate('created_at', Date::now());
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE strftime('%Y-%m-%d', created_at) = cast(" . Date::now()->format('Y-m-d') . " as text)");
+            
+            $builder = $builder->from('users u')->orWhereDate([
+                'created_at >' => 1711269528,
+                'updated_at !=' => '2024-03-25'
+            ]);
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE strftime('%Y-%m-%d', created_at) > cast(2024-03-24 as text) OR strftime('%Y-%m-%d', updated_at) != cast(2024-03-25 as text)");
+        });
+
+        it(": WhereDate Postgre", function() {
+            $builder = new PostgreBuilder(new MockConnection([]));
+            $builder = $builder->from('users u')->whereDate('created_at', Date::now());
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE created_at::date = '" . Date::now()->format('Y-m-d') . "'");
+            
+            $builder = $builder->from('users u')->orWhereDate([
+                'created_at >' => 1711269528,
+                'updated_at !=' => '2024-03-25'
+            ]);
+            expect($builder->sql())->toBe("SELECT * FROM users As u WHERE created_at::date > '2024-03-24' OR updated_at::date != '2024-03-25'");
+        });
     });
 });

@@ -32,4 +32,19 @@ class MySQL extends BaseBuilder
         'insert' => 'IGNORE',
         'delete' => 'IGNORE',
     ];
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function _buildWhereDate(array $field, string $type, string $bool = 'and'): self
+    {
+        $bool = $bool === 'or' ? '|' : '';
+
+        foreach ($field as $column => ['condition' => $condition, 'value' => $value]) {
+            $field[$bool . $type . '(' . $this->db->escapeIdentifiers($column) . ') ' . $condition] = $value;
+            unset($field[$column]);
+        }
+
+        return $this->where($field);
+    }
 }

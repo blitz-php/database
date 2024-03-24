@@ -12,6 +12,7 @@
 namespace BlitzPHP\Database\Builder;
 
 use BlitzPHP\Database\Exceptions\DatabaseException;
+use DateTimeInterface;
 
 /**
  * Builder pour PostgreSQL
@@ -259,5 +260,52 @@ class Postgre extends BaseBuilder
         }
 
         return parent::join($table, $fields, $type, $escape);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function whereDate($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    {
+        $field = $this->buildDateBasedWhere($field, $value, 'Y-m-d');
+        $bool  = $bool === 'or' ? '|' : '';
+
+        foreach ($field as $column => ['condition' => $condition, 'value' => $value]) {
+            $field[$bool . $this->db->escapeIdentifiers($column) . '::date ' . $condition] = $value;
+            unset($field[$column]);
+        }
+
+        return $this->where($field);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function whereTime($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    {
+        $field = $this->buildDateBasedWhere($field, $value, 'H:i:s');
+        $bool  = $bool === 'or' ? '|' : '';
+
+        foreach ($field as $column => ['condition' => $condition, 'value' => $value]) {
+            $field[$bool . $this->db->escapeIdentifiers($column) . '::time ' . $condition] = $value;
+            unset($field[$column]);
+        }
+
+        return $this->where($field);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function _buildWhereDate(array $field, string $type, string $bool = 'and'): self
+    {
+        $bool = $bool === 'or' ? '|' : '';
+
+        foreach ($field as $column => ['condition' => $condition, 'value' => $value]) {
+            $field[$bool . 'extract(' . $type . ' from ' . $this->db->escapeIdentifiers($column) . ') ' . $condition] = $value;
+            unset($field[$column]);
+        }
+
+        return $this->where($field);
     }
 }

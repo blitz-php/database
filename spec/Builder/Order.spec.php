@@ -11,21 +11,29 @@ describe("Database / Query Builder : Tri", function() {
 
     it(": Tri croissant", function() {
         $builder = $this->builder->from('user u')->sortAsc('name');
-
         expect($builder->sql())->toBe('SELECT * FROM user As u ORDER BY name ASC');
 
         $builder = $this->builder->from('user u')->orderBy('name', 'ASC');
+        expect($builder->sql())->toBe('SELECT * FROM user As u ORDER BY name ASC');
 
+        $builder = $this->builder->from('user u')->oldest();
+        expect($builder->sql())->toBe('SELECT * FROM user As u ORDER BY created_at ASC');
+
+        $builder = $this->builder->from('user u')->oldest('name');
         expect($builder->sql())->toBe('SELECT * FROM user As u ORDER BY name ASC');
     });
 
     it(": Tri decroissant", function() {
         $builder = $this->builder->from('user u')->sortDesc('name');
-
         expect($builder->sql())->toBe('SELECT * FROM user As u ORDER BY name DESC');
 
-        $builder = $this->builder->from('user u')->orderBy('name', 'desc');
+        $builder = $this->builder->from('user u')->order('name', 'desc');
+        expect($builder->sql())->toBe('SELECT * FROM user As u ORDER BY name DESC');
 
+        $builder = $this->builder->from('user u')->latest();
+        expect($builder->sql())->toBe('SELECT * FROM user As u ORDER BY created_at DESC');
+
+        $builder = $this->builder->from('user u')->latest('name');
         expect($builder->sql())->toBe('SELECT * FROM user As u ORDER BY name DESC');
     });
 

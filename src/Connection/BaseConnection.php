@@ -624,7 +624,11 @@ abstract class BaseConnection implements ConnectionInterface
         }
 
         if (is_string($value)) {
-            return $this->escapeString($value);
+            try {
+                return $this->escapeString($value);
+            } catch (DatabaseException) {
+                return "'" . $this->simpleEscapeString($value) . "'";
+            }
         }
 
         return $value;
@@ -1456,6 +1460,11 @@ abstract class BaseConnection implements ConnectionInterface
      * Will likely be overridden in child classes.
      */
     protected function _escapeString(string $str): string
+    {
+        return $this->simpleEscapeString($str);
+    }
+
+    public function simpleEscapeString(string $str): string
     {
         return str_replace("'", "''", Helpers::removeInvisibleCharacters($str, false));
     }

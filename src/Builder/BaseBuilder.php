@@ -18,9 +18,11 @@ use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Connection\MySQL as MySQLConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Database\Result\BaseResult;
+use BlitzPHP\Utilities\Date;
 use BlitzPHP\Utilities\Iterable\Arr;
 use BlitzPHP\Utilities\String\Text;
 use Closure;
+use DateTimeInterface;
 use InvalidArgumentException;
 use PDO;
 
@@ -53,6 +55,15 @@ class BaseBuilder implements BuilderInterface
      */
     protected array $supportedIgnoreStatements = [
         'insert' => 'IGNORE',
+    ];
+
+    /**
+     * Liste des operateurs de comparaisons
+     */
+    protected array $operators = [
+        '%', '!%', '@', '!@',
+        '<', '>', '<=', '>=', '<>', '=', '!=',
+        'IS NULL', 'IS NOT NULL', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN',
     ];
 
     protected string $tableName   = '';
@@ -993,6 +1004,188 @@ class BaseBuilder implements BuilderInterface
     final public function orNotWhereColumn(array|string $field, ?string $compare = null): self
     {
         return $this->orWhereNotColumn($field, $compare);
+    }
+
+    /**
+     * Ajoute la clause "where date" a la requete.
+     *
+     * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     */
+    public function whereDate($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    {
+        $field = $this->buildDateBasedWhere($field, $value, 'Y-m-d');
+
+        $type = match (static::class) {
+            SQLite::class => '%Y-%m-%d',
+            default       => 'DATE',
+        };
+
+        return $this->_buildWhereDate($field, $type, $bool);
+    }
+
+    /**
+     * Ajoute la clause "or where date" a la requete.
+     *
+     * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     */
+    public function orWhereDate($field, null|DateTimeInterface|int|string $value = null): self
+    {
+        return $this->whereDate($field, $value, 'or');
+    }
+
+    /**
+     * Ajoute la clause "where time" a la requete.
+     *
+     * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     */
+    public function whereTime($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    {
+        $field = $this->buildDateBasedWhere($field, $value, 'H:i:s');
+
+        $type = match (static::class) {
+            SQLite::class => '%H:%M:%S',
+            default       => 'TIME',
+        };
+
+        return $this->_buildWhereDate($field, $type, $bool);
+    }
+
+    /**
+     * Ajoute la clause "or where time" a la requete.
+     *
+     * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     */
+    public function orWhereTime($field, null|DateTimeInterface|int|string $value = null): self
+    {
+        return $this->whereTime($field, $value, 'or');
+    }
+
+    /**
+     * Ajoute la clause "where day" a la requete.
+     *
+     * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     */
+    public function whereDay($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    {
+        $field = $this->buildDateBasedWhere($field, $value, 'd');
+
+        $type = match (static::class) {
+            SQLite::class => '%d',
+            default       => 'DAY',
+        };
+
+        return $this->_buildWhereDate($field, $type, $bool);
+    }
+
+    /**
+     * Ajoute la clause "or where day" a la requete.
+     *
+     * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     */
+    public function orWhereDay($field, null|DateTimeInterface|int|string $value = null): self
+    {
+        return $this->whereDay($field, $value, 'or');
+    }
+
+    /**
+     * Ajoute la clause "where month" a la requete.
+     *
+     * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     */
+    public function whereMonth($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    {
+        $field = $this->buildDateBasedWhere($field, $value, 'm');
+
+        $type = match (static::class) {
+            SQLite::class => '%m',
+            default       => 'MONTH',
+        };
+
+        return $this->_buildWhereDate($field, $type, $bool);
+    }
+
+    /**
+     * Ajoute la clause "or where month" a la requete.
+     *
+     * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     */
+    public function orWhereMonth($field, null|DateTimeInterface|int|string $value = null): self
+    {
+        return $this->whereMonth($field, $value, 'or');
+    }
+
+    /**
+     * Ajoute la clause "where year" a la requete.
+     *
+     * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     */
+    public function whereYear($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    {
+        $field = $this->buildDateBasedWhere($field, $value, 'Y');
+
+        $type = match (static::class) {
+            SQLite::class => '%Y',
+            default       => 'YEAR',
+        };
+
+        return $this->_buildWhereDate($field, $type, $bool);
+    }
+
+    /**
+     * Ajoute la clause "or where year" a la requete.
+     *
+     * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     */
+    public function orWhereYear($field, null|DateTimeInterface|int|string $value = null): self
+    {
+        return $this->whereYear($field, $value, 'or');
+    }
+
+    /**
+     * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     */
+    protected function buildDateBasedWhere($field, null|DateTimeInterface|int|string $value, string $format): array
+    {
+        if (! is_array($field)) {
+            $field = [$field => $value];
+        }
+
+        foreach ($field as $key => $value) {
+            if (is_int($value)) {
+                $value = Date::createFromTimestamp($value);
+            } elseif (is_string($value)) {
+                $value = Date::createFromFormat($format, $value);
+            }
+
+            if ($value instanceof DateTimeInterface) {
+                $value = $value->format($format);
+            }
+
+            $field[$key] = $value;
+        }
+
+        $field   = array_filter($field);
+        $columns = [];
+
+        foreach ($field as $key => $value) {
+            if ('=' === $condition = trim($this->retrieveConditionFromField($key)['condition'])) {
+                $condition = '';
+            } else {
+                $key = substr($key, 0, (int) strpos($key, $condition));
+            }
+
+            $columns[trim($key)] = compact('condition', 'value');
+        }
+
+        return $columns;
+    }
+
+    /**
+     * {@internal methode abstraite dont les sous classes doivent implementer}
+     */
+    protected function _buildWhereDate(array $field, string $type, string $bool = 'and'): self
+    {
+        return $this;
     }
 
     /**
@@ -2400,44 +2593,11 @@ class BaseBuilder implements BuilderInterface
             return rtrim($join) . ' ' . ltrim($field);
         }
 
-        $operator = '';
-        if (str_contains($field, ' ')) {
-            $parts    = explode(' ', $field);
-            $field    = array_shift($parts);
-            $operator = implode(' ', $parts);
-        }
-
-        if (! empty($operator)) {
-            switch (strtoupper($operator)) {
-                case '%':
-                case 'LIKE':
-                    $condition = ' LIKE ';
-                    break;
-
-                case '!%':
-                case 'NOT LIKE':
-                    $condition = ' NOT LIKE ';
-                    break;
-
-                case '@':
-                case 'IN':
-                    $condition = ' IN ';
-                    break;
-
-                case '!@':
-                case 'NOT IN':
-                    $condition = ' NOT IN ';
-                    break;
-
-                default:
-                    $condition = " {$operator} ";
-            }
-        } else {
-            $condition = ' = ';
-        }
+        ['condition' => $condition, 'operator' => $operator] = $this->retrieveConditionFromField($field);
+        $field                                               = str_replace([trim($condition), trim($operator)], '', $field);
 
         if (is_array($value)) {
-            if (! str_contains($operator, '@')) {
+            if (! str_contains($condition, 'IN')) {
                 $condition = ' IN ';
             }
             $value = '(' . implode(',', array_map(fn ($val) => $escape === true ? $this->db->quote($val) : $val, $value)) . ')';
@@ -2446,6 +2606,31 @@ class BaseBuilder implements BuilderInterface
         }
 
         return rtrim($join) . ' ' . ltrim($field . $condition . $value);
+    }
+
+    protected function retrieveConditionFromField(string $field): array
+    {
+        $operator = '';
+
+        if (str_contains($field, ' ')) {
+            $parts    = array_reverse(explode(' ', $field));
+            $operator = array_shift($parts);
+            $field    = implode(' ', $parts);
+        }
+
+        if (empty($operator) || ! in_array($operator, $this->operators, true)) {
+            $operator = '=';
+        }
+
+        $condition = match (strtoupper($operator)) {
+            '%' , 'LIKE' => ' LIKE ',
+            '!%', 'NOT LIKE' => ' NOT LIKE ',
+            '@' , 'IN' => ' IN ',
+            '!@', 'NOT IN' => ' NOT IN ',
+            default => " {$operator} "
+        };
+
+        return compact('operator', 'condition');
     }
 
     /**
@@ -2591,6 +2776,8 @@ class BaseBuilder implements BuilderInterface
      */
     private function buildParseField(string $field): string
     {
+        $field = trim($field);
+
         $or = '';
         if ($field[0] === '|') {
             $field = substr($field, 1);
@@ -2603,7 +2790,7 @@ class BaseBuilder implements BuilderInterface
         $aggregate = null;
         $alias     = '';
 
-        if ($operator !== '' && ! Text::contains($operator, ['%', '!%', '@', '!@', '<', '>', '<=', '>=', '<>', '=', '!=', 'IS NULL', 'IS NOT NULL', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN'])) {
+        if ($operator !== '' && ! Text::contains($operator, $this->operators, true)) {
             if (Text::contains($operator, ['as', ' '], true)) {
                 $parts    = explode(' ', $operator);
                 $alias    = $parts[1] ?? '';

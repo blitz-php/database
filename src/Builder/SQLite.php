@@ -60,4 +60,19 @@ class SQLite extends BaseBuilder
     {
         return 'DELETE FROM ' . $table;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function _buildWhereDate(array $field, string $type, string $bool = 'and'): self
+    {
+        $bool = $bool === 'or' ? '|' : '';
+
+        foreach ($field as $column => ['condition' => $condition, 'value' => $value]) {
+            $field[$bool . 'strftime(\'' . $type . '\', ' . $this->db->escapeIdentifiers($column) . ') ' . $condition] = 'cast(' . $value . ' as text)';
+            unset($field[$column]);
+        }
+
+        return $this->where($field, null, false);
+    }
 }
