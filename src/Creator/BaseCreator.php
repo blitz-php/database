@@ -236,17 +236,23 @@ class BaseCreator
 
         if ($this->createDatabaseStr === false) {
             if ($this->db->debug) {
-                throw new DatabaseException('This feature is not available for the database you are using.');
+                throw new DatabaseException('Cette fonctionnalité n\'est pas disponible pour la base de données que vous utilisez.');
             }
 
             return false; // @codeCoverageIgnore
         }
 
         try {
-            if (! $this->db->query(sprintf($ifNotExists ? $this->createDatabaseIfStr : $this->createDatabaseStr, $dbName, $this->db->charset, $this->db->collation))) {
+            if (! $this->db->query(
+                sprintf($ifNotExists ? $this->createDatabaseIfStr : $this->createDatabaseStr, 
+                    $this->db->escapeIdentifier($dbName),
+                    $this->db->charset, 
+                    $this->db->collation
+                )
+            )) {
                 // @codeCoverageIgnoreStart
                 if ($this->db->debug) {
-                    throw new DatabaseException('Unable to create the specified database.');
+                    throw new DatabaseException('Impossible de créer la base de données spécifiée.');
                 }
 
                 return false;
@@ -260,7 +266,7 @@ class BaseCreator
             return true;
         } catch (Throwable $e) {
             if ($this->db->debug) {
-                throw new DatabaseException('Unable to create the specified database.', 0, $e);
+                throw new DatabaseException('Impossible de créer la base de données spécifiée.', 0, $e);
             }
 
             return false; // @codeCoverageIgnore

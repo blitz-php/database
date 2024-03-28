@@ -326,7 +326,7 @@ class MySQL extends BaseConnection
      */
     protected function _listTables(bool $prefixLimit = false): string
     {
-        $sql = 'SHOW TABLES FROM ' . $this->escapeIdentifiers($this->database);
+        $sql = 'SHOW TABLES FROM ' . $this->escapeIdentifier($this->database);
 
         if ($prefixLimit !== false && $this->prefix !== '') {
             return $sql . " LIKE '" . $this->escapeLikeStringDirect($this->prefix) . "%'";

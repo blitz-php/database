@@ -1328,9 +1328,27 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
-     * Escape the SQL Identifiers
+     * Échappe un identifiant SQL
      *
-     * This function escapes column and table names
+     * Cette fonction échappe à un identifiant unique.
+     *
+     * @param non-empty-string $item
+     */
+    public function escapeIdentifier(string $item): string
+    {
+        return $this->escapeChar
+            . str_replace(
+                $this->escapeChar,
+                $this->escapeChar . $this->escapeChar,
+                $item
+            )
+            . $this->escapeChar;
+    }
+    
+    /**
+     * Échappe des identifiants SQL
+     *
+     * Cette fonction échappe les noms de colonnes et de tables
      *
      * @param mixed $item
      *
