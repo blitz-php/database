@@ -36,8 +36,8 @@ class Listener implements EventListenerInterface
             return;
         }
 
-        \BlitzPHP\Cli\Commands\Utilities\About::add('Gestionnaires', static fn () => array_filter([
-            'Base de données' => static function (ConnectionResolverInterface $connectionResolver) {
+        \BlitzPHP\Cli\Commands\Utilities\About::add('Gestionnaires', static fn (ConnectionResolverInterface $connectionResolver) => array_filter([
+            'Base de données' => static function () use ($connectionResolver) {
                 [$group, $config] = $connectionResolver->connectionInfo();
 
                 if (empty($group)) {
@@ -55,6 +55,9 @@ class Listener implements EventListenerInterface
                 }
                 if (! empty($config['username'])) {
                     $output .= '@' . $config['username'];
+                }
+                if (! empty($config['database'])) {
+                    $output .= '/' . $config['database'];
                 }
 
                 return $group . ' [' . $output . ']';
