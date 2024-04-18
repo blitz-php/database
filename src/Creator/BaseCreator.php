@@ -244,9 +244,10 @@ class BaseCreator
 
         try {
             if (! $this->db->query(
-                sprintf($ifNotExists ? $this->createDatabaseIfStr : $this->createDatabaseStr, 
+                sprintf(
+                    $ifNotExists ? $this->createDatabaseIfStr : $this->createDatabaseStr,
                     $this->db->escapeIdentifier($dbName),
-                    $this->db->charset, 
+                    $this->db->charset,
                     $this->db->collation
                 )
             )) {

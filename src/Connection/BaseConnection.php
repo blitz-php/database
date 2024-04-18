@@ -1344,7 +1344,7 @@ abstract class BaseConnection implements ConnectionInterface
             )
             . $this->escapeChar;
     }
-    
+
     /**
      * Échappe des identifiants SQL
      *

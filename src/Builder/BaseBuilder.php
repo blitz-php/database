@@ -34,7 +34,7 @@ use PDO;
 class BaseBuilder implements BuilderInterface
 {
     use Conditionable;
-    
+
     /**
      * État du mode de test du générateur.
      */

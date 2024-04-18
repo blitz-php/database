@@ -113,9 +113,11 @@ use stdClass;
  * @method float                                                       sum(string $field, ?string $key = null, int $expire = 0)
  * @method $this                                                       table(string|string[]|null $table)
  * @method self                                                        testMode(bool $mode = true)
+ * @method $this                                                       unless($value = null, ?callable $callback = null, ?callable $default = null)
  * @method $this|\BlitzPHP\Database\BaseResult                         update(array|string $data, bool $execute = true)
  * @method mixed|mixed[]                                               value(string|string[] $name, ?string $key = null, int $expire = 0)
  * @method mixed[]                                                     values(string|string[] $name, ?string $key = null, int $expire = 0)
+ * @method $this                                                       when($value = null, ?callable $callback = null, ?callable $default = null)
  * @method $this                                                       where(array|string $key, $value = null, ?bool $escape = null)
  * @method $this                                                       whereBetween(string $field, $value1, $value2)
  * @method $this                                                       whereIn(string $key, array|callable|self $param)
@@ -125,8 +127,6 @@ use stdClass;
  * @method $this                                                       whereNotLike(array|string $field, $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
  * @method $this                                                       whereNotNull(string|string[] $field)
  * @method $this                                                       whereNull(string|string[] $field)
- * @method $this                                                       when($value = null, ?callable $callback = null, ?callable $default = null)
- * @method $this                                                       unless($value = null, ?callable $callback = null, ?callable $default = null)
  */
 abstract class Model
 {
