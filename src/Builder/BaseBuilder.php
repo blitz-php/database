@@ -2030,6 +2030,21 @@ class BaseBuilder implements BuilderInterface
         return (int) ($value ?? 0);
     }
 
+    /**
+     * Génère une chaîne de requête spécifique à la plateforme qui compte tous les enregistrements renvoyés par une requête Query Builder.
+     *
+     * @return int|string int en mode reel et string (la chaîne SQL) en mode test
+     */
+    public function countAllResults(bool $reset = true)
+    {
+        $clone = clone $this;
+
+        $clone->limit = '';
+        $clone->order = '';
+
+        return $clone->count();
+    }
+
     // Méthodes d'extraction de données
 
     /**

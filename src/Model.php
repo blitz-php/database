@@ -139,16 +139,21 @@ abstract class Model
 
     /**
      * Cle primaire.
-     *
-     * @var string
      */
-    protected $primaryKey = 'id';
+    protected string $primaryKey = 'id';
 
     /**
      * Le format dans lequel les résultats doivent être renvoyés.
      * Ce format sera surchargé si les méthodes as* sont utilisées.
      */
     protected string $returnType = 'array';
+
+    /**
+     * Utilié pour fournir une surchage temporaire pour le format de retour des resultats.
+     *
+     * @var string
+     */
+    protected $tempReturnType;
 
     /**
      * Primary Key value when inserting and useAutoIncrement is false.
@@ -166,19 +171,60 @@ abstract class Model
 
     /**
      * Doit-on utiliser l'auto increment.
-     *
-     * @var bool
      */
-    protected $useAutoIncrement = true;
+    protected bool $useAutoIncrement = true;
 
     /**
      * Le type de colonne que created_at et updated_at sont censés avoir.
      *
      * Autorisé: 'datetime', 'date', 'int'
-     *
-     * @var string
      */
-    protected $dateFormat = 'datetime';
+    protected string $dateFormat = 'datetime';
+
+    /**
+     * Si ce modèle doit utiliser "softDeletes" et définir simplement une date à laquelle les lignes sont supprimées,
+     * ou effectuer des suppressions réelles.
+     */
+    protected bool $useSoftDeletes = false;
+
+    /**
+     * Un tableau de noms de champs qui peuvent être définis par l'utilisateur dans les insertions/mises à jour.
+     *
+     * @var string[]
+     */
+    protected array $allowedFields = [];
+
+    /**
+     * Si c'est vrai, définira les valeurs Created_at et Updated_at pendant les routines d'insertion et de mise à jour.
+     */
+    protected bool $useTimestamps = false;
+
+    /**
+     * La colonne utilisée pour insérer les horodatages
+     */
+    protected string $createdField = 'created_at';
+
+    /**
+     * La colonne utilisée pour modifier les horodatages
+     */
+    protected string $updatedField = 'updated_at';
+
+    /**
+     * Utilisé par withDeleted pour remplacer le paramètre softDelete du modèle.
+     *
+     * @var bool
+     */
+    protected $tempUseSoftDeletes;
+
+    /**
+     * La colonne utilisée pour enregistrer l'état de suppression réversible.
+     */
+    protected string $deletedField = 'deleted_at';
+
+    /**
+     * Le nombre de données à renvoyer pour la pagination.
+     */
+    protected int $perPage = 15;
 
     /**
      * Connexion à la base de données
@@ -219,11 +265,122 @@ abstract class Model
         'getCompiledUpdate',
     ];
 
+    /**
+     * Callbacks.
+     *
+     * Chaque tableau doit contenir les noms de méthodes (au sein du modèle) qui doivent
+     * être appelées lorsque ces événements sont déclenchés.
+     *
+     * Les méthodes « Update » et « Delete » reçoivent les mêmes éléments que ceux attribués
+     * à leur méthode respective.
+     *
+     * Les méthodes "Find" reçoivent l'ID recherché (s'il est présent),
+     * et "afterFind" reçoit en outre les résultats trouvés.
+     */
+
+    /**
+     * S'il faut déclencher les callbacks définis
+     */
+    protected bool $allowCallbacks = true;
+
+    /**
+     * Utilisé par AllowCallbacks() pour remplacer le paramètre allowCallbacks du modèle.
+     *
+     * @var bool
+     */
+    protected $tempAllowCallbacks;
+
+    /**
+     * Callbacks pour beforeInsert
+     *
+     * @var string[]
+     */
+    protected array $beforeInsert = [];
+
+    /**
+     * Callbacks pour afterInsert
+     *
+     * @var string[]
+     */
+    protected array $afterInsert = [];
+
+    /**
+     * Callbacks pour beforeUpdate
+     *
+     * @var string[]
+     */
+    protected array $beforeUpdate = [];
+
+    /**
+     * Callbacks pour afterUpdate
+     *
+     * @var string[]
+     */
+    protected array $afterUpdate = [];
+
+    /**
+     * Callbacks pour beforeInsertBatch
+     *
+     * @var string[]
+     */
+    protected array $beforeInsertBatch = [];
+
+    /**
+     * Callbacks pour afterInsertBatch
+     *
+     * @var string[]
+     */
+    protected array $afterInsertBatch = [];
+
+    /**
+     * Callbacks pour beforeUpdateBatch
+     *
+     * @var string[]
+     */
+    protected array $beforeUpdateBatch = [];
+
+    /**
+     * Callbacks pour afterUpdateBatch
+     *
+     * @var string[]
+     */
+    protected array $afterUpdateBatch = [];
+
+    /**
+     * Callbacks pour beforeFind
+     *
+     * @var string[]
+     */
+    protected array $beforeFind = [];
+
+    /**
+     * Callbacks pour afterFind
+     *
+     * @var string[]
+     */
+    protected array $afterFind = [];
+
+    /**
+     * Callbacks pour beforeDelete
+     *
+     * @var string[]
+     */
+    protected array $beforeDelete = [];
+
+    /**
+     * Callbacks pour afterDelete
+     *
+     * @var string[]
+     */
+    protected array $afterDelete = [];
+
     public function __construct(protected ConnectionResolverInterface $resolver, ?ConnectionInterface $db = null)
     {
-        $db ??= $this->resolver->connection($this->group);
+        $this->db = $db ?: $this->resolver->connection($this->group);
 
-        $this->db = $db;
+        $this->tempReturnType     = $this->returnType;
+        $this->tempUseSoftDeletes = $this->useSoftDeletes;
+        $this->tempAllowCallbacks = $this->allowCallbacks;
     }
 
     /**
@@ -372,7 +529,7 @@ abstract class Model
      */
     public function chunk(int $size, Closure $userFunc)
     {
-        $total  = (clone $this->builder())->count();
+        $total  = $this->builder()->countAllResults();
         $offset = 0;
 
         while ($offset <= $total) {
@@ -395,6 +552,74 @@ abstract class Model
                 }
             }
         }
+    }
+
+    /**
+     * Remplacez countAllResults pour tenir compte des lignes supprimés de manière logique (softdeletes).
+     *
+     * @return int|string
+     */
+    public function countAllResults(bool $reset = true, bool $test = false)
+    {
+        if ($this->tempUseSoftDeletes) {
+            $this->builder()->whereNull($this->table . '.' . $this->deletedField);
+        }
+
+        // Lorsque $reset === false, $tempUseSoftDeletes dépendra de la valeur $useSoftDeletes
+        // car nous ne voulons pas ajouter la même condition "where" pour la deuxième fois.
+        $this->tempUseSoftDeletes = $reset
+            ? $this->useSoftDeletes
+            : ($this->useSoftDeletes ? false : $this->useSoftDeletes);
+
+        return $this->builder()->testMode($test)->countAllResults($reset);
+    }
+
+    public function paginate(?int $limit = null, ?int $page = null, ?int $total = null): array
+    {
+        $page   = max((int) $page, 1);
+        $total  = $total ?: $this->countAllResults(false);
+        $limit  = $limit ?: $this->perPage;
+        $offset = ($page - 1) * $limit;
+
+        return $this->findAll($limit, $offset);
+    }
+
+    /**
+     * Récupère tous les résultats, tout en les limitant éventuellement.
+     */
+    public function findAll(int $limit = 0, int $offset = 0): array
+    {
+        if ($this->tempAllowCallbacks) {
+            // Call the before event and check for a return
+            $eventData = $this->trigger('beforeFind', [
+                'method'    => 'findAll',
+                'limit'     => $limit,
+                'offset'    => $offset,
+                'singleton' => false,
+            ]);
+
+            if (isset($eventData['returnData']) && $eventData['returnData'] === true) {
+                return $eventData['data'];
+            }
+        }
+
+        $eventData = [
+            'data'      => $this->builder()->findAll('*', compact('limit', 'offset'), $this->returnType),
+            'limit'     => $limit,
+            'offset'    => $offset,
+            'method'    => 'findAll',
+            'singleton' => false,
+        ];
+
+        if ($this->tempAllowCallbacks) {
+            $eventData = $this->trigger('afterFind', $eventData);
+        }
+
+        $this->tempReturnType     = $this->returnType;
+        $this->tempUseSoftDeletes = $this->useSoftDeletes;
+        $this->tempAllowCallbacks = $this->allowCallbacks;
+
+        return $eventData['data'];
     }
 
     /**
@@ -613,6 +838,47 @@ abstract class Model
         }
 
         return $data;
+    }
+
+    /**
+     * Définit la valeur $tempAllowCallbacks afin que nous puissions temporairement remplacer le paramètre.
+     * Se réinitialise après la prochaine méthode utilisant des déclencheurs.
+     */
+    public function allowCallbacks(bool $val = true): self
+    {
+        $this->tempAllowCallbacks = $val;
+
+        return $this;
+    }
+
+    /**
+     * Un simple déclencheur d'événement pour les événements de modèle qui permet une manipulation supplémentaire des données au sein du modèle.
+     * Spécifiquement destiné à être utilisé par les modèles enfants, il peut être utilisé pour formater des données, enregistrer/charger des classes associées, etc.
+     *
+     * Il est de la responsabilité des méthodes de rappel de renvoyer les données elles-mêmes.
+     *
+     * Chaque tableau $eventData DOIT avoir une clé 'data' avec les données pertinentes pour les méthodes de rappel (comme un tableau de paires clé/valeur à insérer ou à mettre à jour, un tableau de résultats, etc.)
+     *
+     * Si les rappels ne sont pas autorisés, renvoie immédiatement $eventData.
+     *
+     * @throws DataException
+     */
+    protected function trigger(string $event, array $eventData): array
+    {
+        // S'assurer que c'est un evenement valide
+        if (! isset($this->{$event}) || $this->{$event} === []) {
+            return $eventData;
+        }
+
+        foreach ($this->{$event} as $callback) {
+            if (! method_exists($this, $callback)) {
+                throw DataException::invalidMethodTriggered($callback);
+            }
+
+            $eventData = $this->{$callback}($eventData);
+        }
+
+        return $eventData;
     }
 
     /**
