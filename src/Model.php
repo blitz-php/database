@@ -125,6 +125,8 @@ use stdClass;
  * @method $this                                                       whereNotLike(array|string $field, $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
  * @method $this                                                       whereNotNull(string|string[] $field)
  * @method $this                                                       whereNull(string|string[] $field)
+ * @method $this                                                       when($value = null, ?callable $callback = null, ?callable $default = null)
+ * @method $this                                                       unless($value = null, ?callable $callback = null, ?callable $default = null)
  */
 abstract class Model
 {

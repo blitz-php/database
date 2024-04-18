@@ -18,6 +18,7 @@ use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Connection\MySQL as MySQLConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Database\Result\BaseResult;
+use BlitzPHP\Traits\Conditionable;
 use BlitzPHP\Utilities\Date;
 use BlitzPHP\Utilities\Iterable\Arr;
 use BlitzPHP\Utilities\String\Text;
@@ -32,6 +33,8 @@ use PDO;
  */
 class BaseBuilder implements BuilderInterface
 {
+    use Conditionable;
+    
     /**
      * État du mode de test du générateur.
      */
