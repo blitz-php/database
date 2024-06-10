@@ -1356,7 +1356,7 @@ abstract class BaseConnection implements ConnectionInterface
      */
     public function escapeIdentifiers($item)
     {
-        if ($this->escapeChar === '' || empty($item) || in_array($item, $this->reservedIdentifiers, true)) {
+        if ($this->escapeChar === '' || empty($item) || in_array($item, $this->reservedIdentifiers, true) || in_array($item, BaseBuilder::sqlFunctions(), true)) {
             return $item;
         }
 

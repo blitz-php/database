@@ -409,7 +409,6 @@ class BaseBuilder implements BuilderInterface
 
         $where = $this->parseCondition($field, $value, $join, $escape);
         $this->where .= $where;
-        $this->compileWhere[] = $where;
 
         return $this;
     }
@@ -1196,8 +1195,19 @@ class BaseBuilder implements BuilderInterface
      */
     final public function getCompiledWhere(): array
     {
-        return $this->compileWhere;
+        $compileWhere = [...$this->compileWhere];
+		
+		foreach ($compileWhere as &$item) {
+			
+		}
+
+		return $compileWhere;
     }
+
+	private function addCompiledWhere($join, $field, $condition, $value)
+	{
+		$this->compileWhere[$field . $condition] = $value;
+	}
 
     /**
      * Définit les parametres de la requete en cas d'utilisation de requete préparées classiques
@@ -2623,6 +2633,8 @@ class BaseBuilder implements BuilderInterface
             $value = ($escape && ! is_numeric($value)) ? $this->db->quote($value) : $value;
         }
 
+		$this->addCompiledWhere($join, $field, $condition, $value);
+		
         return rtrim($join) . ' ' . ltrim($field . $condition . $value);
     }
 
@@ -2771,6 +2783,7 @@ class BaseBuilder implements BuilderInterface
             'DAYOFYEAR', 'HOUR', 'LAST_DAY', 'MINUTE', 'MONTH', 'MONTH_BETWEEN', 'MONTHNAME', 'NEXT_DAY', 'SECOND', 'SUBDATE', 'WEEK', 'YEAR',
 
             'TO_TIME', 'TO_TIMESTAMP', 'FIRST', 'LAST', 'MID', 'LEN', 'FORMAT',
+			'NOT EXISTS', 'EXISTS',
         ];
     }
 
