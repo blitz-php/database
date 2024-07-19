@@ -384,6 +384,10 @@ class BaseBuilder implements BuilderInterface
             $field = '( ' . trim(str_ireplace('WHERE', '', $clone->where)) . ' )';
         }
 
+		if (is_string($value) && $escape && $this->db->isEscapedIdentifier($value)) {
+			$escape = false;
+		}
+
         $join = empty($this->where) ? 'WHERE' : '';
 
         if (is_array($field)) {
