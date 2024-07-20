@@ -2825,6 +2825,11 @@ class BaseBuilder implements BuilderInterface
         $aggregate = null;
         $alias     = '';
 
+        if (isset($parts[0]) && in_array(rtrim($field) . ' ' . ltrim($parts[0]), static::sqlFunctions(), true)) {
+            $field    .= ' ' . array_shift($parts);
+            $operator  = implode(' ', $parts);
+        }
+
         if ($operator !== '' && ! Text::contains($operator, $this->operators, true)) {
             if (Text::contains($operator, ['as', ' '], true)) {
                 $parts    = explode(' ', $operator);
