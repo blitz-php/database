@@ -16,6 +16,7 @@ use ErrorException;
 use PDO;
 use PDOException;
 use stdClass;
+use Stringable;
 
 /**
  * Connexion pour PostgreSQL
@@ -281,10 +282,10 @@ class Postgre extends BaseConnection
             $this->initialize();
         }
 
-        /** @psalm-suppress NoValue I don't know why ERROR. */
-        if (is_object($str) && method_exists($str, '__toString')) {
-            return $str->__toString();
+        if ($str instanceof Stringable) {
+            $str = (string) $str;
         }
+
         if (is_string($str) && ! $this->isPdo()) {
             return pg_escape_literal($this->conn, $str);
         }

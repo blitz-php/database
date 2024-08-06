@@ -1424,10 +1424,10 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
-     * "Smart" Escape String
+     * "Chaîne d'échappement "intelligente
      *
-     * Escapes data based on type.
-     * Sets boolean and null types
+     * Échappe les données en fonction de leur type.
+     * Définit les types booléen et nul
      *
      * @param mixed $str
      *
@@ -1436,11 +1436,15 @@ abstract class BaseConnection implements ConnectionInterface
     public function escape($str)
     {
         if (is_array($str)) {
-            return array_map([&$this, 'escape'], $str);
+            return array_map($this->escape(...), $str);
         }
 
-        if (is_string($str) || (is_object($str) && method_exists($str, '__toString'))) {
-            return $this->escapeString($str);
+        if ($str instanceof Stringable) {
+            $str = (string) $str;
+        }
+
+        if (is_string($str)) {
+            return "'" . $this->escapeString($str) . "'";
         }
 
         if (is_bool($str)) {
@@ -1451,10 +1455,10 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
-     * Escape String
+     * Echappe les chaine de caracteres
      *
-     * @param string|string[] $str  Input string
-     * @param bool            $like Whether or not the string will be used in a LIKE condition
+     * @param list<string|Stringable>|string|Stringable $str
+     * @param bool                                      $like Si la chaîne doit être utilisée dans une condition LIKE
      *
      * @return string|string[]
      */
@@ -1468,9 +1472,13 @@ abstract class BaseConnection implements ConnectionInterface
             return $str;
         }
 
+        if ($str instanceof Stringable) {
+            $str = (string) $str;
+        }
+
         $str = $this->_escapeString($str);
 
-        // escape LIKE condition wildcards
+        // échapper aux caractères génériques de la condition LIKE
         if ($like === true) {
             return str_replace(
                 [$this->likeEscapeChar, '%', '_'],
@@ -1483,10 +1491,9 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
-     * Escape LIKE String
+     * Échapper à la chaîne LIKE
      *
-     * Calls the individual driver for platform
-     * specific escaping for LIKE conditions
+     * Appelle le pilote individuel pour l'échappement spécifique à la plate-forme pour les conditions LIKE.
      *
      * @param string|string[] $str
      *
@@ -1498,9 +1505,9 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
-     * Platform independent string escape.
+     * Échappatoire de chaînes de caractères indépendant de la plate-forme.
      *
-     * Will likely be overridden in child classes.
+     * Sera probablement surchargé dans les classes enfantines.
      */
     protected function _escapeString(string $str): string
     {
