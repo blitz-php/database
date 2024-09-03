@@ -17,15 +17,15 @@ use BlitzPHP\Contracts\Event\EventListenerInterface;
 use BlitzPHP\Contracts\Event\EventManagerInterface;
 use BlitzPHP\Database\Collectors\DatabaseCollector;
 
-class Listener implements EventListenerInterface
+class DatabaseListener implements EventListenerInterface
 {
     public function listen(EventManagerInterface $event): void
     {
-        $event->attach('db:result', static function (EventInterface $eventInterface) {
+        $event->on('db:result', static function (EventInterface $eventInterface) {
             call_user_func([DatabaseCollector::class, 'collect'], $eventInterface);
         });
 
-        $event->attach('app:init', function () {
+        $event->on('app:init', function () {
             $this->addInfoToAboutCommand();
         });
     }
