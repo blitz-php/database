@@ -16,7 +16,7 @@ use BlitzPHP\Contracts\Database\BuilderInterface;
 use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Contracts\Support\Arrayable;
 use BlitzPHP\Database\Builder\BaseBuilder;
-use BlitzPHP\Wolke\Entity;
+use BlitzPHP\Wolke\Model;
 use Closure;
 
 trait DatabaseRule
@@ -49,7 +49,7 @@ trait DatabaseRule
             return $table;
         }
 
-        if (class_exists(Entity::class) && is_subclass_of($table, Entity::class)) {
+        if (class_exists(Model::class) && is_subclass_of($table, Model::class)) {
             $model = new $table();
 
             if (str_contains($model->getTable(), '.')) {

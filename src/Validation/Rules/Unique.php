@@ -13,7 +13,7 @@ namespace BlitzPHP\Database\Validation\Rules;
 
 use BlitzPHP\Database\Validation\DatabaseRule;
 use BlitzPHP\Validation\Rules\AbstractRule;
-use BlitzPHP\Wolke\Entity;
+use BlitzPHP\Wolke\Model;
 
 class Unique extends AbstractRule
 {
@@ -32,8 +32,8 @@ class Unique extends AbstractRule
      */
     public function ignore(mixed $id, ?string $idColumn = null): self
     {
-        if (class_exists(Entity::class) && $id instanceof Entity) {
-            return $this->ignoreEntity($id, $idColumn);
+        if (class_exists(Model::class) && $id instanceof Model) {
+            return $this->ignoreModel($id, $idColumn);
         }
 
         $this->params['ignore'] = $id;
@@ -45,10 +45,10 @@ class Unique extends AbstractRule
     /**
      * Ignorer l'entité donné lors de la vérification de l'unicité
      */
-    public function ignoreEntity(Entity $entity, ?string $idColumn = null): self
+    public function ignoreModel(Model $model, ?string $idColumn = null): self
     {
-        $this->idColumn         = $idColumn ?? $entity->getKeyName();
-        $this->params['ignore'] = $entity->{$this->idColumn};
+        $this->idColumn         = $idColumn ?? $model->getKeyName();
+        $this->params['ignore'] = $model->{$this->idColumn};
 
         return $this;
     }
