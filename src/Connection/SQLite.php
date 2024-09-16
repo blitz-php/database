@@ -238,7 +238,7 @@ class SQLite extends BaseConnection
      */
     protected function _escapeString(string $str): string
     {
-        if (! $this->connID instanceof SQLite3) {
+        if (! $this->conn) {
             $this->initialize();
         }
 
