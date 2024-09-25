@@ -656,7 +656,7 @@ abstract class BaseConnection implements ConnectionInterface
 
         return $this;
     }
-    
+
     /**
      * Recupere les aliases de tables definis
      */
@@ -1340,18 +1340,18 @@ abstract class BaseConnection implements ConnectionInterface
      */
     public function isEscapedIdentifier(string $value): bool
     {
-		if ($value === '') {
-			return false;
-		}
+        if ($value === '') {
+            return false;
+        }
 
         $value = trim($value);
 
-		return str_starts_with($value, $this->escapeChar) 
-			&& str_contains($value, '.') 
-			&& str_ends_with($value, $this->escapeChar);
+        return str_starts_with($value, $this->escapeChar)
+            && str_contains($value, '.')
+            && str_ends_with($value, $this->escapeChar);
     }
-	
-	/**
+
+    /**
      * Échappe un identifiant SQL
      *
      * Cette fonction échappe à un identifiant unique.

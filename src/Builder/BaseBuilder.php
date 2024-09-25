@@ -378,7 +378,7 @@ class BaseBuilder implements BuilderInterface
      * Sépare plusieurs appels avec 'AND'.
      *
      * @param array|Closure|string $field Un nom de champ ou un tableau de champs et de valeurs.
-     * @param mixed                 $value Une valeur de champ à comparer
+     * @param mixed                $value Une valeur de champ à comparer
      */
     public function where($field, $value = null, bool $escape = true): self
     {
@@ -392,9 +392,9 @@ class BaseBuilder implements BuilderInterface
             $field = '( ' . trim(str_ireplace('WHERE', '', $clone->where)) . ' )';
         }
 
-		if (is_string($value) && $escape && $this->db->isEscapedIdentifier($value)) {
-			$escape = false;
-		}
+        if (is_string($value) && $escape && $this->db->isEscapedIdentifier($value)) {
+            $escape = false;
+        }
 
         $join = $this->where === '' ? 'WHERE' : '';
 
@@ -1022,10 +1022,8 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Ajoute la clause "exists" à la requête.
-     *
-     * @param  Closure|self $callback
      */
-    public function whereExists($callback, string $boolean = 'and', bool $not = false): self
+    public function whereExists(Closure|self $callback, string $boolean = 'and', bool $not = false): self
     {
         if ($callback instanceof Closure) {
             $query = $this->forSubQuery();
@@ -1040,7 +1038,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Ajoute la clause "or exists" à la requête.
      */
-    public function orWhereExists($callback, $not = false)
+    public function orWhereExists(Closure|self $callback, bool $not = false): self
     {
         return $this->whereExists($callback, 'or', $not);
     }
@@ -1048,7 +1046,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Ajoute la clause "not exists" à la requête.
      */
-    public function whereNotExists($callback, $boolean = 'and')
+    public function whereNotExists(Closure|self $callback, string $boolean = 'and'): self
     {
         return $this->whereExists($callback, $boolean, true);
     }
@@ -1056,7 +1054,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Ajoute la clause "or not exists" à la requête.
      */
-    public function orWhereNotExists($callback)
+    public function orWhereNotExists(Closure|self $callback): self
     {
         return $this->orWhereExists($callback, true);
     }
@@ -1074,7 +1072,7 @@ class BaseBuilder implements BuilderInterface
         $not = $not === true ? 'NOT' : '';
         $sql = trim(sprintf('%s EXISTS (%s)', $not, $sql));
         $sql = $boolean === 'or' ? '|' . $sql : $sql;
-        
+
         return $this->where($sql, null, false);
     }
 
@@ -1266,18 +1264,17 @@ class BaseBuilder implements BuilderInterface
     final public function getCompiledWhere(): array
     {
         $compileWhere = [...$this->compileWhere];
-		
-		foreach ($compileWhere as &$item) {
-			
-		}
 
-		return $compileWhere;
+        foreach ($compileWhere as &$item) {
+        }
+
+        return $compileWhere;
     }
 
-	private function addCompiledWhere($join, $field, $condition, $value)
-	{
-		$this->compileWhere[$field . $condition] = $value;
-	}
+    private function addCompiledWhere($join, $field, $condition, $value)
+    {
+        $this->compileWhere[$field . $condition] = $value;
+    }
 
     /**
      * Définit les parametres de la requete en cas d'utilisation de requete préparées classiques
@@ -2703,8 +2700,8 @@ class BaseBuilder implements BuilderInterface
             $value = ($escape && ! is_numeric($value)) ? $this->db->quote($value) : $value;
         }
 
-		$this->addCompiledWhere($join, $field, $condition, $value);
-		
+        $this->addCompiledWhere($join, $field, $condition, $value);
+
         return rtrim($join) . ' ' . ltrim($field . $condition . $value);
     }
 
@@ -2853,7 +2850,7 @@ class BaseBuilder implements BuilderInterface
             'DAYOFYEAR', 'HOUR', 'LAST_DAY', 'MINUTE', 'MONTH', 'MONTH_BETWEEN', 'MONTHNAME', 'NEXT_DAY', 'SECOND', 'SUBDATE', 'WEEK', 'YEAR',
 
             'TO_TIME', 'TO_TIMESTAMP', 'FIRST', 'LAST', 'MID', 'LEN', 'FORMAT',
-			'NOT EXISTS', 'EXISTS',
+            'NOT EXISTS', 'EXISTS',
         ];
     }
 
@@ -2892,8 +2889,8 @@ class BaseBuilder implements BuilderInterface
         $alias     = '';
 
         if (isset($parts[0]) && in_array(rtrim($field) . ' ' . ltrim($parts[0]), static::sqlFunctions(), true)) {
-            $field    .= ' ' . array_shift($parts);
-            $operator  = implode(' ', $parts);
+            $field .= ' ' . array_shift($parts);
+            $operator = implode(' ', $parts);
         }
 
         if ($operator !== '' && ! Text::contains($operator, $this->operators, true)) {
