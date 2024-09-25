@@ -656,6 +656,14 @@ abstract class BaseConnection implements ConnectionInterface
 
         return $this;
     }
+    
+    /**
+     * Recupere les aliases de tables definis
+     */
+    public function getAliasedTables(): array
+    {
+        return $this->aliasedTables;
+    }
 
     /**
      * Ajoutez un alias de table à notre liste.

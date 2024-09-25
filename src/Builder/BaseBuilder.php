@@ -124,14 +124,14 @@ class BaseBuilder implements BuilderInterface
     /**
      * Constructor
      */
-    public function __construct(ConnectionInterface $db, ?array $options = null)
+    public function __construct(ConnectionInterface $db, protected ?array $options = null)
     {
         /**
          * @var BaseConnection $db
          */
         $this->db = $db;
 
-        if (! empty($options)) {
+        if ($options !== null && $options !== []) {
             foreach ($options as $key => $value) {
                 if (property_exists($this, $key)) {
                     $this->{$key} = $value;
@@ -148,6 +148,14 @@ class BaseBuilder implements BuilderInterface
     public function db(): ConnectionInterface
     {
         return $this->db;
+    }
+
+    /**
+     * Obtient une nouvelle instance du query builder.
+     */
+    public function newQuery(): static
+    {
+        return new static($this->db, $this->options);
     }
 
     /**
@@ -369,7 +377,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|callable|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param array|Closure|string $field Un nom de champ ou un tableau de champs et de valeurs.
      * @param mixed                 $value Une valeur de champ à comparer
      */
     public function where($field, $value = null, bool $escape = true): self
@@ -388,7 +396,7 @@ class BaseBuilder implements BuilderInterface
 			$escape = false;
 		}
 
-        $join = empty($this->where) ? 'WHERE' : '';
+        $join = $this->where === '' ? 'WHERE' : '';
 
         if (is_array($field)) {
             foreach ($field as $key => $val) {
@@ -1010,6 +1018,64 @@ class BaseBuilder implements BuilderInterface
     final public function orNotWhereColumn(array|string $field, ?string $compare = null): self
     {
         return $this->orWhereNotColumn($field, $compare);
+    }
+
+    /**
+     * Ajoute la clause "exists" à la requête.
+     *
+     * @param  Closure|self $callback
+     */
+    public function whereExists($callback, string $boolean = 'and', bool $not = false): self
+    {
+        if ($callback instanceof Closure) {
+            $query = $this->forSubQuery();
+            $callback($query);
+        } else {
+            $query = $callback;
+        }
+
+        return $this->addWhereExistsQuery($query, $boolean, $not);
+    }
+
+    /**
+     * Ajoute la clause "or exists" à la requête.
+     */
+    public function orWhereExists($callback, $not = false)
+    {
+        return $this->whereExists($callback, 'or', $not);
+    }
+
+    /**
+     * Ajoute la clause "not exists" à la requête.
+     */
+    public function whereNotExists($callback, $boolean = 'and')
+    {
+        return $this->whereExists($callback, $boolean, true);
+    }
+
+    /**
+     * Ajoute la clause "or not exists" à la requête.
+     */
+    public function orWhereNotExists($callback)
+    {
+        return $this->orWhereExists($callback, true);
+    }
+
+    /**
+     * Ajoute une clause "exists" a la requete.
+     */
+    protected function addWhereExistsQuery(self $query, string $boolean = 'and', bool $not = false): self
+    {
+        $aliases = $query->db->getAliasedTables();
+        $sql     = $query->sql();
+
+        $query->db->setAliasedTables($aliases);
+
+        $not = $not === true ? 'NOT' : '';
+        $sql = trim(sprintf('%s EXISTS (%s)', $not, $sql));
+        $sql = $boolean === 'or' ? '|' . $sql : $sql;
+        
+        return $this->where($sql, null, false);
     }
 
     /**
@@ -2955,6 +3021,14 @@ class BaseBuilder implements BuilderInterface
     protected function isSubquery(mixed $value): bool
     {
         return $value instanceof BaseBuilder || $value instanceof Closure;
+    }
+
+    /**
+     * Cree une nouvelle instance du query builder pour une sous requete.
+     */
+    protected function forSubQuery(): static
+    {
+        return $this->newQuery();
     }
 
     /**

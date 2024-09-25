@@ -7,6 +7,8 @@ use BlitzPHP\Database\Builder\SQLite as SQLiteBuilder;
 use BlitzPHP\Database\Spec\Mock\MockConnection;
 use BlitzPHP\Utilities\Date;
 
+use function Kahlan\expect;
+
 describe("Query Builder : Where", function() {
 
     beforeEach(function() {
@@ -143,8 +145,8 @@ describe("Query Builder : Where", function() {
         }); 
 
         it(": WhereNull multiple avec une autre condition", function() {
-            $builder = $this->builder->from('users u')->whereNull('name')->where('surname', 'blitz');
-            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE name IS NULL AND surname = \'blitz\'');
+            $builder = $this->builder->from('users u')->whereNull('name')->whereNull('surname')->where('lastname', 'blitz');
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE name IS NULL AND surname IS NULL AND lastname = \'blitz\'');
         });  
 
         it(": orWhereNull multiple avec une autre condition", function() {
@@ -174,7 +176,6 @@ describe("Query Builder : Where", function() {
             $builder = $this->builder->from('users u')->where('surname', 'blitz')->orWhereNotNull('name');
             expect($builder->sql())->toBe('SELECT * FROM users As u WHERE surname = \'blitz\' OR name IS NOT NULL');
         });
-        
     });
 
     describe('whereDate', function(){
@@ -248,6 +249,144 @@ describe("Query Builder : Where", function() {
                 'updated_at !=' => '2024-03-25'
             ]);
             expect($builder->sql())->toBe("SELECT * FROM users As u WHERE created_at::date > '2024-03-24' OR updated_at::date != '2024-03-25'");
+        });
+    });
+
+    describe('whereExists', function() {
+        it(': whereExists simple', function() {
+            $builder = $this->builder->from('users u')->whereExists(function($query) {
+                $query->from('posts p')->where('u.id', 'p.user_id');
+            });
+
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE EXISTS (SELECT * FROM posts As p WHERE u.id = p.user_id)');
+        });
+
+        it(": WhereExists simple avec une autre condition", function() {
+            $builder = $this->builder->from('users u')->whereNull('deleted_at')->whereExists(function($query) {
+                $query->from('posts p')->where('u.id', 'p.user_id');
+            });
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE deleted_at IS NULL AND EXISTS (SELECT * FROM posts As p WHERE u.id = p.user_id)');
+        });
+        
+        it(': whereExists multiple', function() {
+            $builder = $this->builder->from('parcours p')->whereExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.enseignant_id');
+            })->whereExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.apprenant_id');
+            });
+
+            expect($builder->sql())->toBe('SELECT * FROM parcours As p WHERE EXISTS (SELECT * FROM users As u WHERE u.id = p.enseignant_id) AND EXISTS (SELECT * FROM users As u WHERE u.id = p.apprenant_id)');
+        });
+
+        it(": WhereExists multiple avec une autre condition", function() {
+            $builder = $this->builder->from('parcours p')->whereExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.enseignant_id');
+            })->whereExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.apprenant_id');
+            })->whereNull('deleted_at')->where('status', 'active');
+
+            expect($builder->sql())->toBe('SELECT * FROM parcours As p WHERE EXISTS (SELECT * FROM users As u WHERE u.id = p.enseignant_id) AND EXISTS (SELECT * FROM users As u WHERE u.id = p.apprenant_id) AND deleted_at IS NULL AND status = \'active\'');
+        });
+
+        it(": orWhereExists simple avec une autre condition", function() {
+            $builder = $this->builder->from('users u')->whereNull('deleted_at')->orWhereExists(function($query) {
+                $query->from('posts p')->where('u.id', 'p.user_id');
+            });
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE deleted_at IS NULL OR EXISTS (SELECT * FROM posts As p WHERE u.id = p.user_id)');
+        
+            $builder = $this->builder->from('users u')->whereNull('u.deleted_at')->orWhereExists(function($query) {
+                $query->from('posts p')->where('u.id', 'p.user_id')->whereNull('p.deleted_at');
+            });
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE u.deleted_at IS NULL OR EXISTS (SELECT * FROM posts As p WHERE u.id = p.user_id AND p.deleted_at IS NULL)');
+        });
+
+        it(': orWhereExists multiple', function() {
+            $builder = $this->builder->from('parcours p')->orWhereExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.enseignant_id');
+            })->orWhereExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.apprenant_id');
+            });
+
+            expect($builder->sql())->toBe('SELECT * FROM parcours As p WHERE EXISTS (SELECT * FROM users As u WHERE u.id = p.enseignant_id) OR EXISTS (SELECT * FROM users As u WHERE u.id = p.apprenant_id)');
+        });
+
+        it(": orWhereExists multiple avec une autre condition", function() {
+            $builder = $this->builder->from('parcours p')->whereExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.enseignant_id');
+            })->orWhereExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.apprenant_id');
+            })->whereNull('deleted_at')->where('status', 'active');
+
+            expect($builder->sql())->toBe('SELECT * FROM parcours As p WHERE EXISTS (SELECT * FROM users As u WHERE u.id = p.enseignant_id) OR EXISTS (SELECT * FROM users As u WHERE u.id = p.apprenant_id) AND deleted_at IS NULL AND status = \'active\'');
+        });
+    });
+    
+    describe('whereNotExists()', function() {
+        it(': whereNotExists simple', function() {
+            $builder = $this->builder->from('users u')->whereNotExists(function($query) {
+                $query->from('posts p')->where('u.id', 'p.user_id');
+            });
+
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE NOT EXISTS (SELECT * FROM posts As p WHERE u.id = p.user_id)');
+        }); 
+        
+        it(": WhereNotExists simple avec une autre condition", function() {
+            $builder = $this->builder->from('users u')->whereNull('deleted_at')->whereNotExists(function($query) {
+                $query->from('posts p')->where('u.id', 'p.user_id');
+            });
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE deleted_at IS NULL AND NOT EXISTS (SELECT * FROM posts As p WHERE u.id = p.user_id)');
+        });
+
+        it(': whereNotExists multiple', function() {
+            $builder = $this->builder->from('parcours p')->whereNotExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.enseignant_id');
+            })->whereNotExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.apprenant_id');
+            });
+
+            expect($builder->sql())->toBe('SELECT * FROM parcours As p WHERE NOT EXISTS (SELECT * FROM users As u WHERE u.id = p.enseignant_id) AND NOT EXISTS (SELECT * FROM users As u WHERE u.id = p.apprenant_id)');
+        });
+
+        it(": WhereNotExists multiple avec une autre condition", function() {
+            $builder = $this->builder->from('parcours p')->whereNotExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.enseignant_id');
+            })->whereNotExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.apprenant_id');
+            })->whereNull('deleted_at')->where('status', 'active');
+
+            expect($builder->sql())->toBe('SELECT * FROM parcours As p WHERE NOT EXISTS (SELECT * FROM users As u WHERE u.id = p.enseignant_id) AND NOT EXISTS (SELECT * FROM users As u WHERE u.id = p.apprenant_id) AND deleted_at IS NULL AND status = \'active\'');
+        });
+
+        it(": orWhereNotExists simple avec une autre condition", function() {
+            $builder = $this->builder->from('users u')->whereNull('deleted_at')->orWhereNotExists(function($query) {
+                $query->from('posts p')->where('u.id', 'p.user_id');
+            });
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE deleted_at IS NULL OR NOT EXISTS (SELECT * FROM posts As p WHERE u.id = p.user_id)');
+        
+            $builder = $this->builder->from('users u')->whereNull('u.deleted_at')->orWhereNotExists(function($query) {
+                $query->from('posts p')->where('u.id', 'p.user_id')->whereNull('p.deleted_at');
+            });
+            expect($builder->sql())->toBe('SELECT * FROM users As u WHERE u.deleted_at IS NULL OR NOT EXISTS (SELECT * FROM posts As p WHERE u.id = p.user_id AND p.deleted_at IS NULL)');
+        });
+
+        it(': orWhereExists multiple', function() {
+            $builder = $this->builder->from('parcours p')->orWhereNotExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.enseignant_id');
+            })->orWhereNotExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.apprenant_id');
+            });
+
+            expect($builder->sql())->toBe('SELECT * FROM parcours As p WHERE NOT EXISTS (SELECT * FROM users As u WHERE u.id = p.enseignant_id) OR NOT EXISTS (SELECT * FROM users As u WHERE u.id = p.apprenant_id)');
+        });
+
+        it(": orWhereExists multiple avec une autre condition", function() {
+            $builder = $this->builder->from('parcours p')->whereNotExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.enseignant_id');
+            })->orWhereNotExists(function($query) {
+                $query->from('users u')->where('u.id', 'p.apprenant_id');
+            })->whereNull('deleted_at')->where('status', 'active');
+
+            expect($builder->sql())->toBe('SELECT * FROM parcours As p WHERE NOT EXISTS (SELECT * FROM users As u WHERE u.id = p.enseignant_id) OR NOT EXISTS (SELECT * FROM users As u WHERE u.id = p.apprenant_id) AND deleted_at IS NULL AND status = \'active\'');
         });
     });
 });
