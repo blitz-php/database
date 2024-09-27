@@ -64,5 +64,8 @@
     "prefer-stable": true,
     "config": {
         "sort-packages": true
+    },
+    "suggest": {
+        "dimtrovich/db-dumper": "Requis pour la sauvegarde et la restauration de la base de données."
     }
 }

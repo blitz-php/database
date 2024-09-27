@@ -16,6 +16,9 @@ use BlitzPHP\Contracts\Database\ConnectionResolverInterface;
 use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Database;
+use Dimtrovich\DbDumper\Exceptions\Exception as DumperException;
+use Dimtrovich\DbDumper\Exporter;
+use Dimtrovich\DbDumper\Importer;
 
 class Services extends BaseServices
 {
@@ -41,5 +44,51 @@ class Services extends BaseServices
         }
 
         return static::$instances[Database::class] = static::container()->get(ConnectionResolverInterface::class)->connect($group);
+    }
+
+    /**
+     * Systeme d'exportation de la base de donnees
+     */
+    public static function dbExporter(?BaseConnection $db = null, array $config = [], bool $shared = true): Exporter
+    {
+        if (true === $shared && isset(static::$instances[Exporter::class])) {
+            return static::$instances[Exporter::class];
+        }
+
+        $db ??= self::database();
+        $config ??= config('dump', []);
+
+        if (! $db->conn) {
+            $db->initialize();
+        }
+
+        if (! $db->isPdo()) {
+            throw new DumperException('Impossible de sauvegarder la base de données. Vous devez utiliser un pilote PDO', DumperException::PDO_EXCEPTION);
+        }
+
+        return static::$instances[Exporter::class] = new Exporter($db->database, $db->conn, $config);
+    }
+
+    /**
+     * Systeme d'importation de la base de donnees
+     */
+    public static function dbImporter(?BaseConnection $db = null, array $config = [], bool $shared = true): Importer
+    {
+        if (true === $shared && isset(static::$instances[Importer::class])) {
+            return static::$instances[Importer::class];
+        }
+
+        $db ??= self::database();
+        $config ??= config('dump', []);
+
+        if (! $db->conn) {
+            $db->initialize();
+        }
+
+        if (! $db->isPdo()) {
+            throw new DumperException('Impossible de restaurer la base de données. Vous devez utiliser un pilote PDO', DumperException::PDO_EXCEPTION);
+        }
+
+        return static::$instances[Importer::class] = new Importer($db->database, $db->conn, $config);
     }
 }
