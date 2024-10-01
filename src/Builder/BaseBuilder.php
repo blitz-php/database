@@ -1023,6 +1023,46 @@ class BaseBuilder implements BuilderInterface
         return $this->orWhereNotColumn($field, $compare);
     }
 
+	/**
+	 * Génère la partie WHERE de la requête a partir d'une chaine sql brute. 
+	 * 
+	 * Sépare plusieurs appels avec 'AND'.
+	 */
+	public function whereRaw(string $query): self
+	{
+		return $this->where(new RawSql($query));
+	}
+
+	/**
+	 * Génère la partie WHERE de la requête a partir d'une chaine sql brute.
+	 * 
+	 * Sépare plusieurs appels avec 'OR'.  
+	 */
+	public function orWhereRaw(string $query): self
+	{
+		return $this->orWhere(new RawSql($query));
+	}
+
+	/**
+	 * Génère la partie WHERE (de type WHERE x NOT y) de la requête a partir d'une chaine sql brute. 
+	 * 
+	 * Sépare plusieurs appels avec 'AND'.
+	 */
+	public function whereNotRaw(string $query): self
+	{
+		return $this->notWhere(new RawSql($query), null, false);
+	}
+	
+	/**
+	 * Génère la partie WHERE (de type WHERE x NOT y) de la requête a partir d'une chaine sql brute. 
+	 * 
+	 * Sépare plusieurs appels avec 'OR'.
+	 */
+	public function orWhereNotRaw(string $query): self
+	{
+		return $this->orNotWhere(new RawSql($query));
+	}
+
     /**
      * Ajoute la clause "exists" à la requête.
      */
