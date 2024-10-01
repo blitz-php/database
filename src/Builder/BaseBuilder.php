@@ -382,15 +382,7 @@ class BaseBuilder implements BuilderInterface
      */
     public function where($field, $value = null, bool $escape = true): self
     {
-        if ($field instanceof Closure) {
-            $clone        = clone $this;
-            $clone->where = '';
-            if (is_a($r = $field($clone), self::class)) {
-                $clone = $r;
-            }
-
-            $field = '( ' . trim(str_ireplace('WHERE', '', $clone->where)) . ' )';
-        }
+        $field = $this->normalizeWhereField($field);
 
         if (is_string($value) && $escape && $this->db->isEscapedIdentifier($value)) {
             $escape = false;
@@ -429,11 +421,13 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x NOT y) de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param array|Closure|string $field Un nom de champ ou un tableau de champs et de valeurs.
      * @param mixed        $value Une valeur de champ à comparer
      */
     final public function notWhere($field, $value = null, bool $escape = true): self
     {
+        $field = $this->normalizeWhereField($field);
+
         if (! is_array($field)) {
             $field = [$field => $value];
         }
@@ -449,11 +443,13 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE de la requête.
      * Sépare plusieurs appels avec 'OR'.
      *
-     * @param array|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param array|Closure|string $field Un nom de champ ou un tableau de champs et de valeurs.
      * @param mixed        $value Une valeur de champ à comparer
      */
     final public function orWhere($field, $value = null, bool $escape = true): self
     {
+        $field = $this->normalizeWhereField($field);
+
         if (! is_array($field)) {
             $field = [$field => $value];
         }
@@ -469,11 +465,13 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x NOT y) de la requête.
      * Sépare plusieurs appels avec 'OR'.
      *
-     * @param array|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param array|Closure|string $field Un nom de champ ou un tableau de champs et de valeurs.
      * @param mixed        $value Une valeur de champ à comparer
      */
     final public function orNotWhere($field, $value = null, bool $escape = true): self
     {
+        $field = $this->normalizeWhereField($field);
+
         if (! is_array($field)) {
             $field = [$field => $value];
         }
@@ -489,7 +487,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x IN(y)) de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|callable|self $param
+     * @param array|Closure|self $param
      */
     final public function whereIn(string $field, $param): self
     {
@@ -524,7 +522,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x IN(y)) de la requête.
      * Sépare plusieurs appels avec 'OR'.
      *
-     * @param array|callable|self $param
+     * @param array|Closure|self $param
      *
      * @alias self::orWhereIn()
      */
@@ -537,7 +535,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x NOT IN(y)) de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|callable|self $param
+     * @param array|Closure|self $param
      */
     final public function whereNotIn(string $field, $param): self
     {
@@ -550,7 +548,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x NOT IN(y)) de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|callable|self $param
+     * @param array|Closure|self $param
      *
      * @alias self::whereNotIn()
      */
@@ -563,7 +561,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x NOT IN(y)) de la requête.
      * Sépare plusieurs appels avec 'OR'.
      *
-     * @param array|callable|self $param
+     * @param array|Closre|self $param
      */
     final public function orWhereNotIn(string $field, $param): self
     {
@@ -576,7 +574,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x NOT IN(y)) de la requête.
      * Sépare plusieurs appels avec 'OR'.
      *
-     * @param array|callable|self $param
+     * @param array|Closure|self $param
      *
      * @alias self::orWhereNotIn()
      */
@@ -2994,6 +2992,27 @@ class BaseBuilder implements BuilderInterface
         }
 
         return $param;
+    }
+
+    /**
+     * Normalise la forme attendue d'un champ pour la clause where
+     *
+     * @param array|Closure|string $field
+     * @return array|string
+     */
+    private function normalizeWhereField($field)
+    {
+        if ($field instanceof Closure) {
+            $clone        = clone $this;
+            $clone->where = '';
+            if (is_a($r = $field($clone), self::class)) {
+                $clone = $r;
+            }
+
+            $field = '( ' . trim(str_ireplace('WHERE', '', $clone->where)) . ' )';
+        }
+
+        return $field;
     }
 
     /**
