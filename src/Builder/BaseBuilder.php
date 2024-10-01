@@ -17,6 +17,7 @@ use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Connection\MySQL as MySQLConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
+use BlitzPHP\Database\RawSql;
 use BlitzPHP\Database\Result\BaseResult;
 use BlitzPHP\Traits\Conditionable;
 use BlitzPHP\Utilities\Date;
@@ -377,12 +378,12 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|Closure|string $field Un nom de champ ou un tableau de champs et de valeurs.
-     * @param mixed                $value Une valeur de champ à comparer
+     * @param array|Closure|RawSql|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param mixed                       $value Une valeur de champ à comparer
      */
     public function where($field, $value = null, bool $escape = true): self
     {
-        $field = $this->normalizeWhereField($field);
+        [$field, $value, $escape] = $this->normalizeWhereField($field, $value, $escape);
 
         if (is_string($value) && $escape && $this->db->isEscapedIdentifier($value)) {
             $escape = false;
@@ -421,12 +422,12 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x NOT y) de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|Closure|string $field Un nom de champ ou un tableau de champs et de valeurs.
-     * @param mixed        $value Une valeur de champ à comparer
+     * @param array|Closure|RawSql|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param mixed                       $value Une valeur de champ à comparer
      */
     final public function notWhere($field, $value = null, bool $escape = true): self
     {
-        $field = $this->normalizeWhereField($field);
+        [$field, $value, $escape] = $this->normalizeWhereField($field, $value, $escape);
 
         if (! is_array($field)) {
             $field = [$field => $value];
@@ -443,12 +444,12 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE de la requête.
      * Sépare plusieurs appels avec 'OR'.
      *
-     * @param array|Closure|string $field Un nom de champ ou un tableau de champs et de valeurs.
-     * @param mixed        $value Une valeur de champ à comparer
+     * @param array|Closure|RawSql|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param mixed                       $value Une valeur de champ à comparer
      */
     final public function orWhere($field, $value = null, bool $escape = true): self
     {
-        $field = $this->normalizeWhereField($field);
+        [$field, $value, $escape] = $this->normalizeWhereField($field, $value, $escape);
 
         if (! is_array($field)) {
             $field = [$field => $value];
@@ -465,12 +466,12 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x NOT y) de la requête.
      * Sépare plusieurs appels avec 'OR'.
      *
-     * @param array|Closure|string $field Un nom de champ ou un tableau de champs et de valeurs.
-     * @param mixed        $value Une valeur de champ à comparer
+     * @param array|Closure|RawSql|string $field Un nom de champ ou un tableau de champs et de valeurs.
+     * @param mixed                       $value Une valeur de champ à comparer
      */
     final public function orNotWhere($field, $value = null, bool $escape = true): self
     {
-        $field = $this->normalizeWhereField($field);
+        [$field, $value, $escape] = $this->normalizeWhereField($field, $value, $escape);
 
         if (! is_array($field)) {
             $field = [$field => $value];
@@ -487,7 +488,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x IN(y)) de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|Closure|self $param
+     * @param array|Closure|RawSql|self $param
      */
     final public function whereIn(string $field, $param): self
     {
@@ -501,8 +502,10 @@ class BaseBuilder implements BuilderInterface
      * Sépare plusieurs appels avec 'AND'.
      *
      * @alias self::whereIn()
+     *
+     * @param mixed $param
      */
-    final public function in(string $field, array|callable|self $param): self
+    final public function in(string $field, $param): self
     {
         return $this->whereIn($field, $param);
     }
@@ -510,8 +513,10 @@ class BaseBuilder implements BuilderInterface
     /**
      * Génère la partie WHERE (de type WHERE x IN(y)) de la requête.
      * Sépare plusieurs appels avec 'OR'.
+     *
+     * @param array|Closure|RawSql|self $param
      */
-    final public function orWhereIn(string $field, array|callable|self $param): self
+    final public function orWhereIn(string $field, $param): self
     {
         $param = $this->buildInCallbackParam($param, __METHOD__);
 
@@ -535,7 +540,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x NOT IN(y)) de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param array|Closure|self $param
+     * @param array|Closure|RawSql|self $param
      */
     final public function whereNotIn(string $field, $param): self
     {
@@ -561,7 +566,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x NOT IN(y)) de la requête.
      * Sépare plusieurs appels avec 'OR'.
      *
-     * @param array|Closre|self $param
+     * @param array|Closure|RawSql|self $param
      */
     final public function orWhereNotIn(string $field, $param): self
     {
@@ -2977,7 +2982,9 @@ class BaseBuilder implements BuilderInterface
      */
     private function buildInCallbackParam($param, string $method): string
     {
-        if (is_callable($param)) {
+        if ($param instanceof RawSql) {
+            $param = (string) $param;
+        } elseif (is_callable($param)) {
             $clone = clone $this;
             $clone->reset();
             $param = $param($clone);
@@ -2997,12 +3004,17 @@ class BaseBuilder implements BuilderInterface
     /**
      * Normalise la forme attendue d'un champ pour la clause where
      *
-     * @param array|Closure|string $field
-     * @return array|string
+     * @param array|Closure|RawSql|string $field
+     *
+     * @return array{array|string, mixed, bool}
      */
-    private function normalizeWhereField($field)
+    private function normalizeWhereField($field, mixed $value, bool $escape): array
     {
-        if ($field instanceof Closure) {
+        if ($field instanceof RawSql) {
+            $field  = (string) $field;
+            $value  = null;
+            $escape = false;
+        } elseif ($field instanceof Closure) {
             $clone        = clone $this;
             $clone->where = '';
             if (is_a($r = $field($clone), self::class)) {
@@ -3012,7 +3024,7 @@ class BaseBuilder implements BuilderInterface
             $field = '( ' . trim(str_ireplace('WHERE', '', $clone->where)) . ' )';
         }
 
-        return $field;
+        return [$field, $value, $escape];
     }
 
     /**
