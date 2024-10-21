@@ -1452,7 +1452,7 @@ abstract class BaseConnection implements ConnectionInterface
         }
 
         if (is_string($str)) {
-            return "'" . $this->escapeString($str) . "'";
+            return $this->escapeString($str);
         }
 
         if (is_bool($str)) {

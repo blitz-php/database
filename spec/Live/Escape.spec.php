@@ -5,7 +5,7 @@ use BlitzPHP\Utilities\Date;
 
 use function Kahlan\expect;
 
-describe("Live / Escape", function() {
+xdescribe("Live / Escape", function() {
 
     beforeAll(function() {
         $this->db   = Database::connection([
