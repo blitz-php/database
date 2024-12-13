@@ -147,6 +147,8 @@ class Transformer
                 ]);
             } elseif ($command->name === 'dropIndex') {
                 $this->creator->dropKey($table, $command->columns);
+            } elseif ($command->name === 'dropUnique') {
+                $this->creator->dropKey($table, $command->index);
             } elseif ($command->name === 'dropForeign') {
                 $this->creator->dropForeignKey($table, $command->index);
             } elseif ($command->name === 'dropPrimary') {
