@@ -461,9 +461,10 @@ abstract class Model
         $this->escape   = $this->tempData['escape'] ?? [];
         $this->tempData = [];
 
-        $builder = $this->builder();
+        $builder  = $this->builder();
+        $inserted = $builder->insert($data);
 
-        if ($returnID && true === $inserted = $builder->insert($data)) {
+        if ($returnID && true === $inserted) {
             return $this->db->lastId($builder->getTable());
         }
 
