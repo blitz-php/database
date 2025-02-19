@@ -89,7 +89,7 @@ class Table
         }
 
         if (! $this->db->tableExists($this->prefixedTableName)) {
-            throw DataException::forTableNotFound($this->prefixedTableName);
+            throw DataException::tableNotFound($this->prefixedTableName);
         }
 
         $this->tableName = $table;
