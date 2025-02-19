@@ -114,8 +114,8 @@ class Postgre extends BaseConnection
     {
         if ($this->isPdo()) {
             parent::reconnect();
-        } elseif (pg_ping($this->conn) === false) {
-            $this->conn = false;
+        } elseif ($this->conn === false || pg_ping($this->conn) === false) {
+            parent::reconnect();
         }
     }
 
