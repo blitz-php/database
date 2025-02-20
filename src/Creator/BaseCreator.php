@@ -807,6 +807,32 @@ class BaseCreator
     }
 
     /**
+     * Renomme une colonne dans la table spécifiée.
+     *
+     * Cette fonction renomme une colonne de la table donnée de son nom actuel à un nouveau nom.
+     * Elle récupère les propriétés de la colonne existante et les utilise pour modifier la colonne avec le nouveau nom.
+     *
+     * @throws RuntimeException Si la colonne spécifiée n'existe pas dans la table.
+     */
+    public function renameColumn(string $table, string $from, string $to): bool
+    {
+        $field = array_filter($this->db->getFieldData($table), fn($field) => $field->name === $from);
+        $field = array_shift($field);
+
+        if (null === $field) {
+            throw new RuntimeException(sprintf("La colonne %s n'existe pas dans la table %s", $from, $table));
+        }
+
+        return $this->modifyColumn($table, [$from => [
+            'name'       => $to,
+            'type'       => strtoupper($field->type),
+            'constraint' => $field->max_length,
+            'null'       => $field->nullable,
+            'default'    => $field->default,
+        ]]);
+    }
+
+    /**
      * @return false|string|string[]
      */
     protected function _alterTable(string $alterType, string $table, array|string $fields)

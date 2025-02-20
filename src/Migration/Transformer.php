@@ -142,9 +142,7 @@ class Transformer
             if ($command->name === 'dropColumn') {
                 $this->creator->dropColumn($table, $command->columns);
             } elseif ($command->name === 'renameColumn') {
-                $this->creator->modifyColumn($table, [
-                    $command->from => array_merge(['name' => $command->to], $this->makeColumn($command)),
-                ]);
+                $this->creator->renameColumn($table, $command->from, $command->to);
             } elseif ($command->name === 'dropIndex') {
                 $this->creator->dropKey($table, $command->columns);
             } elseif ($command->name === 'dropUnique') {
