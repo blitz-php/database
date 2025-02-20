@@ -828,7 +828,6 @@ class BaseCreator
             'type'       => strtoupper($field->type),
             'constraint' => $field->max_length,
             'null'       => $field->nullable,
-            'default'    => $field->default,
         ]]);
     }
 
