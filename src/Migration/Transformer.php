@@ -248,7 +248,7 @@ class Transformer
             $definition['null'] = true;
         }
         if ($this->is($column, 'unique')) {
-            // $definition['unique'] = true;
+            $definition['unique'] = true;
         }
         if ($this->is($column, 'unsigned')) {
             $definition['unsigned'] = true;
