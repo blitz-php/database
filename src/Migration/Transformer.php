@@ -64,48 +64,11 @@ class Transformer
 
         foreach ($this->getColumns($structure, true) as $column) {
             $this->creator->addField([$column->name => $this->makeColumn($column)]);
-
-            if ($this->is($column, 'primary')) {
-                $this->creator->addPrimaryKey($column->name);
-            } elseif ($this->is($column, 'unique')) {
-                $this->creator->addUniqueKey($column->name);
-            } elseif ($this->is($column, 'index')) {
-                $this->creator->addKey($column->name);
-            }
+            $this->processKeys($column);
         }
 
         foreach ($commands as $command) {
-            if ($command->name === 'foreign') {
-                $onDelete = match (true) {
-                    ($command->cascadeOnDelete ?? null) === true  => 'cascade',
-                    ($command->restrictOnDelete ?? null) === true => 'restrict',
-                    ($command->nullOnDelete ?? null) === true     => 'set null',
-                    ($command->noActionOnDelete ?? null) === true => 'no action',
-                    default                                       => $command->onDelete ?? ''
-                };
-                $onUpdate = match (true) {
-                    ($command->cascadeOnUpdate ?? null) === true  => 'cascade',
-                    ($command->restrictOnUpdate ?? null) === true => 'restrict',
-                    ($command->nullOnUpdate ?? null) === true     => 'set null',
-                    ($command->noActionOnUpdate ?? null) === true => 'no action',
-                    default                                       => $command->onUpdate ?? ''
-                };
-
-                $this->creator->addForeignKey(
-                    $command->columns,
-                    $command->on,
-                    $command->references,
-                    $onUpdate,
-                    $onDelete,
-                    $command->index
-                );
-            } elseif ($command->name === 'primary') {
-                $this->creator->addPrimaryKey($command->columns, $command->index);
-            } elseif ($command->name === 'index') {
-                $this->creator->addKey($command->columns, false, false, $command->index);
-            } elseif ($command->name === 'unique') {
-                $this->creator->addUniqueKey($command->columns, $command->index);
-            }
+            $this->processCommand($command);
         }
 
         $attributes = [];
@@ -132,10 +95,14 @@ class Transformer
 
         foreach ($this->getColumns($structure, true) as $column) {
             $this->creator->addColumn($table, [$column->name => $this->makeColumn($column)]);
+            $this->processKeys($column);
+            $this->creator->processIndexes($table);
         }
-
+        
         foreach ($this->getColumns($structure, false) as $column) {
-            // $this->creator->modifyColumn($table, [$column->name => $this->makeColumn($column)]);
+            $this->creator->modifyColumn($table, [$column->name => $this->makeColumn($column)]);
+            $this->processKeys($column);
+            $this->creator->processIndexes($table);
         }
 
         foreach ($commands as $command) {
@@ -153,29 +120,7 @@ class Transformer
                 $this->creator->dropPrimaryKey($table, $command->index);
             }
 
-            $process = false;
-
-            if ($command->name === 'primary') {
-                $this->creator->addPrimaryKey($command->columns, $command->index);
-                $process = true;
-            } elseif ($command->name === 'unique') {
-                $this->creator->addUniqueKey($command->columns, $command->index);
-                $process = true;
-            } elseif ($command->name === 'index') {
-                $this->creator->addKey($command->columns, false, false, $command->index);
-                $process = true;
-            } elseif ($command->name === 'foreign') {
-                $this->creator->addForeignKey(
-                    $command->columns ?? '',
-                    $command->on ?? '',
-                    $command->references ?? '',
-                    $command->onUpdate ?? '',
-                    $command->onDelete ?? '',
-                    $command->index ?? ''
-                );
-                $process = true;
-            }
-            if ($process) {
+            if ($this->processCommand($command)) {
                 $this->creator->processIndexes($table);
             }
         }
@@ -195,6 +140,85 @@ class Transformer
     public function renameTable(string $table, string $to): void
     {
         $this->creator->renameTable($table, $to);
+    }
+
+    /**
+     * Traite les clés d'une colonne donnée.
+     *
+     * Cette fonction vérifie si la colonne est une clé primaire, une clé unique ou un index,
+     * et ajoute la clé appropriée au créateur.
+     */
+    private function processKeys(object $column): void
+    {
+        if ($this->is($column, 'primary')) {
+            $this->creator->addPrimaryKey($column->name);
+        } elseif ($this->is($column, 'unique')) {
+            $this->creator->addUniqueKey($column->name);
+        } elseif ($this->is($column, 'index')) {
+            $this->creator->addKey($column->name);
+        }
+    }
+
+    /**
+     * Traiter une commande de modification de table.
+     *
+     * Cette fonction traite différents types de commandes de modification d'une table de base de données, notamment l'ajout de clés primaires, de clés uniques, d'index et de clés étrangères,
+     * y compris l'ajout de clés primaires, de clés uniques, d'index et de clés étrangères.
+     *
+     * @param object $command Objet de commande contenant les détails de la modification à effectuer.
+     *                        Propriétés attendues :
+     *                        - name: string (Le type de commande : 'primary', 'unique', 'index', ou 'foreign')
+     *                        - columns: string|array (colonne(s) affectée(s) par la commande)
+     *                        - index: string|null (le nom de l'index, le cas échéant)
+     *                        Pour les commandes de clés étrangères :
+     *                        - on: string (La table référencée)
+     *                        - references: string (La colonne référencée)
+     *                        - cascadeOnDelete, restrictOnDelete, nullOnDelete, noActionOnDelete: bool
+     *                        - cascadeOnUpdate, restrictOnUpdate, nullOnUpdate, noActionOnUpdate: bool
+     *                        - onDelete, onUpdate: string (actions `ON DELETE` et `ON UPDATE` personnalisées)
+     *
+     * @return bool Retourne true si une commande a été traitée, false sinon.
+     */ 
+    private function processCommand($command): bool
+    {
+        $process = false;
+
+        if ($command->name === 'primary') {
+            $this->creator->addPrimaryKey($command->columns, $command->index);
+            $process = true;
+        } elseif ($command->name === 'unique') {
+            $this->creator->addUniqueKey($command->columns, $command->index);
+            $process = true;
+        } elseif ($command->name === 'index') {
+            $this->creator->addKey($command->columns, false, false, $command->index);
+            $process = true;
+        } elseif ($command->name === 'foreign') {
+            $onDelete = match (true) {
+                ($command->cascadeOnDelete ?? null) === true  => 'cascade',
+                ($command->restrictOnDelete ?? null) === true => 'restrict',
+                ($command->nullOnDelete ?? null) === true     => 'set null',
+                ($command->noActionOnDelete ?? null) === true => 'no action',
+                default                                       => $command->onDelete ?? ''
+            };
+            $onUpdate = match (true) {
+                ($command->cascadeOnUpdate ?? null) === true  => 'cascade',
+                ($command->restrictOnUpdate ?? null) === true => 'restrict',
+                ($command->nullOnUpdate ?? null) === true     => 'set null',
+                ($command->noActionOnUpdate ?? null) === true => 'no action',
+                default                                       => $command->onUpdate ?? ''
+            };
+            $this->creator->addForeignKey(
+                $command->columns ?? '',
+                $command->on ?? '',
+                $command->references ?? '',
+                $onUpdate,
+                $onDelete,
+                $command->index ?? ''
+            );
+            $process = true;
+        }
+
+        return $process;
     }
 
     /**
@@ -244,11 +268,8 @@ class Transformer
             $definition['type'] = str_replace('{precision}', $column->precision, $definition['type']);
         }
 
-        if ($this->is($column, 'nullable')) {
-            $definition['null'] = true;
-        }
-        if ($this->is($column, 'unique')) {
-            $definition['unique'] = true;
+        if (property_exists($column, 'nullable')) {
+            $definition['null'] = $column->nullable;
         }
         if ($this->is($column, 'unsigned')) {
             $definition['unsigned'] = true;
