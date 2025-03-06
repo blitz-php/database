@@ -2738,9 +2738,9 @@ class BaseBuilder implements BuilderInterface
             if (! str_contains($condition, 'IN')) {
                 $condition = ' IN ';
             }
-            $value = '(' . implode(',', array_map(fn ($val) => $escape === true ? $this->db->quote($val) : $val, $value)) . ')';
+            $value = '(' . implode(',', array_map(fn ($v) => $this->db->escapeValue($escape, $v), $value)) . ')';
         } else {
-            $value = ($escape && ! is_numeric($value)) ? $this->db->quote($value) : $value;
+            $value = $this->db->escapeValue($escape, $value);
         }
 
         $this->addCompiledWhere($join, $field, $condition, $value);

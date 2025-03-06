@@ -1432,6 +1432,23 @@ abstract class BaseConnection implements ConnectionInterface
     }
 
     /**
+     * Échappe une valeur de la clause where
+     */
+    public function escapeValue(bool $escape, $value)
+    {
+        if (! $escape || is_numeric($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && ! str_starts_with($value, "'") && ! str_ends_with($value, "'") ) {
+            return $this->quote($value);
+        }
+       
+        return $value;
+    }
+
+
+    /**
      * "Chaîne d'échappement "intelligente
      *
      * Échappe les données en fonction de leur type.
