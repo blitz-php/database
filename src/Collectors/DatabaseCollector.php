@@ -15,6 +15,8 @@ use BlitzPHP\Contracts\Event\EventInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\ConnectionResolver;
 use BlitzPHP\Debug\Toolbar\Collectors\BaseCollector;
+use BlitzPHP\Utilities\Date;
+use BlitzPHP\Utilities\String\Text;
 
 /**
  * Collecteur pour l'onglet Base de données de la barre d'outils de débogage.
@@ -41,7 +43,7 @@ class DatabaseCollector extends BaseCollector
     /**
      * {@inheritDoc}
      */
-    protected string $title = 'Database';
+    protected string $title = 'Base de donées';
 
     /**
      * Tableau de connexions à la base de données.
@@ -52,8 +54,6 @@ class DatabaseCollector extends BaseCollector
 
     /**
      * Les instances de requête qui ont été collectées via l'événement DBQuery.
-     *
-     * @var stdClass[]
      */
     protected static array $queries = [];
 
@@ -74,13 +74,24 @@ class DatabaseCollector extends BaseCollector
          * @var \BlitzPHP\Database\Result\BaseResult
          */
         $result = $event->getTarget();
-        $config = (object) config('toolbar');
 
-        // Fournit la valeur par défaut au cas où elle n'est pas définie
-        $max = $config->max_queries ?: 100;
+        if (count(static::$queries) < config('toolbar.max_queries', 100)) {
+            $query = (object) $result->details();
 
-        if (count(static::$queries) < $max) {
-            static::$queries[] = (object) $result->details();
+            $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+
+            if (! is_cli()) {
+                // lorsqu'ils sont appelés dans le navigateur, les deux premiers tableaux de traces 
+                // proviennent du déclencheur d'événement de la base de données, qui ne sont pas nécessaires
+                $backtrace = array_slice($backtrace, 2);
+            }
+
+            static::$queries[] = [
+                'query'     => $query,
+                'string'    => $query->sql,
+                'duplicate' => in_array($query->sql, array_column(static::$queries, 'string', null), true),
+                'trace'     => $backtrace,
+            ];
         }
     }
 
@@ -93,8 +104,8 @@ class DatabaseCollector extends BaseCollector
 
         foreach ($this->connections as $alias => $connection) {
             $data[] = [
-                'name'      => 'Connecting to Database: "' . $connection->getDatabase() . '". Config: "' . $alias . '"',
-                'component' => 'Database',
+                'name'      => 'Connexion à la base de données: "' . $connection->getDatabase() . '". Config: "' . $alias . '"',
+                'component' => 'Base de données',
                 'start'     => $connection->getConnectStart(),
                 'duration'  => $connection->getConnectDuration(),
             ];
@@ -102,11 +113,11 @@ class DatabaseCollector extends BaseCollector
 
         foreach (static::$queries as $query) {
             $data[] = [
-                'name'      => 'Query',
-                'component' => 'Database',
-                'query'     => $query->sql,
-                'start'     => $query->start,
-                'duration'  => $query->duration,
+                'name'      => 'Requête',
+                'component' => 'Base de données',
+                'query'     => $query['query']->sql,
+                'start'     => $query['query']->start,
+                'duration'  => $query['query']->duration,
             ];
         }
 
@@ -118,64 +129,57 @@ class DatabaseCollector extends BaseCollector
      */
     public function display(): array
     {
-        // Mots clés que nous voulons mettre en gras
-        $highlight = [
-            'SELECT',
-            'DISTINCT',
-            'FROM',
-            'WHERE',
-            'AND',
-            'INNER JOIN',
-            'LEFT JOIN',
-            'RIGHT JOIN',
-            'JOIN',
-            'ORDER BY',
-            'ASC',
-            'DESC',
-            'GROUP BY',
-            'LIMIT',
-            'INSERT',
-            'INTO',
-            'VALUES',
-            'UPDATE',
-            'OR ',
-            'HAVING',
-            'OFFSET',
-            'NOT IN',
-            'IN',
-            'NOT LIKE',
-            'LIKE',
-            'COUNT',
-            'MAX',
-            'MIN',
-            'ON',
-            'AS',
-            'As',
-            'AVG',
-            'SUM',
-            'UPPER',
-            'LOWER',
-            '(',
-            ')',
-        ];
+        $data            = [];
+        $data['view']    = __NAMESPACE__ . '\Views\database.tpl';
+        $data['queries'] = array_map(function (array $query): array {
+            $isDuplicate = $query['duplicate'] === true;
 
-        $data = [
-            'queries' => [],
-        ];
+            $firstNonSystemLine = '';
 
-        foreach (static::$queries as $query) {
-            $sql = $query->sql;
+            foreach ($query['trace'] as $index => &$line) {
+                // simplifier le fichier et la ligne
+                if (isset($line['file'])) {
+                    $line['file'] = clean_path($line['file']) . ':' . $line['line'];
+                    unset($line['line']);
+                } else {
+                    $line['file'] = '[internal function]';
+                }
 
-            foreach ($highlight as $term) {
-                $sql = str_replace($term, "<strong>{$term}</strong>", $sql);
+                // trouver la première ligne de trace qui ne provient pas du systeme
+                if ($firstNonSystemLine === '' && ! Text::contains($line['file'], ['SYST_PATH', 'BLITZ_PATH'])) {
+                    $firstNonSystemLine = $line['file'];
+                }
+
+                // simplifier l'appel de fonction
+                if (isset($line['class'])) {
+                    $line['function'] = $line['class'] . $line['type'] . $line['function'];
+                    unset($line['class'], $line['type']);
+                }
+
+                if (strrpos($line['function'], '{closure}') === false) {
+                    $line['function'] .= '()';
+                }
+
+                $line['function'] = str_repeat(chr(0xC2) . chr(0xA0), 8) . $line['function'];
+
+                // ajouter une numérotation d'index complétée par un espace insécable
+                $indexPadded = str_pad(sprintf('%d', $index + 1), 3, ' ', STR_PAD_LEFT);
+                $indexPadded = preg_replace('/\s/', chr(0xC2) . chr(0xA0), $indexPadded);
+
+                $line['index'] = $indexPadded . str_repeat(chr(0xC2) . chr(0xA0), 4);
             }
 
-            $data['queries'][] = [
-                'duration'      => (number_format($query->duration, 5) * 1000) . ' ms',
-                'sql'           => $sql,
-                'affected_rows' => $query->affected_rows,
+            return [
+                'hover'         => $isDuplicate ? 'Cette requête a été appelée plus d\'une fois.' : '',
+                'class'         => $isDuplicate ? 'duplicate' : '',
+                'duration'      => (number_format($query['query']->duration, 5) * 1000) . ' ms',
+                'sql'           => $this->highlight($query['query']->sql),
+                'affected_rows' => $query['query']->affected_rows,
+                'trace'         => $query['trace'],
+                'trace-file'    => $firstNonSystemLine,
+                'qid'           => md5($query['query']->sql . Date::now()->format('0.u00 U')),
             ];
-        }
+        }, static::$queries);
 
         return $data;
     }
@@ -195,8 +199,21 @@ class DatabaseCollector extends BaseCollector
      */
     public function getTitleDetails(): string
     {
-        return '(' . count(static::$queries) . ' Queries across ' . ($countConnection = count($this->connections)) . ' Connection' .
-                ($countConnection > 1 ? 's' : '') . ')';
+        $this->getConnections();
+
+        $queryCount      = count(static::$queries);
+        $uniqueCount     = count(array_filter(static::$queries, static fn ($query): bool => $query['duplicate'] === false));
+        $connectionCount = count($this->connections);
+
+        return sprintf(
+            '(%d requête%s au total, %s %d unique sur %d connexion%s)',
+            $queryCount,
+            $queryCount > 1 ? 's' : '',
+            $uniqueCount > 1 ? 'dont' : '',
+            $uniqueCount,
+            $connectionCount,
+            $connectionCount > 1 ? 's' : '',
+        );
     }
 
     /**
@@ -204,7 +221,7 @@ class DatabaseCollector extends BaseCollector
      */
     public function isEmpty(): bool
     {
-        return empty(static::$queries);
+        return static::$queries === [];
     }
 
     /**
@@ -221,5 +238,54 @@ class DatabaseCollector extends BaseCollector
     private function getConnections()
     {
         $this->connections = ConnectionResolver::getConnections();
+    }
+
+    private function highlight(string $statement): string
+    {
+        // Liste des mots-clés à mettre en gras
+        $replacements = array_map(fn($term) => "<strong>{$term}</strong>", $search = [
+            'SELECT',
+            'DISTINCT',
+            'FROM',
+            'WHERE',
+            'AND',
+            'INNER JOIN',
+            'LEFT JOIN',
+            'NATURAL JOIN',
+            'RIGHT JOIN',
+            'JOIN',
+            'ORDER BY',
+            'ASC',
+            'DESC',
+            'GROUP BY',
+            'LIMIT',
+            'INSERT',
+            'INTO',
+            'VALUES',
+            'UPDATE',
+            'OR ',
+            'HAVING',
+            'OFFSET',
+            'NOT IN',
+            'IN',
+            'IS NOT NULL',
+            'IS NULL',
+            'NOT LIKE',
+            'LIKE',
+            'COUNT',
+            'MAX',
+            'MIN',
+            'ON',
+            'AS',
+            'As',
+            'AVG',
+            'SUM',
+            'UPPER',
+            'LOWER',
+            '(',
+            ')',
+        ]);
+
+       return strtr($statement, array_combine($search, $replacements));
     }
 }
