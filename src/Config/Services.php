@@ -39,11 +39,15 @@ class Services extends BaseServices
      */
     public static function database(?string $group = null, bool $shared = true): BaseConnection
     {
-        if (true === $shared && isset(static::$instances[Database::class])) {
+        /** @var ConnectionResolverInterface */
+        $connectionResolver = static::container()->get(ConnectionResolverInterface::class);
+        [$group] = $connectionResolver->connectionInfo($group);
+
+        if (true === $shared && isset(static::$instances[Database::class]) && static::$instances[Database::class]->group === $group) {
             return static::$instances[Database::class];
         }
 
-        return static::$instances[Database::class] = static::container()->get(ConnectionResolverInterface::class)->connect($group);
+        return static::$instances[Database::class] = $connectionResolver->connect($group);
     }
 
     /**
