@@ -46,6 +46,11 @@ class DatabaseCollector extends BaseCollector
     protected string $title = 'Base de donées';
 
     /**
+     * {@inheritDoc}
+     */
+    protected string $view = __NAMESPACE__ . '\Views\database.tpl';
+
+    /**
      * Tableau de connexions à la base de données.
      *
      * @var BaseConnection[]
@@ -130,7 +135,6 @@ class DatabaseCollector extends BaseCollector
     public function display(): array
     {
         $data            = [];
-        $data['view']    = __NAMESPACE__ . '\Views\database.tpl';
         $data['queries'] = array_map(function (array $query): array {
             $isDuplicate = $query['duplicate'] === true;
 
