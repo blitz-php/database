@@ -27,16 +27,6 @@ use stdClass;
 class Runner
 {
     /**
-     * Verifie si on s'est deja rassurer que la table existe ou pas=.
-     */
-    protected bool $tableChecked = false;
-
-    /**
-     * Utiliser pour sauter la migration courrante.
-     */
-    protected bool $groupSkip = false;
-
-    /**
      * Specifie si les migrations sont activees ou pas.
      */
     protected bool $enabled = false;
@@ -45,6 +35,12 @@ class Runner
      * Nom de la table dans laquelle seront stockees les meta informations de migrations.
      */
     protected string $table;
+
+    /**
+     * Le namespace où se trouvent les migrations.
+     * `null` correspond à tous les espaces de noms.
+     */
+    protected ?string $namespace = null;
 
     /**
      * Liste des fichiers des migrations.
@@ -85,9 +81,24 @@ class Runner
     protected array $messages = [];
 
     /**
+     * Verifie si on s'est deja rassurer que la table existe ou pas.
+     */
+    protected bool $tableChecked = false;
+
+    /**
+     * Chemin d'accès complet permettant de localiser les fichiers de migration.
+     */
+    protected string $path;
+
+    /**
      * Le filtre du groupe de la base de donnees.
      */
     protected ?string $groupFilter = null;
+
+    /**
+     * Utiliser pour sauter la migration courrante.
+     */
+    protected bool $groupSkip = false;
 
     /**
      * singleton
@@ -100,16 +111,22 @@ class Runner
     public static int $defaultStringLength = 255;
 
     /**
-     * Constructor.
+     * La migration peut gérer plusieurs bases de données. 
+     * Elle doit donc toujours utiliser le groupe de bases de données par défaut afin de créer la table `migrations` dans le groupe de bases de données par défaut. 
+     * Par conséquent, le passage de $db est uniquement à des fins de test.
      *
-     * When passing in $db, you may pass any of the following to connect:
-     * - existing connection instance
-     * - array of database configuration values
+     * @param array|ConnectionInterface|string|null $db Groupe de DB. À des fins de test uniquement.
      */
-    public function __construct(array $config, array|ConnectionInterface $db)
+    public function __construct(array $config, $db = null)
     {
         $this->enabled = $config['enabled'] ?? false;
         $this->table   = $config['table'] ?? 'migrations';
+
+        $this->namespace = defined('APP_NAMESPACE') ? constant('APP_NAMESPACE') : 'App';
+
+        // Même si une connexion DB est transmise comme il s'agit d'un test, 
+        // on suppose que le nom de groupe par défaut est utilisé.
+        // $this->group = is_string($db) ? $db : config('database.connection');
 
         if ($db instanceof ConnectionInterface) {
             $this->db = $db;
@@ -121,7 +138,7 @@ class Runner
     /**
      * singleton constructor
      */
-    public static function instance(array $config, array|ConnectionInterface $db): self
+    public static function instance(array $config, $db = null): self
     {
         if (null === self::$_instance) {
             self::$_instance = new self($config, $db);
@@ -139,7 +156,7 @@ class Runner
     }
 
     /**
-     * Locate and run all new migrations
+     * Localisez et exécutez toutes les nouvelles migrations.
      *
      * @throws MigrationException
      * @throws RuntimeException
@@ -159,7 +176,7 @@ class Runner
 
         $migrations = $this->getMigrations();
 
-        if (empty($migrations)) {
+        if ($migrations === []) {
             return true;
         }
 
@@ -226,7 +243,7 @@ class Runner
             $targetBatch = $batches[count($batches) - 1 + $targetBatch] ?? 0;
         }
 
-        if (empty($batches) && $targetBatch === 0) {
+        if ($batches === [] && $targetBatch === 0) {
             return true;
         }
 
@@ -242,7 +259,11 @@ class Runner
             throw new RuntimeException($message);
         }
 
-        $allMigrations = $this->getMigrations();
+        $tmpNamespace = $this->namespace;
+
+        $this->namespace = null;
+        $allMigrations   = $this->getMigrations();
+
         $migrations    = [];
 
         while ($batch = array_pop($batches)) {
@@ -254,7 +275,7 @@ class Runner
                 $uid = $this->getObjectUid($history);
 
                 if (! isset($allMigrations[$uid])) {
-                    $message = 'There is a gap in the migration sequence near version number: ' . $history->version;
+                    $message = 'Il y a une lacune dans la séquence de migration près du numéro de version: ' . $history->version;
 
                     if ($this->silent) {
                         $this->pushMessage($message, 'red');
@@ -291,16 +312,18 @@ class Runner
         $data['method'] = 'regress';
         $this->db->triggerEvent($data, 'migrate');
 
+        $this->namespace = $tmpNamespace;
+
         return true;
     }
 
     /**
-     * Migrate a single file regardless of order or batches.
-     * Method "up" or "down" determined by presence in history.
-     * NOTE: This is not recommended and provided mostly for testing.
+     * Migrer un seul fichier, quel que soit l'ordre ou les lots.
+     * La méthode "up" ou "down" est déterminée par la présence dans l'historique.
+     * REMARQUE : cette méthode n'est pas recommandée et est principalement fournie à des fins de test.
      *
-     * @param string $path Full path to a valid migration file
-     * @param string $path Namespace of the target migration
+     * @param string $path Chemin d'accès complet vers un fichier de migration valide.
+     * @param string $path Espace de noms de la migration cible.
      */
     public function force(string $path, string $namespace, ?string $group = null)
     {
@@ -329,7 +352,7 @@ class Runner
         }
 
         $method = 'up';
-        // $this->setNamespaces([$migration->namespace]);
+        $this->setNamespace($migration->namespace);
 
         foreach ($this->getHistory($this->group) as $history) {
             if ($this->getObjectUid($history) === $migration->uid) {
@@ -367,7 +390,17 @@ class Runner
     }
 
     /**
-     * Allows other scripts to modify on the fly as needed.
+     * Permet à d'autres scripts d'effectuer des modifications à la volée selon les besoins.
+     */
+    public function setNamespace(?string $namespace): self
+    {
+        $this->namespace = $namespace;
+
+        return $this;
+    }
+
+    /**
+     * Permet à d'autres scripts d'effectuer des modifications à la volée selon les besoins.
      */
     public function setGroup(string $group): self
     {
@@ -377,7 +410,7 @@ class Runner
     }
 
     /**
-     * Allows other scripts to modify on the fly as needed.
+     * Permet à d'autres scripts d'effectuer des modifications à la volée selon les besoins.
      */
     public function setFiles(array $files): self
     {
@@ -394,8 +427,8 @@ class Runner
     }
 
     /**
-     * If $silent == true, then will not throw exceptions and will
-     * attempt to continue gracefully.
+     * Si $silent == true, alors aucune exception ne sera levée 
+     * et le programme tentera de continuer normalement.
      */
     public function setSilent(bool $silent): self
     {
@@ -405,9 +438,7 @@ class Runner
     }
 
     /**
-     * Retrieves messages formatted for CLI output
-     *
-     * @return array Current migration version
+     * Récupère les messages formatés pour la sortie CLI.
      */
     public function getMessages(): array
     {
@@ -434,13 +465,15 @@ class Runner
     }
 
     /**
-     * Retrieves a list of available migration scripts for one namespace
+     * Récupère la liste des scripts de migration disponibles pour un namespace.
      */
     public function findNamespaceMigrations(string $namespace, array $files): array
     {
         $migrations = [];
 
         foreach ($files as $file) {
+            $file = empty($this->path) ? $file : $this->path . str_replace($this->path, '', $file);
+
             if ($migration = $this->migrationFromFile($file, $namespace)) {
                 $migrations[] = $migration;
             }
@@ -450,9 +483,11 @@ class Runner
     }
 
     /**
-     * Create a migration object from a file path.
+     * Créer un objet de migration à partir d'un chemin d'accès à un fichier.
      *
-     * @return false|object Returns the migration object, or false on failure
+     * @param string $path Chemin d'accès complet à un fichier de migration valide.
+     *
+     * @return false|object Renvoie l'objet de migration ou false en cas d'échec.
      */
     protected function migrationFromFile(string $path, string $namespace)
     {
@@ -495,7 +530,7 @@ class Runner
     /**
      * Extrait le nom de la classe de migration
      */
-    private function getMigrationClass(string $path): string
+    protected function getMigrationClass(string $path): string
     {
         $php       = file_get_contents($path);
         $tokens    = token_get_all($php);
@@ -559,7 +594,7 @@ class Runner
     }
 
     /**
-     * Set CLI messages
+     * Definit les messages CLI
      */
     private function pushMessage(string $message, string $color = 'green'): self
     {
@@ -579,11 +614,9 @@ class Runner
     }
 
     /**
-     * Truncates the history table.
-     *
-     * @return void
+     * Tronque la table d'historique.
      */
-    public function clearHistory()
+    public function clearHistory(): void
     {
         if ($this->db->tableExists($this->table)) {
             $this->db->table($this->table)->truncate();
@@ -591,11 +624,9 @@ class Runner
     }
 
     /**
-     * Add a history to the table.
-     *
-     * @return void
+     * Ajouter un historique à la table.
      */
-    protected function addHistory(object $migration, int $batch)
+    protected function addHistory(object $migration, int $batch): void
     {
         $this->db->table($this->table)->insert([
             'version'   => $migration->version,
@@ -618,11 +649,9 @@ class Runner
     }
 
     /**
-     * Removes a single history
-     *
-     * @return void
+     * Supprime un seul historique.
      */
-    protected function removeHistory(object $history)
+    protected function removeHistory(object $history): void
     {
         $this->db->table($this->table)->where('id', $history->id)->delete();
 
@@ -638,29 +667,31 @@ class Runner
     }
 
     /**
-     * Grabs the full migration history from the database for a group
+     * Récupère l'historique complet des migrations de la base de données pour un groupe.
      */
-    public function getHistory(): array
+    public function getHistory(string $group = 'default'): array
     {
         $this->ensureTable();
 
         $builder = $this->db->table($this->table);
 
-        $namespaces = array_keys($this->files);
+        // Si un groupe a été spécifié, utilisez-le.
+        if ($group !== '') {
+            $builder->where('group', $group);
+        }
 
-        if (count($namespaces) === 1) {
-            $builder->where('namespace', $namespaces[0]);
+        // Si un namespace a été spécifié, utilisez-le.
+        if ($this->namespace !== null) {
+            $builder->where('namespace', $this->namespace);
         }
 
         return $builder->sortAsc('id')->all();
     }
 
     /**
-     * Returns the migration history for a single batch.
-     *
-     * @param mixed $order
+     * Renvoie l'historique des migrations pour un seul lot.
      */
-    public function getBatchHistory(int $batch, $order = 'asc'): array
+    public function getBatchHistory(int $batch, string $order = 'asc'): array
     {
         $this->ensureTable();
 
@@ -668,7 +699,7 @@ class Runner
     }
 
     /**
-     * Returns all the batches from the database history in order.
+     * Renvoie tous les lots de l'historique de la base de données dans l'ordre.
      */
     public function getBatches(): array
     {
@@ -684,20 +715,22 @@ class Runner
     }
 
     /**
-     * Returns the value of the last batch in the database.
+     * Renvoie la valeur du dernier lot dans la base de données.
      */
     public function getLastBatch(): int
     {
+        $this->ensureTable();
+
         return (int) $this->db->table($this->table)->max('batch');
     }
 
     /**
-     * Returns the version number of the first migration for a batch.
-     * Mostly just for tests.
+     * Renvoie le numéro de version de la première migration d'un lot.
+     * Principalement utilisé à des fins de test.
      */
     public function getBatchStart(int $batch, int $targetBatch = 0): string
     {
-        // Convert a relative batch to its absolute
+        // Convertir un lot relatif en lot absolu
         if ($batch < 0) {
             $batches = $this->getBatches();
             $batch   = $batches[count($batches) - 1 + $targetBatch] ?? 0;
@@ -709,12 +742,12 @@ class Runner
     }
 
     /**
-     * Returns the version number of the last migration for a batch.
-     * Mostly just for tests.
+     * Renvoie le numéro de version de la dernière migration d'un lot.
+     * Principalement utilisé à des fins de test.
      */
     public function getBatchEnd(int $batch, int $targetBatch = 0): string
     {
-        // Convert a relative batch to its absolute
+        // Convertir un lot relatif en lot absolu
         if ($batch < 0) {
             $batches = $this->getBatches();
             $batch   = $batches[count($batches) - 1 + $targetBatch] ?? 0;
@@ -726,9 +759,9 @@ class Runner
     }
 
     /**
-     * Ensures that we have created our migrations table in the database.
+     * S'assure que nous avons créé notre table de migrations dans la base de données.
      */
-    public function ensureTable()
+    public function ensureTable(): void
     {
         if ($this->tableChecked || $this->db->tableExists($this->table)) {
             return;
@@ -742,7 +775,7 @@ class Runner
         $structure->string('namespace');
         $structure->integer('time');
         $structure->integer('batch')->unsigned();
-        $structure->create();
+        $structure->create(true);
 
         $transformer = new Transformer($this->db);
         $transformer->process($structure);
@@ -751,9 +784,10 @@ class Runner
     }
 
     /**
-     * Handles the actual running of a migration.
+     * Gère l'exécution effective d'une migration.
      *
-     * @param string $direction "up" or "down"
+     * @param string $direction "up" ou "down"
+     * @param object $migration La migration à exécuter
      */
     protected function migrate(string $direction, object $migration): bool
     {
@@ -762,7 +796,7 @@ class Runner
         $class = $migration->class;
         $this->setName($migration->name);
 
-        // Validate the migration file structure
+        // Valider la structure du fichier de migration
         if (! class_exists($class, false)) {
             $message = sprintf('The migration class "%s" could not be found.', $class);
 
@@ -775,20 +809,15 @@ class Runner
             throw new RuntimeException($message);
         }
 
-        // Initialize migration
-        /**
-         * @var Migration $instance
-         */
-        $instance = new $class();
-        $group    = $instance->getGroup();
+        /** @var Migration $instance */
+        $instance = new $class($this->db);
+        $group    = $instance->getGroup() ?? $this->group;
 
         if ($direction === 'up' && $this->groupFilter !== null && $this->groupFilter !== $group) {
             $this->groupSkip = true;
 
             return true;
         }
-
-        $this->setGroup($group);
 
         if (! is_callable([$instance, $direction])) {
             $message = sprintf('The migration class is missing an "%s" method.', $direction);
