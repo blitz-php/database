@@ -11,6 +11,7 @@
 
 namespace BlitzPHP\Database\Commands;
 
+use InvalidArgumentException;
 use PDO;
 
 /**
@@ -55,10 +56,11 @@ class TableInfo extends DatabaseCommand
         '--desc'              => 'Trie les lignes du tableau dans l\'ordre DESC.',
         '--limit-rows'        => 'Limite le nombre de lignes. Par défaut : 10.',
         '--limit-field-value' => 'Limite la longueur des valeurs des champs. Par défaut : 15.',
+        '--group'             => 'Groupe de bases de données à afficher.',
     ];
 
     /**
-     * @phpstan-var  list<list<string|int>> Table Data.
+     * @var list<list<int|string>> Données de la table.
      */
     private array $tbody;
 
@@ -71,9 +73,19 @@ class TableInfo extends DatabaseCommand
 
     public function execute(array $params)
     {
+        try {
+            $this->db = $this->resolver->connection($this->option('group'));
+        } catch (InvalidArgumentException $e) {
+            $this->fail($e->getMessage());
+
+            return EXIT_ERROR;
+        }
+
         $this->prefix = $this->db->getPrefix();
 
         $tables = $this->db->listTables();
+
+        $this->showDBConfig();
 
         if (array_key_exists('desc', $params)) {
             $this->sortDesc = true;
@@ -82,20 +94,20 @@ class TableInfo extends DatabaseCommand
         if ($tables === []) {
             $this->error('La base de données n\'a aucune table!');
 
-            return;
+            return EXIT_ERROR;
         }
 
         if (true === $this->option('show')) {
             $this->showAllTables($tables);
 
-            return;
+            return EXIT_SUCCESS;
         }
 
         $tableName       = $this->argument('table');
         $limitRows       = (int) $this->option('limit-rows', 10);
         $limitFieldValue = (int) $this->option('limit-field-value', 15);
 
-        if (! in_array($tableName, $tables, true)) {
+        while (! in_array($tableName, $tables, true)) {
             $tabs   = $tables;
             $tables = [];
 
@@ -104,16 +116,30 @@ class TableInfo extends DatabaseCommand
             }
 
             $tableNameNo = $this->choice("Voici les tables disponible dans votre base de données. \n Quelle table souhaitez-vous afficher?", $tables);
-            $tableName   = $tables[$tableNameNo];
+            $tableName   = $tables[$tableNameNo] ?? null;
         }
 
         if (true === $this->option('metadata')) {
             $this->showFieldMetaData($tableName);
 
-            return;
+            return EXIT_SUCCESS;
         }
-
+        
         $this->showDataOfTable($tableName, $limitRows, $limitFieldValue);
+        
+        return EXIT_SUCCESS;
+    }
+
+    private function showDBConfig(): void
+    {
+        $this->table([[
+            'hostname' => $this->db->hostname,
+            'database' => $this->db->getDatabase(),
+            'username' => $this->db->username,
+            'driver'   => $this->db->getPlatform(),
+            'prefix'  => $this->prefix,
+            'port'     => $this->db->port,
+        ]]);
     }
 
     private function removeDBPrefix(): void
@@ -145,7 +171,10 @@ class TableInfo extends DatabaseCommand
         $this->table($this->tbody);
     }
 
-    private function showAllTables(array $tables)
+    /**
+     * @param list<string> $tables
+     */
+    private function showAllTables(array $tables): void
     {
         $this->newLine()->io->blackBgYellow("Voici une liste des noms de toutes les tables de base de données\u{a0}:", true);
 
@@ -180,6 +209,11 @@ class TableInfo extends DatabaseCommand
         return $this->tbody;
     }
 
+    /**
+     * Fabrique les lignes du tableau
+     *
+     * @return list<list<int|string>>
+     */
     private function makeTableRows(
         string $tableName,
         int $limitRows,
@@ -240,9 +274,12 @@ class TableInfo extends DatabaseCommand
         $this->table($this->tbody);
     }
 
-    private function setYesOrNo(bool $fieldValue): string
+    /**
+     * @param bool|int|string|null $fieldValue
+     */
+    private function setYesOrNo($fieldValue): string
     {
-        if ($fieldValue) {
+        if ((bool) $fieldValue) {
             return 'Oui';
         }
 

@@ -10,7 +10,7 @@ use BlitzPHP\Database\Migration\Structure;
 class {class} extends Migration
 {
 <?php if ($group): ?>
-    protected string $group = '<?= $group ?>';
+    protected ?string $group = '<?= $group ?>';
 <?php endif; ?>
 
     public function up()

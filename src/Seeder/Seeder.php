@@ -143,7 +143,7 @@ abstract class Seeder
     }
 
     /**
-     * Loads the specified seeder and runs it.
+     * Charge le seeder spécifié et l'exécute.
      *
      * @throws InvalidArgumentException
      */
@@ -155,7 +155,7 @@ abstract class Seeder
             $class = trim($class);
 
             if ($class === '') {
-                throw new InvalidArgumentException('No seeder was specified.');
+                throw new InvalidArgumentException('Aucun seeder n\'a été spécifié.');
             }
 
             /** @var Seeder $seeder */

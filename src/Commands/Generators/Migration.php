@@ -56,8 +56,8 @@ class Migration extends Command
         '--table'     => 'Nom de la table à utiliser.',
         '--create'    => 'Spécifie qu\'on veut créer une nouvelle table.',
         '--modify'    => 'Spécifie qu\'on veut modifier une table existante.',
-        '--session'   => 'Génère un fichier de migration pour les sessions de la base de données',
-        '--group'     => ['Groupe de base de données utilisé pour les sessions de la base de données. Par défaut: "default".', 'default'],
+        '--session'   => 'Génère un fichier de migration pour les sessions de la base de données.',
+        '--group'     => 'Groupe de base de données utilisé pour les sessions de la base de données.',
         '--namespace' => 'Définissez l\'espace de noms racine. Par défaut: "APP_NAMESPACE".',
         '--suffix'    => 'Ajouter le titre du composant au nom de la classe (par exemple, User => UserMigration).',
     ];
@@ -73,7 +73,7 @@ class Migration extends Command
         $this->templatePath = __DIR__ . '/Views';
 
         $this->classNameLang = 'CLI.generator.className.migration';
-        $this->runGeneration($params);
+        $this->generateClass($params);
     }
 
     /**
@@ -101,8 +101,8 @@ class Migration extends Command
         $table = $this->option('table');
         $group = $this->option('group');
 
-        $data['group']  = is_string($group) ? $group : 'default';
-        $data['driver'] = config('database.' . $data['group'] . '.driver');
+        $data['group']  = is_string($group) ? $group : null;
+        $data['driver'] = config('database.' . ($data['group'] ?? 'default') . '.driver');
 
         if (true === $this->option('session')) {
             $data['session'] = true;

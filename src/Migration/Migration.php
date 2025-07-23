@@ -11,6 +11,7 @@
 
 namespace BlitzPHP\Database\Migration;
 
+use BlitzPHP\Database\Connection\BaseConnection;
 use InvalidArgumentException;
 
 /**
@@ -28,7 +29,7 @@ abstract class Migration
     /**
      * Nom du group a utiliser pour lexecuter les migrations
      */
-    protected string $group = 'default';
+    protected ?string $group = null;
 
     /**
      * Definition des etapes d'execution d'une migration.
@@ -39,6 +40,10 @@ abstract class Migration
      * Definition des etapes d'annulation d'une migration.
      */
     abstract public function down();
+
+    public function __construct(protected BaseConnection $db)
+    {       
+    }
 
     /**
      * Renvoi la liste des executions

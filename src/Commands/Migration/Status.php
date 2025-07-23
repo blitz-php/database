@@ -55,7 +55,7 @@ class Status extends DatabaseCommand
      */
     public function execute(array $params)
     {
-        $group = $this->option('group');
+        $group = $this->option('group', 'default');
 
         $runner = Helper::runner($group);
 
@@ -82,7 +82,7 @@ class Status extends DatabaseCommand
                 continue;
             }
 
-            $history = $runner->getHistory();
+            $history = $runner->getHistory($group);
             ksort($migrations);
 
             foreach ($migrations as $uid => $migration) {

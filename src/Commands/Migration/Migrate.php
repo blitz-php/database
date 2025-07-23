@@ -46,12 +46,13 @@ class Migrate extends DatabaseCommand
         $this->colorize(lang('Migrations.latest'), 'yellow');
 
         $namespace = $this->option('namespace');
-        $group     = $this->option('group');
+        $group     = $this->option('group', 'default');
 
         $runner = Helper::runner($group);
 
         $runner->clearMessages();
-        $runner->setFiles(Helper::getMigrationFiles($this->option('all') === true, $namespace));
+        $runner->setFiles(Helper::getMigrationFiles($all = $this->option('all') === true, $namespace));
+        $runner->setNamespace($all ? null : $namespace);
 
         if (! $runner->latest($group)) {
             $this->fail(lang('Migrations.generalFault')); // @codeCoverageIgnore

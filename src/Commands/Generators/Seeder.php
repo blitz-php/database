@@ -68,6 +68,6 @@ class Seeder extends Command
         $this->templatePath = __DIR__ . '/Views';
 
         $this->classNameLang = 'CLI.generator.className.seeder';
-        $this->runGeneration($params);
+        $this->generateClass($params);
     }
 }

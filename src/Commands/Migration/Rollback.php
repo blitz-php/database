@@ -56,6 +56,16 @@ class Rollback extends DatabaseCommand
 
         $batch = $this->option('batch') ?? ($runner->getLastBatch() - 1);
 
+        if (is_string($batch)) {
+            if (! ctype_digit($batch)) {
+                $this->fail('Numéro de lot invalide: ' . $batch, true);
+
+                return EXIT_ERROR;
+            }
+
+            $batch = (int) $batch;
+        }
+        
         $this->colorize(lang('Migrations.rollingBack') . ' ' . $batch, 'yellow');
 
         $runner->setFiles(Helper::getMigrationFiles(true));

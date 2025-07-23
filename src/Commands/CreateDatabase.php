@@ -56,7 +56,7 @@ class CreateDatabase extends DatabaseCommand
             });
         }
 
-        [$group, $config] = $this->resolver->connectionInfo();
+        [$group, $config] = $this->resolver->connectionInfo(on_test() ? 'tests' : null);
 
         $config['database'] = '';
         $config['debug']    = false;
@@ -68,7 +68,7 @@ class CreateDatabase extends DatabaseCommand
             $ext = $this->option('ext', 'db');
 
             if (! in_array($ext, ['db', 'sqlite'], true)) {
-                $ext = $this->prompt('Please choose a valid file extension', ['db', 'sqlite']); // @codeCoverageIgnore
+                $ext = $this->prompt('Veuillez choisir une extension de fichier valide.', ['db', 'sqlite']); // @codeCoverageIgnore
             }
 
             if ($name !== ':memory:') {

@@ -16,6 +16,7 @@ use BlitzPHP\Cli\Console\Console;
 use BlitzPHP\Contracts\Database\ConnectionResolverInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 
 /**
  * @property BaseConnection $db
@@ -25,7 +26,7 @@ abstract class DatabaseCommand extends Command
     /**
      * {@inheritDoc}
      */
-    protected $group = 'Database';
+    protected $group = 'Base de données';
 
     /**
      * {@inheritDoc}
@@ -50,6 +51,15 @@ abstract class DatabaseCommand extends Command
         }
 
         return parent::__get($name);
+    }
+
+    public function __set($name, $value)
+    {
+        if (property_exists($this, $name = '_' . $name)) {
+            $this->{$name} = $value;
+        } else {
+			throw new RuntimeException();
+		}
     }
 
     protected function db(): BaseConnection
