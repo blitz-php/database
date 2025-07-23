@@ -11,6 +11,7 @@
 
 namespace BlitzPHP\Database\Creator;
 
+use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Connection\Postgre as ConnectionPostgre;
 
 /**
@@ -57,8 +58,10 @@ class Postgre extends BaseCreator
 
     /**
      * {@inheritDoc}
+     * 
+     * @var ConnectionPostgre
      */
-    protected ConnectionPostgre $db;
+    protected BaseConnection $db;
 
     /**
      * {@inheritDoc}
@@ -125,44 +128,46 @@ class Postgre extends BaseCreator
     /**
      * @return array|bool|string
      */
-    protected function _alterTable(string $alterType, string $table, array|string $field)
+    protected function _alterTable(string $alterType, string $table, array|string $processedFields)
     {
         if (in_array($alterType, ['DROP', 'ADD'], true)) {
-            return parent::_alterTable($alterType, $table, $field);
+            return parent::_alterTable($alterType, $table, $processedFields);
         }
 
         $sql  = 'ALTER TABLE ' . $this->db->escapeIdentifiers($table);
         $sqls = [];
 
-        foreach ($field as $data) {
-            if ($data['_literal'] !== false) {
+        foreach ($processedFields as $field) {
+            if ($field['_literal'] !== false) {
                 return false;
             }
 
-            if (version_compare($this->db->getVersion(), '8', '>=') && isset($data['type'])) {
-                $sqls[] = $sql . ' ALTER COLUMN ' . $this->db->escapeIdentifiers($data['name'])
-                    . " TYPE {$data['type']}{$data['length']}";
+            if (version_compare($this->db->getVersion(), '8', '>=') && isset($field['type'])) {
+                $sqls[] = $sql . ' ALTER COLUMN ' . $this->db->escapeIdentifiers($field['name'])
+                    . " TYPE {$field['type']}{$field['length']}";
             }
 
             if (! empty($data['default'])) {
-                $sqls[] = $sql . ' ALTER COLUMN ' . $this->db->escapeIdentifiers($data['name'])
-                    . " SET DEFAULT {$data['default']}";
+                $sqls[] = $sql . ' ALTER COLUMN ' . $this->db->escapeIdentifiers($field['name'])
+                    . " SET DEFAULT {$field['default']}";
             }
 
-            if (isset($data['null'])) {
-                $sqls[] = $sql . ' ALTER COLUMN ' . $this->db->escapeIdentifiers($data['name'])
-                    . ($data['null'] === true ? ' DROP' : ' SET') . ' NOT NULL';
+            $nullable = true; // Nullable par defaut.
+            if (isset($field['null']) && ($field['null'] === false || $field['null'] === ' NOT ' . $this->null)) {
+                $nullable = false;
             }
+            $sqls[] = $sql . ' ALTER COLUMN ' . $this->db->escapeIdentifiers($field['name'])
+                . ($nullable ? ' DROP' : ' SET') . ' NOT NULL';
 
-            if (! empty($data['new_name'])) {
-                $sqls[] = $sql . ' RENAME COLUMN ' . $this->db->escapeIdentifiers($data['name'])
-                    . ' TO ' . $this->db->escapeIdentifiers($data['new_name']);
+            if (! empty($field['new_name'])) {
+                $sqls[] = $sql . ' RENAME COLUMN ' . $this->db->escapeIdentifiers($field['name'])
+                    . ' TO ' . $this->db->escapeIdentifiers($field['new_name']);
             }
 
             if (! empty($data['comment'])) {
                 $sqls[] = 'COMMENT ON COLUMN' . $this->db->escapeIdentifiers($table)
-                    . '.' . $this->db->escapeIdentifiers($data['name'])
-                    . " IS {$data['comment']}";
+                    . '.' . $this->db->escapeIdentifiers($field['name'])
+                    . " IS {$field['comment']}";
             }
         }
 
@@ -172,14 +177,14 @@ class Postgre extends BaseCreator
     /**
      * {@inheritDoc}
      */
-    protected function _processColumn(array $field): string
+    protected function _processColumn(array $processedField): string
     {
-        return $this->db->escapeIdentifiers($field['name'])
-            . ' ' . $field['type'] . ($field['type'] === 'text' ? '' : $field['length'])
-            . $field['default']
-            . $field['null']
-            . $field['auto_increment']
-            . $field['unique'];
+        return $this->db->escapeIdentifiers($processedField['name'])
+            . ' ' . $processedField['type'] . ($processedField['type'] === 'text' ? '' : $processedField['length'])
+            . $processedField['default']
+            . $processedField['null']
+            . $processedField['auto_increment']
+            . $processedField['unique'];
     }
 
     /**
@@ -187,8 +192,8 @@ class Postgre extends BaseCreator
      */
     protected function _attributeType(array &$attributes)
     {
-        // Reset field lengths for data types that don't support it
-        if (isset($attributes['CONSTRAINT']) && stripos($attributes['TYPE'], 'int') !== false) {
+        // Reinitialise la longueur du champ pour les types de données qui ne les supporte pas
+        if (isset($attributes['CONSTRAINT']) && str_contains(strtolower($attributes['TYPE']), 'int')) {
             $attributes['CONSTRAINT'] = null;
         }
 
@@ -205,6 +210,10 @@ class Postgre extends BaseCreator
 
             case 'DATETIME':
                 $attributes['TYPE'] = 'TIMESTAMP';
+                break;
+
+            case 'BLOB':
+                $attributes['TYPE'] = 'BYTEA';
                 break;
 
             default:

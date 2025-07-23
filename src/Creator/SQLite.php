@@ -12,6 +12,7 @@
 namespace BlitzPHP\Database\Creator;
 
 use BlitzPHP\Database\Connection\BaseConnection;
+use BlitzPHP\Database\Connection\SQLite as SQLiteConnection;
 use BlitzPHP\Database\Creator\SQLite\Table;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 
@@ -29,6 +30,8 @@ class SQLite extends BaseCreator
 
     /**
      * {@inheritDoc}
+     * 
+     * @var SQLiteConnection
      */
     protected BaseConnection $db;
 
@@ -124,7 +127,7 @@ class SQLite extends BaseCreator
      */
     public function dropDatabase(string $dbName): bool
     {
-        // In SQLite, a database is dropped when we delete a file
+        // Dans SQLite, une bd est effacée quand on supprime un fichier
         if (! is_file($dbName)) {
             if ($this->db->debug) {
                 throw new DatabaseException('Impossible de supprimer la base de données spécifiée.');
@@ -133,8 +136,9 @@ class SQLite extends BaseCreator
             return false;
         }
 
-        // We need to close the pseudo-connection first
+        // Nous devons d'abord fermer la pseudo-connexion
         $this->db->close();
+
         if (! @unlink($dbName)) {
             if ($this->db->debug) {
                 throw new DatabaseException('Impossible de supprimer la base de données spécifiée.');
@@ -181,42 +185,59 @@ class SQLite extends BaseCreator
     }
 
     /**
-     * @param array|string $field
-     *
-     * @return array|string|null
+     * {@inheritDoc}
      */
-    protected function _alterTable(string $alterType, string $table, $field)
+    protected function _alterTable(string $alterType, string $table, $processedFields)
     {
         switch ($alterType) {
             case 'CHANGE':
+                $fieldsToModify = [];
+
+                foreach ($processedFields as $processedField) {
+                    $name    = $processedField['name'];
+                    $newName = $processedField['new_name'];
+
+                    $field             = $this->fields[$name];
+                    $field['name']     = $name;
+                    $field['new_name'] = $newName;
+
+                    // Supprime lorsqu'on crée une table, si `null` c'est que ce n'est pas specifié,
+                    // le champ sera `NULL`, pas `NOT NULL`.
+                    if ($processedField['null'] === '') {
+                        $field['null'] = true;
+                    }
+
+                    $fieldsToModify[] = $field;
+                }
+
                 (new Table($this->db, $this))
                     ->fromTable($table)
-                    ->modifyColumn($field)
+                    ->modifyColumn($fieldsToModify)
                     ->run();
 
                 return null;
 
             default:
-                return parent::_alterTable($alterType, $table, $field);
+                return parent::_alterTable($alterType, $table, $processedFields);
         }
     }
 
     /**
      * {@inheritDoc}
      */
-    protected function _processColumn(array $field): string
+    protected function _processColumn(array $processedField): string
     {
-        if ($field['type'] === 'TEXT' && str_starts_with($field['length'], "('")) {
-            $field['type'] .= ' CHECK(' . $this->db->escapeIdentifiers($field['name'])
-                . ' IN ' . $field['length'] . ')';
+        if ($processedField['type'] === 'TEXT' && str_starts_with($processedField['length'], "('")) {
+            $processedField['type'] .= ' CHECK(' . $this->db->escapeIdentifiers($processedField['name'])
+                . ' IN ' . $processedField['length'] . ')';
         }
 
-        return $this->db->escapeIdentifiers($field['name'])
-            . ' ' . $field['type']
-            . $field['auto_increment']
-            . $field['null']
-            . $field['unique']
-            . $field['default'];
+        return $this->db->escapeIdentifiers($processedField['name'])
+            . ' ' . $processedField['type']
+            . $processedField['auto_increment']
+            . $processedField['null']
+            . $processedField['unique']
+            . $processedField['default'];
     }
 
     /**
@@ -263,13 +284,12 @@ class SQLite extends BaseCreator
      */
     public function dropForeignKey(string $table, string $foreignName): bool
     {
-        // If this version of SQLite doesn't support it, we're done here
+        // Si cette version de SQLite ne le prend pas en charge, nous en avons terminé ici
         if ($this->db->supportsForeignKeys() !== true) {
             return true;
         }
 
-        // Otherwise we have to copy the table and recreate
-        // without the foreign key being involved now
+        // Sinon, nous devons copier la table et la recréer sans que la clé étrangère ne soit impliquée.
         $sqlTable = new Table($this->db, $this);
 
         return $sqlTable->fromTable($this->db->prefix . $table)
@@ -299,7 +319,7 @@ class SQLite extends BaseCreator
             return parent::addForeignKey($fieldName, $tableName, $tableField, $onUpdate, $onDelete, $fkName);
         }
 
-        throw new DatabaseException('SQLite does not support foreign key names. BlitzPHP will refer to them in the format: prefix_table_column_referencecolumn_foreign');
+        throw new DatabaseException('SQLite ne supporte pas les noms de clés étrangères. BlitzPHP se referera à sa suivant le format: prefix_table_column_referencecolumn_foreign');
     }
 
     /**

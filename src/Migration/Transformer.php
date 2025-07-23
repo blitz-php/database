@@ -16,6 +16,7 @@ use BlitzPHP\Database\Creator\BaseCreator;
 use BlitzPHP\Database\Database;
 use BlitzPHP\Database\Exceptions\MigrationException;
 use BlitzPHP\Database\Migration\Definitions\Column;
+use BlitzPHP\Database\RawSql;
 use BlitzPHP\Utilities\Helpers;
 use BlitzPHP\Utilities\Support\Fluent;
 
@@ -275,7 +276,7 @@ class Transformer
             $definition['unsigned'] = true;
         }
         if ($this->is($column, 'useCurrent')) {
-            $definition['default'] = 'CURRENT_TIMESTAMP';
+            $definition['default'] = new RawSql('CURRENT_TIMESTAMP');
         } elseif (property_exists($column, 'default')) {
             $definition['default'] = $column->type === 'boolean' ? (int) $column->default : $column->default;
         }

@@ -15,6 +15,7 @@ use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Database\Query;
+use BlitzPHP\Database\RawSql;
 use BlitzPHP\Database\Result\BaseResult;
 use InvalidArgumentException;
 use RuntimeException;
@@ -34,14 +35,16 @@ class BaseCreator
     protected BaseConnection $db;
 
     /**
-     * Liste des champs.
+     * Liste des champs sous la forme `[name => attributes]`.
+     *
+     * @var array<string, array<string, bool|string>|string>
      */
     protected array $fields = [];
 
     /**
      * Liste des cles.
      *
-     * @phpstan-var array{}|list<array{fields: string[], keyName: string}>
+     * @var list<array{fields?: list<string>, keyName?: string}>
      */
     protected array $keys = [];
 
@@ -53,7 +56,7 @@ class BaseCreator
     /**
      * cles primaires.
      *
-     * @phpstan-var array{}|array{fields: string[], keyName: string}
+     * @var array{fields?: list<string>, keyName?: string}
      */
     protected array $primaryKeys = [];
 
@@ -97,19 +100,9 @@ class BaseCreator
     protected string $createTableStr = "%s %s (%s\n)";
 
     /**
-     * requete CREATE TABLE IF.
+     * drapeau des clés CREATE TABLE
      *
-     * @var bool|string
-     *
-     * @deprecated
-     */
-    protected $createTableIfStr = 'CREATE TABLE IF NOT EXISTS';
-
-    /**
-     * CREATE TABLE keys flag
-     *
-     * Whether table keys are created from within the
-     * CREATE TABLE statement.
+     * Indique si les clés de table sont créées à partir de l'instruction CREATE TABLE.
      */
     protected bool $createTableKeys = false;
 
@@ -137,7 +130,7 @@ class BaseCreator
      *
      * @internal Utilisee pour faire les champs nullable.
      */
-    protected string $null = '';
+    protected string $null = 'NULL';
 
     /**
      * Representation de la valeur par defaut dans les requetes CREATE/ALTER TABLE
@@ -283,7 +276,7 @@ class BaseCreator
     {
         if ($this->checkDatabaseExistStr === null) {
             if ($this->db->debug) {
-                throw new DatabaseException('This feature is not available for the database you are using.');
+                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
             }
 
             return false;
@@ -301,15 +294,15 @@ class BaseCreator
     {
         if ($this->dropDatabaseStr === false) {
             if ($this->db->debug) {
-                throw new DatabaseException('This feature is not available for the database you are using.');
+                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
             }
 
             return false;
         }
 
-        if (! $this->db->query(sprintf($this->dropDatabaseStr, $dbName))) {
+        if (! $this->db->query(sprintf($this->dropDatabaseStr, $this->db->escapeIdentifier($dbName)))) {
             if ($this->db->debug) {
-                throw new DatabaseException('Unable to drop the specified database.');
+                throw new DatabaseException('Impossible de supprimer la base de données spécifiée.');
             }
 
             return false;
@@ -328,7 +321,7 @@ class BaseCreator
     /**
      * Ajout de cle
      */
-    public function addKey(array|string $key, bool $primary = false, bool $unique = false, string $keyName = ''): self
+    public function addKey(array|string $key, bool $primary = false, bool $unique = false, string $keyName = ''): static
     {
         if ($primary) {
             $this->primaryKeys = ['fields' => (array) $key, 'keyName' => $keyName];
@@ -346,7 +339,7 @@ class BaseCreator
     /**
      * Ajout de cle primaire
      */
-    public function addPrimaryKey(array|string $key, string $keyName = ''): self
+    public function addPrimaryKey(array|string $key, string $keyName = ''): static
     {
         return $this->addKey($key, true, false, $keyName);
     }
@@ -354,15 +347,17 @@ class BaseCreator
     /**
      * Ajoute une cle unique.
      */
-    public function addUniqueKey(array|string $key, string $keyName = ''): self
+    public function addUniqueKey(array|string $key, string $keyName = ''): static
     {
         return $this->addKey($key, false, true, $keyName);
     }
 
     /**
      * Ajoute un champ.
+	 * 
+	 * @param array<string, array|string>|string $fields
      */
-    public function addField(array|string $field): self
+    public function addField(array|string $field): static
     {
         if (is_string($field)) {
             if ($field === 'id') {
@@ -376,7 +371,7 @@ class BaseCreator
                 $this->addKey('id', true);
             } else {
                 if (! str_contains($field, ' ')) {
-                    throw new InvalidArgumentException('Field information is required for that operation.');
+                    throw new InvalidArgumentException('Des informations du champ sont nécessaires pour cette opération.');
                 }
 
                 $fieldName = explode(' ', $field, 2)[0];
@@ -387,15 +382,15 @@ class BaseCreator
         }
 
         if (is_array($field)) {
-            foreach ($field as $idx => $f) {
-                if (is_string($f)) {
-                    $this->addField($f);
+            foreach ($field as $name => $attributes) {
+                if (is_string($attributes)) {
+                    $this->addField($attributes);
 
                     continue;
                 }
 
-                if (is_array($f)) {
-                    $this->fields = array_merge($this->fields, [$idx => $f]);
+                if (is_array($attributes)) {
+                    $this->fields = array_merge($this->fields, [$name => $attributes]);
                 }
             }
         }
@@ -411,7 +406,7 @@ class BaseCreator
      *
      * @throws DatabaseException
      */
-    public function addForeignKey(array|string $fieldName = '', string $tableName = '', array|string $tableField = '', string $onUpdate = '', string $onDelete = '', string $fkName = ''): self
+    public function addForeignKey(array|string $fieldName = '', string $tableName = '', array|string $tableField = '', string $onUpdate = '', string $onDelete = '', string $fkName = ''): static
     {
         $fieldName  = (array) $fieldName;
         $tableField = (array) $tableField;
@@ -455,7 +450,7 @@ class BaseCreator
 
         if ($sql === '') {
             if ($this->db->debug) {
-                throw new DatabaseException('This feature is not available for the database you are using.');
+                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
             }
 
             return false;
@@ -515,7 +510,7 @@ class BaseCreator
 
         if ($sql === '') {
             if ($this->db->debug) {
-                throw new DatabaseException('This feature is not available for the database you are using.');
+                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
             }
 
             return false;
@@ -532,13 +527,13 @@ class BaseCreator
     public function createTable(string $table, bool $ifNotExists = false, array $attributes = [])
     {
         if ($table === '') {
-            throw new InvalidArgumentException('A table name is required for that operation.');
+            throw new InvalidArgumentException('Un nom de table est nécessaire pour cette opération.');
         }
 
         $table = $this->db->prefix . $table;
 
         if ($this->fields === []) {
-            throw new RuntimeException('Field information is required.');
+            throw new RuntimeException('Des informations sur le champ sont requises.');
         }
 
         // Si la table existe pas la peine d'aller plus loin
@@ -555,7 +550,7 @@ class BaseCreator
                 $this->db->dataCache['table_names'][] = $table;
             }
 
-            // Most databases don't support creating indexes from within the CREATE TABLE statement
+            // La plupart des bases de données ne permettent pas de créer des index à partir de l'instruction CREATE TABLE
             if (! empty($this->keys)) {
                 for ($i = 0, $sqls = $this->_processIndexes($table), $c = count($sqls); $i < $c; $i++) {
                     $this->db->query($sqls[$i]);
@@ -573,7 +568,8 @@ class BaseCreator
         $columns = $this->_processFields(true);
 
         for ($i = 0, $c = count($columns); $i < $c; $i++) {
-            $columns[$i] = ($columns[$i]['_literal'] !== false) ? "\n\t" . $columns[$i]['_literal']
+            $columns[$i] = ($columns[$i]['_literal'] !== false) 
+				? "\n\t" . $columns[$i]['_literal']
                 : "\n\t" . $this->_processColumn($columns[$i]);
         }
 
@@ -620,13 +616,13 @@ class BaseCreator
     {
         if ($tableName === '') {
             if ($this->db->debug) {
-                throw new DatabaseException('A table name is required for that operation.');
+                throw new DatabaseException('Un nom de table est nécessaire pour cette opération.');
             }
 
             return false;
         }
 
-        if ($this->db->prefix && str_starts_with($tableName, $this->db->prefix)) {
+        if ($this->db->prefix !== '' && str_starts_with($tableName, $this->db->prefix)) {
             $tableName = substr($tableName, strlen($this->db->prefix));
         }
 
@@ -685,12 +681,12 @@ class BaseCreator
     public function renameTable(string $tableName, string $newTableName)
     {
         if ($tableName === '' || $newTableName === '') {
-            throw new InvalidArgumentException('A table name is required for that operation.');
+            throw new InvalidArgumentException('Un nom de table est nécessaire pour cette opération.');
         }
 
         if ($this->renameTableStr === false) {
             if ($this->db->debug) {
-                throw new DatabaseException('This feature is not available for the database you are using.');
+                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
             }
 
             return false;
@@ -718,23 +714,27 @@ class BaseCreator
     }
 
     /**
+     * @param array<string, array|string>|string $field
+	 * 
      * @throws DatabaseException
      */
     public function addColumn(string $table, array|string $field): bool
     {
+		// Solution de contournement pour les définitions de colonnes littérales
         if (! is_array($field)) {
             $field = [$field];
         }
 
-        foreach (array_keys($field) as $k) {
-            $this->addField([$k => $field[$k]]);
+        foreach (array_keys($field) as $name) {
+            $this->addField([$name => $field[$name]]);
         }
 
         $sqls = $this->_alterTable('ADD', $this->db->prefix . $table, $this->_processFields());
         $this->reset();
+
         if ($sqls === false) {
             if ($this->db->debug) {
-                throw new DatabaseException('This feature is not available for the database you are using.');
+                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
             }
 
             return false;
@@ -750,6 +750,8 @@ class BaseCreator
     }
 
     /**
+     * @param list<string>|string $columnName Noms des champs à supprimer
+     *
      * @return mixed
      *
      * @throws DatabaseException
@@ -757,9 +759,10 @@ class BaseCreator
     public function dropColumn(string $table, array|string $columnName)
     {
         $sql = $this->_alterTable('DROP', $this->db->prefix . $table, $columnName);
-        if ($sql === false) {
+        
+		if ($sql === false) {
             if ($this->db->debug) {
-                throw new DatabaseException('This feature is not available for the database you are using.');
+                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
             }
 
             return false;
@@ -773,23 +776,25 @@ class BaseCreator
      */
     public function modifyColumn(string $table, array|string $field): bool
     {
+		// Solution de contournement pour les définitions de colonnes littérales
         if (! is_array($field)) {
             $field = [$field];
         }
 
-        foreach (array_keys($field) as $k) {
-            $this->addField([$k => $field[$k]]);
+        foreach (array_keys($field) as $name) {
+            $this->addField([$name => $field[$name]]);
         }
 
         if ($this->fields === []) {
-            throw new RuntimeException('Field information is required');
+            throw new RuntimeException('Les informations du champ sont requises');
         }
 
         $sqls = $this->_alterTable('CHANGE', $this->db->prefix . $table, $this->_processFields());
         $this->reset();
+
         if ($sqls === false) {
             if ($this->db->debug) {
-                throw new DatabaseException('This feature is not available for the database you are using.');
+                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
             }
 
             return false;
@@ -832,31 +837,34 @@ class BaseCreator
     }
 
     /**
-     * @return false|string|string[]
+     * @param 'ADD'|'CHANGE'|'DROP' $alterType
+     * @param array|string          $processedFields Définitions de colonnes traitées ou noms de colonnes à DROP
+     *
+     * @return ($alterType is 'DROP' ? string : false|list<string>|null)
      */
-    protected function _alterTable(string $alterType, string $table, array|string $fields)
+    protected function _alterTable(string $alterType, string $table, array|string $processedFields)
     {
         $sql = 'ALTER TABLE ' . $this->db->escapeIdentifiers($table) . ' ';
 
-        // DROP has everything it needs now.
+        // DROP a maintenant tout ce qu'il lui faut.
         if ($alterType === 'DROP') {
-            if (is_string($fields)) {
-                $fields = explode(',', $fields);
+            if (is_string($processedFields)) {
+                $processedFields = explode(',', $processedFields);
             }
 
-            $fields = array_map(fn ($field) => 'DROP COLUMN ' . $this->db->escapeIdentifiers(trim($field)), $fields);
+            $processedFields = array_map(fn ($field) => 'DROP COLUMN ' . $this->db->escapeIdentifiers(trim($field)), $processedFields);
 
-            return $sql . implode(', ', $fields);
+            return $sql . implode(', ', $processedFields);
         }
 
         $sql .= ($alterType === 'ADD') ? 'ADD ' : $alterType . ' COLUMN ';
 
         $sqls = [];
 
-        foreach ($fields as $data) {
-            $sqls[] = $sql . ($data['_literal'] !== false
-                ? $data['_literal']
-                : $this->_processColumn($data));
+        foreach ($processedFields as $field) {
+            $sqls[] = $sql . ($field['_literal'] !== false
+                ? $field['_literal']
+                : $this->_processColumn($field));
         }
 
         return $sqls;
@@ -864,14 +872,16 @@ class BaseCreator
 
     /**
      * Process fields
+	 * 
+	 * @return array Retourne le tableau $processedFields à partir des données de $this->fields.
      */
     protected function _processFields(bool $createTable = false): array
     {
-        $fields = [];
+        $processedFields = [];
 
         foreach ($this->fields as $key => $attributes) {
             if (! is_array($attributes)) {
-                $fields[] = ['_literal' => $attributes];
+                $processedFields[] = ['_literal' => $attributes];
 
                 continue;
             }
@@ -914,13 +924,19 @@ class BaseCreator
             $this->_attributeDefault($attributes, $field);
 
             if (isset($attributes['NULL'])) {
+                $nullString = ' ' . $this->null;
+
                 if ($attributes['NULL'] === true) {
-                    $field['null'] = empty($this->null) ? '' : ' ' . $this->null;
+                    $field['null'] = empty($this->null) ? '' : $nullString;
+                } elseif ($attributes['NULL'] === $nullString) {
+                    $field['null'] = $nullString;
+                } elseif ($attributes['NULL'] === '') {
+                    $field['null'] = '';
                 } else {
-                    $field['null'] = ' NOT NULL';
+                    $field['null'] = ' NOT ' . $this->null;
                 }
             } elseif ($createTable === true) {
-                $field['null'] = ' NOT NULL';
+                $field['null'] = ' NOT ' . $this->null;
             }
 
             $this->_attributeAutoIncrement($attributes, $field);
@@ -939,14 +955,14 @@ class BaseCreator
                 $field['length'] = '(' . $attributes['CONSTRAINT'] . ')';
             }
 
-            $fields[] = $field;
+            $processedFields[] = $field;
         }
 
-        return $fields;
+        return $processedFields;
     }
 
     /**
-     * Process column
+     * Convertit le tableau $field en chaîne de définition de champ.
      */
     protected function _processColumn(array $field): string
     {
@@ -968,14 +984,14 @@ class BaseCreator
     }
 
     /**
-     * Depending on the unsigned property value:
+     * En fonction de la valeur de la propriété non signée :
      *
-     *    - TRUE will always set $field['unsigned'] to 'UNSIGNED'
-     *    - FALSE will always set $field['unsigned'] to ''
-     *    - array(TYPE) will set $field['unsigned'] to 'UNSIGNED',
-     *        if $attributes['TYPE'] is found in the array
-     *    - array(TYPE => UTYPE) will change $field['type'],
-     *        from TYPE to UTYPE in case of a match
+     * - TRUE mettra toujours $field['unsigned'] à 'UNSIGNED'
+     * - FALSE mettra toujours $field[“unsigned'] à ''
+     * - array(TYPE) mettra $field['unsigned'] à 'UNSIGNED',
+     * 		si $attributes['TYPE'] est trouvé dans le tableau
+     * - array(TYPE => UTYPE) changera $field['type'],
+     * 		de TYPE à UTYPE en cas de correspondance
      */
     protected function _attributeUnsigned(array &$attributes, array &$field)
     {
@@ -983,7 +999,7 @@ class BaseCreator
             return;
         }
 
-        // Reset the attribute in order to avoid issues if we do type conversion
+        // Réinitialiser l'attribut afin d'éviter des problèmes si nous effectuons une conversion de type
         $attributes['UNSIGNED'] = false;
 
         if (is_array($this->unsigned)) {
@@ -1017,9 +1033,11 @@ class BaseCreator
             if ($attributes['DEFAULT'] === null) {
                 $field['default'] = empty($this->null) ? '' : $this->default . $this->null;
 
-                // Override the NULL attribute if that's our default
+                // Remplacer l'attribut NULL si c'est notre valeur par défaut
                 $attributes['NULL'] = true;
                 $field['null']      = empty($this->null) ? '' : ' ' . $this->null;
+            } elseif ($attributes['DEFAULT'] instanceof RawSql) {
+                $field['default'] = $this->default . $attributes['DEFAULT'];
             } else {
                 $field['default'] = $this->default . $this->db->escape($attributes['DEFAULT']);
             }
@@ -1036,7 +1054,7 @@ class BaseCreator
     protected function _attributeAutoIncrement(array &$attributes, array &$field)
     {
         if (! empty($attributes['AUTO_INCREMENT']) && $attributes['AUTO_INCREMENT'] === true
-            && stripos($field['type'], 'int') !== false
+            && str_contains(strtolower($field['type']), 'int')
         ) {
             $field['auto_increment'] = ' AUTO_INCREMENT';
         }
@@ -1083,10 +1101,12 @@ class BaseCreator
         $fk   = $this->foreignKeys;
 
         if ([] === $this->fields) {
-            $this->fields = array_flip(array_map(
-                static fn ($columnName) => $columnName->name,
-                $this->db->getFieldData($this->db->prefix . $table)
-            ));
+            $fieldData =  $this->db->getFieldData($this->db->prefix . $table);
+
+            $this->fields = array_combine(
+                array_map(static fn ($columnName) => $columnName->name, $fieldData),
+                array_fill(0, count($fieldData), []),
+            );
         }
 
         $fields = $this->fields;
@@ -1172,10 +1192,10 @@ class BaseCreator
     {
         $errorNames = [];
 
-        foreach ($this->foreignKeys as $name) {
-            foreach ($name['field'] as $f) {
-                if (! isset($this->fields[$f])) {
-                    $errorNames[] = $f;
+        foreach ($this->foreignKeys as $fkeyInfo) {
+            foreach ($fkeyInfo['field'] as $fieldName) {
+                if (! isset($this->fields[$fieldName])) {
+                    $errorNames[] = $fieldName;
                 }
             }
         }
@@ -1197,15 +1217,15 @@ class BaseCreator
 
             $nameIndex = $fkey['fkName'] !== '' ?
             $fkey['fkName'] :
-            $table . '_' . implode('_', $fkey['field']) . ($this->db->DBDriver === 'OCI8' ? '_fk' : '_foreign');
+            $table . '_' . implode('_', $fkey['field']) . ($this->db->driver === 'OCI8' ? '_fk' : '_foreign');
 
             $nameIndexFilled      = $this->db->escapeIdentifiers($nameIndex);
             $foreignKeyFilled     = implode(', ', $this->db->escapeIdentifiers($fkey['field']));
-            $referenceTableFilled = $this->db->escapeIdentifiers($this->db->DBPrefix . $fkey['referenceTable']);
+            $referenceTableFilled = $this->db->escapeIdentifiers($this->db->prefix . $fkey['referenceTable']);
             $referenceFieldFilled = implode(', ', $this->db->escapeIdentifiers($fkey['referenceField']));
 
             if ($asQuery === true) {
-                $sqls[$index] .= 'ALTER TABLE ' . $this->db->escapeIdentifiers($this->db->DBPrefix . $table) . ' ADD ';
+                $sqls[$index] .= 'ALTER TABLE ' . $this->db->escapeIdentifiers($this->db->prefix . $table) . ' ADD ';
             } else {
                 $sqls[$index] .= ",\n\t";
             }

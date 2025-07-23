@@ -17,66 +17,51 @@ use BlitzPHP\Database\Exceptions\DataException;
 use stdClass;
 
 /**
- * Class Table
- *
- * Provides missing features for altering tables that are common
- * in other supported databases, but are missing from SQLite.
- * These are needed in order to support migrations during testing
- * when another database is used as the primary engine, but
- * SQLite in memory databases are used for faster test execution.
+ * Fournit les fonctionnalités manquantes pour la modification des tables qui sont courantes 
+ * dans les autres bases de données supportées, mais qui sont absentes de SQLite.
+ * Ces fonctionnalités sont nécessaires pour prendre en charge les migrations lors des tests
+ * lorsqu'une autre base de données est utilisée comme moteur principal, 
+ * mais que les bases de données SQLite en mémoire sont utilisées pour une exécution plus rapide des tests.
  */
 class Table
 {
     /**
-     * All of the fields this table represents.
+     * Tous les champs que ce tableau représente.
      *
-     * @phpstan-var array<string, array<string, bool|int|string|null>>
+     * @var array<string, array<string, bool|int|string|null>> [name => attributes]
      */
     protected array $fields = [];
 
     /**
-     * All of the unique/primary keys in the table.
+     * Toutes les clés uniques/primaires de la table.
      */
     protected array $keys = [];
 
     /**
-     * All of the foreign keys in the table.
+     * Toutes les clés étrangères de la table.
      */
     protected array $foreignKeys = [];
 
     /**
-     * The name of the table we're working with.
+     * Le nom de la table avec laquelle nous travaillons.
      */
     protected string $tableName = '';
 
     /**
-     * The name of the table, with database prefix
+     * Le nom de la table, avec le préfixe de la base de données.
      */
     protected string $prefixedTableName = '';
 
     /**
-     * Database connection.
+     * @param Connection $db Connexion à la base de données.
+     * @param Creator $creator La main de notre créateur.
      */
-    protected Connection $db;
-
-    /**
-     * Handle to our creator
-     */
-    protected Creator $creator;
-
-    /**
-     * Table constructor.
-     */
-    public function __construct(Connection $db, Creator $creator)
+    public function __construct(protected Connection $db, protected Creator $creator)
     {
-        $this->db      = $db;
-        $this->creator = $creator;
     }
 
     /**
-     * Reads an existing database table and
-     * collects all of the information needed to
-     * recreate this table.
+     * Lit une table de base de données existante et collecte toutes les informations nécessaires pour recréer cette table.
      */
     public function fromTable(string $table): self
     {
@@ -98,10 +83,10 @@ class Table
 
         $this->keys = array_merge($this->keys, $this->formatKeys($this->db->getIndexData($table)));
 
-        // if primary key index exists twice then remove psuedo index name 'primary'.
-        $primaryIndexes = array_filter($this->keys, static fn ($index) => $index['type'] === 'primary');
+        // si l'index de la clé primaire existe deux fois, supprimer le nom de l'index pseudo "primaire".
+        $primaryIndexes = array_filter($this->keys, static fn ($index): bool => $index['type'] === 'primary');
 
-        if (! empty($primaryIndexes) && count($primaryIndexes) > 1 && array_key_exists('primary', $this->keys)) {
+        if ($primaryIndexes !== [] && count($primaryIndexes) > 1 && array_key_exists('primary', $this->keys)) {
             unset($this->keys['primary']);
         }
 
@@ -111,10 +96,9 @@ class Table
     }
 
     /**
-     * Called after `fromTable` and any actions, like `dropColumn`, etc,
-     * to finalize the action. It creates a temp table, creates the new
-     * table with modifications, and copies the data over to the new table.
-     * Resets the connection dataCache to be sure changes are collected.
+     * Appelé après `fromTable` et toute autre action, comme `dropColumn`, etc, pour finaliser l'action.
+     * Il crée une table temporaire, crée la nouvelle table avec les modifications, et copie les données dans la nouvelle table.
+     * Il réinitialise la connexion dataCache pour s'assurer que les changements sont collectés.
      */
     public function run(): bool
     {
@@ -142,7 +126,9 @@ class Table
     }
 
     /**
-     * Drops columns from the table.
+     * Supprime des colonnes du tableau.
+     *
+     * @param list<string>|string $columns Noms de colonnes à supprimer.
      */
     public function dropColumn(array|string $columns): self
     {
@@ -161,27 +147,28 @@ class Table
     }
 
     /**
-     * Modifies a field, including changing data type,
-     * renaming, etc.
+     * Modifie un champ, notamment en changeant le type de données, en le renommant, etc.
+     *
+     * @param list<array<string, bool|int|string|null>> $fieldsToModify
      */
-    public function modifyColumn(array $field): self
+    public function modifyColumn(array $fieldsToModify): self
     {
-        $field = $field[0];
+        foreach ($fieldsToModify as $field) {
+            $oldName = $field['name'];
+            unset($field['name']);
 
-        $oldName = $field['name'];
-        unset($field['name']);
-
-        $this->fields[$oldName] = $field;
+            $this->fields[$oldName] = $field;
+        }
 
         return $this;
     }
 
     /**
-     * Drops the primary key
+     * Supprime la clé primaire
      */
     public function dropPrimaryKey(): self
     {
-        $primaryIndexes = array_filter($this->keys, static fn ($index) => strtolower($index['type']) === 'primary');
+        $primaryIndexes = array_filter($this->keys, static fn ($index): bool => strtolower($index['type']) === 'primary');
 
         foreach (array_keys($primaryIndexes) as $key) {
             unset($this->keys[$key]);
@@ -191,7 +178,7 @@ class Table
     }
 
     /**
-     * Drops a foreign key from this table so tha
+     * Supprime une clé étrangère de cette table afin qu'elle ne soit pas recréée à l'avenir.
      */
     public function dropForeignKey(string $foreignName): self
     {
@@ -207,18 +194,18 @@ class Table
     }
 
     /**
-     * Adds primary key
+     * Ajoute une clé primaire
      */
     public function addPrimaryKey(array $fields): self
     {
-        $primaryIndexes = array_filter($this->keys, static fn ($index) => strtolower($index['type']) === 'primary');
+        $primaryIndexes = array_filter($this->keys, static fn ($index): bool => strtolower($index['type']) === 'primary');
 
-        // if primary key already exists we can't add another one
+        // si la clé primaire existe déjà, nous ne pouvons pas en ajouter une autre
         if ($primaryIndexes !== []) {
             return $this;
         }
 
-        // add array to keys of fields
+        // ajouter un tableau aux clés des champs
         $pk = [
             'fields' => $fields['fields'],
             'type'   => 'primary',
@@ -230,13 +217,13 @@ class Table
     }
 
     /**
-     * Add a foreign key
+     * Ajouter une clé étrangère
      */
     public function addForeignKey(array $foreignKeys): self
     {
         $fk = [];
 
-        // convert to object
+        // convertir en objet
         foreach ($foreignKeys as $row) {
             $obj                      = new stdClass();
             $obj->column_name         = $row['field'];
@@ -254,7 +241,7 @@ class Table
     }
 
     /**
-     * Creates the new table based on our current fields.
+     * Crée la nouvelle table sur la base de nos champs actuels.
      *
      * @return mixed
      */
@@ -263,7 +250,7 @@ class Table
         $this->dropIndexes();
         $this->db->resetDataCache();
 
-        // Handle any modified columns.
+        // Traiter les colonnes modifiées.
         $fields = [];
 
         foreach ($this->fields as $name => $field) {
@@ -282,10 +269,10 @@ class Table
 
         $this->keys = array_filter(
             $this->keys,
-            static fn ($index) => count(array_intersect($index['fields'], $fieldNames)) === count($index['fields'])
+            static fn ($index): bool => count(array_intersect($index['fields'], $fieldNames)) === count($index['fields']),
         );
 
-        // Unique/Index keys
+        // clés Unique/Index
         if (is_array($this->keys)) {
             foreach ($this->keys as $keyName => $key) {
                 switch ($key['type']) {
@@ -316,11 +303,10 @@ class Table
     }
 
     /**
-     * Copies data from our old table to the new one,
-     * taking care map data correctly based on any columns
-     * that have been renamed.
+     * Copie les données de notre ancienne table vers la nouvelle,
+     * en prenant soin de mapper correctement les données en fonction des colonnes qui ont été renommées.
      */
-    protected function copyData()
+    protected function copyData(): void
     {
         $exFields  = [];
         $newFields = [];
@@ -345,13 +331,11 @@ class Table
     }
 
     /**
-     * Converts fields retrieved from the database to
-     * the format needed for creating fields with Forge.
+     * Convertit les champs récupérés dans la base de données au format requis pour créer des champs avec Creator.
      *
      * @param array|bool $fields
      *
-     * @return mixed
-     * @phpstan-return ($fields is array ? array : mixed)
+     * @return ($fields is array ? array : mixed)
      */
     protected function formatFields($fields)
     {
@@ -368,6 +352,24 @@ class Table
                 'null'    => $field->nullable,
             ];
 
+            if ($field->default === null) {
+                // `null` signifie que la valeur par défaut n'est pas définie.
+                unset($return[$field->name]['default']);
+            } elseif ($field->default === 'NULL') {
+                // `NULL` signifie que la valeur par défaut est NULL..
+                $return[$field->name]['default'] = null;
+            } else {
+                $default = trim($field->default, "'");
+
+                if ($this->isIntegerType($field->type)) {
+                    $default = (int) $default;
+                } elseif ($this->isNumericType($field->type)) {
+                    $default = (float) $default;
+                }
+
+                $return[$field->name]['default'] = $default;
+            }
+
             if ($field->primary_key) {
                 $this->keys['primary'] = [
                     'fields' => [$field->name],
@@ -380,19 +382,38 @@ class Table
     }
 
     /**
-     * Converts keys retrieved from the database to
-     * the format needed to create later.
+     * Est-ce un type INTEGER ?
      *
-     * @param mixed $keys
+     * @param string $type Type de données SQLite (insensible à la casse)
      *
-     * @return mixed
+     * @see https://www.sqlite.org/datatype3.html
+     */
+    private function isIntegerType(string $type): bool
+    {
+        return str_contains(strtoupper($type), 'INT');
+    }
+
+    /**
+     * Est-ce un type NUMERIC ?
+     *
+     * @param string $type Type de données SQLite (insensible à la casse)
+     *
+     * @see https://www.sqlite.org/datatype3.html
+     */
+    private function isNumericType(string $type): bool
+    {
+        return in_array(strtoupper($type), ['NUMERIC', 'DECIMAL'], true);
+    }
+
+    /**
+     * Convertit les clés récupérées dans la base de données au format nécessaire pour la création ultérieure.
+     *
+     * @param array<string, stdClass> $keys
+     *
+     * @return array<string, array{fields: string, type: string}>
      */
     protected function formatKeys($keys)
     {
-        if (! is_array($keys)) {
-            return $keys;
-        }
-
         $return = [];
 
         foreach ($keys as $name => $key) {
@@ -406,8 +427,9 @@ class Table
     }
 
     /**
-     * Attempts to drop all indexes and constraints
-     * from the database for this table.
+     * Tente de supprimer tous les index et contraintes de la base de données pour cette table.
+     *
+     * @return void
      */
     protected function dropIndexes()
     {
