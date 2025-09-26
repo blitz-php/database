@@ -25,7 +25,7 @@ class Helper
      *
      * @return array [group, configuration]
      */
-    public static function connectionInfo(null|array|string $group = null): array
+    public static function connectionInfo(array|string|null $group = null): array
     {
         return Services::container()->get(ConnectionResolverInterface::class)->connectionInfo($group);
     }

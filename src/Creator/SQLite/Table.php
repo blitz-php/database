@@ -17,10 +17,10 @@ use BlitzPHP\Database\Exceptions\DataException;
 use stdClass;
 
 /**
- * Fournit les fonctionnalités manquantes pour la modification des tables qui sont courantes 
+ * Fournit les fonctionnalités manquantes pour la modification des tables qui sont courantes
  * dans les autres bases de données supportées, mais qui sont absentes de SQLite.
  * Ces fonctionnalités sont nécessaires pour prendre en charge les migrations lors des tests
- * lorsqu'une autre base de données est utilisée comme moteur principal, 
+ * lorsqu'une autre base de données est utilisée comme moteur principal,
  * mais que les bases de données SQLite en mémoire sont utilisées pour une exécution plus rapide des tests.
  */
 class Table
@@ -53,8 +53,8 @@ class Table
     protected string $prefixedTableName = '';
 
     /**
-     * @param Connection $db Connexion à la base de données.
-     * @param Creator $creator La main de notre créateur.
+     * @param Connection $db      Connexion à la base de données.
+     * @param Creator    $creator La main de notre créateur.
      */
     public function __construct(protected Connection $db, protected Creator $creator)
     {

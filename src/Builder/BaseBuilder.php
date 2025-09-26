@@ -184,7 +184,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Génère la partie FROM de la requête
      *
-     * @param string|string[]|null $from
+     * @param list<string>|string|null $from
      */
     final public function from($from, bool $overwrite = false): self
     {
@@ -227,7 +227,7 @@ class BaseBuilder implements BuilderInterface
     /**
      *Génère la partie FROM de la requête
      *
-     * @param string|string[]|null $from
+     * @param list<string>|string|null $from
      *
      * @alias self::from()
      */
@@ -357,7 +357,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie JOIN (de type NATURAL JOIN) de la requête
      * Uniquement pour ceux qui utilisent MySql
      *
-     * @param string|string[] $table Table à joindre
+     * @param list<string>|string $table Table à joindre
      */
     final public function naturalJoin(array|string $table): self
     {
@@ -740,7 +740,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x IS NULL) de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param string|string[] $field Un nom de champ ou un tableau de champs
+     * @param list<string>|string $field Un nom de champ ou un tableau de champs
      */
     final public function whereNull($field): self
     {
@@ -755,7 +755,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x IS NOT NULL) de la requête.
      * Sépare plusieurs appels avec 'AND'.
      *
-     * @param string|string[] $field Un nom de champ ou un tableau de champs
+     * @param list<string>|string $field Un nom de champ ou un tableau de champs
      */
     final public function whereNotNull($field): self
     {
@@ -770,7 +770,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x IS NULL) de la requête.
      * Sépare plusieurs appels avec 'OR'.
      *
-     * @param string|string[] $field Un nom de champ ou un tableau de champs
+     * @param list<string>|string $field Un nom de champ ou un tableau de champs
      */
     final public function orWhereNull($field): self
     {
@@ -785,7 +785,7 @@ class BaseBuilder implements BuilderInterface
      * Génère la partie WHERE (de type WHERE x IS NOT NULL) de la requête.
      * Sépare plusieurs appels avec 'OR'.
      *
-     * @param string|string[] $field Un nom de champ ou un tableau de champs
+     * @param list<string>|string $field Un nom de champ ou un tableau de champs
      */
     final public function orWhereNotNull($field): self
     {
@@ -1124,7 +1124,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
      */
-    public function whereDate($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    public function whereDate($field, DateTimeInterface|int|string|null $value = null, string $bool = 'and'): self
     {
         $field = $this->buildDateBasedWhere($field, $value, 'Y-m-d');
 
@@ -1141,7 +1141,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
      */
-    public function orWhereDate($field, null|DateTimeInterface|int|string $value = null): self
+    public function orWhereDate($field, DateTimeInterface|int|string|null $value = null): self
     {
         return $this->whereDate($field, $value, 'or');
     }
@@ -1151,7 +1151,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
      */
-    public function whereTime($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    public function whereTime($field, DateTimeInterface|int|string|null $value = null, string $bool = 'and'): self
     {
         $field = $this->buildDateBasedWhere($field, $value, 'H:i:s');
 
@@ -1168,7 +1168,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
      */
-    public function orWhereTime($field, null|DateTimeInterface|int|string $value = null): self
+    public function orWhereTime($field, DateTimeInterface|int|string|null $value = null): self
     {
         return $this->whereTime($field, $value, 'or');
     }
@@ -1178,7 +1178,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
      */
-    public function whereDay($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    public function whereDay($field, DateTimeInterface|int|string|null $value = null, string $bool = 'and'): self
     {
         $field = $this->buildDateBasedWhere($field, $value, 'd');
 
@@ -1195,7 +1195,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
      */
-    public function orWhereDay($field, null|DateTimeInterface|int|string $value = null): self
+    public function orWhereDay($field, DateTimeInterface|int|string|null $value = null): self
     {
         return $this->whereDay($field, $value, 'or');
     }
@@ -1205,7 +1205,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
      */
-    public function whereMonth($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    public function whereMonth($field, DateTimeInterface|int|string|null $value = null, string $bool = 'and'): self
     {
         $field = $this->buildDateBasedWhere($field, $value, 'm');
 
@@ -1222,7 +1222,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
      */
-    public function orWhereMonth($field, null|DateTimeInterface|int|string $value = null): self
+    public function orWhereMonth($field, DateTimeInterface|int|string|null $value = null): self
     {
         return $this->whereMonth($field, $value, 'or');
     }
@@ -1232,7 +1232,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
      */
-    public function whereYear($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    public function whereYear($field, DateTimeInterface|int|string|null $value = null, string $bool = 'and'): self
     {
         $field = $this->buildDateBasedWhere($field, $value, 'Y');
 
@@ -1249,7 +1249,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
      */
-    public function orWhereYear($field, null|DateTimeInterface|int|string $value = null): self
+    public function orWhereYear($field, DateTimeInterface|int|string|null $value = null): self
     {
         return $this->whereYear($field, $value, 'or');
     }
@@ -1257,7 +1257,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * @param array<string, DateTimeInterface|int|string|null>|string $field Un nom de champ ou un tableau de champs et de valeurs.
      */
-    protected function buildDateBasedWhere($field, null|DateTimeInterface|int|string $value, string $format): array
+    protected function buildDateBasedWhere($field, DateTimeInterface|int|string|null $value, string $format): array
     {
         if (! is_array($field)) {
             $field = [$field => $value];
@@ -1332,7 +1332,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Ajouter des champs pour les tri
      *
-     * @param string|string[] $field Un nom de champ ou un tableau de champs
+     * @param list<string>|string $field Un nom de champ ou un tableau de champs
      */
     public function orderBy(array|string $field, string $direction = 'ASC', bool $escape = true): self
     {
@@ -1368,7 +1368,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Ajouter des champs pour les tri.
      *
-     * @param string|string[] $field Un nom de champ ou un tableau de champs
+     * @param list<string>|string $field Un nom de champ ou un tableau de champs
      *
      * @alias self::orderBy()
      */
@@ -1380,7 +1380,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Ajoute un tri croissant pour un champ.
      *
-     * @param string|string[] $field Un nom de champ ou un tableau de champs
+     * @param list<string>|string $field Un nom de champ ou un tableau de champs
      */
     final public function sortAsc(array|string $field, bool $escape = true): self
     {
@@ -1390,7 +1390,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Ajoute un tri decroissant pour un champ.
      *
-     * @param string|string[] $field Un nom de champ ou un tableau de champs
+     * @param list<string>|string $field Un nom de champ ou un tableau de champs
      */
     final public function sortDesc(array|string $field, bool $escape = true): self
     {
@@ -1438,7 +1438,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Ajoute des champs à regrouper.
      *
-     * @param string|string[] $field Nom de champ ou tableau de noms de champs
+     * @param list<string>|string $field Nom de champ ou tableau de noms de champs
      */
     public function groupBy($field, bool $escape = true): self
     {
@@ -1462,7 +1462,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Ajoute des champs à regrouper.
      *
-     * @param string|string[] $field Nom de champ ou tableau de noms de champs
+     * @param list<string>|string $field Nom de champ ou tableau de noms de champs
      *
      * @alias self::orderBy()
      */
@@ -1706,7 +1706,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Construit une requête de sélection.
      *
-     * @param string|string[] $fields Nom de champ ou tableau de noms de champs à sélectionner
+     * @param list<string>|string $fields Nom de champ ou tableau de noms de champs à sélectionner
      */
     public function select($fields = '*', ?int $limit = null, ?int $offset = null): self
     {
@@ -1807,7 +1807,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Construit une requête d'insertion multiple.
      *
-     * @param array<array|object> $data Tableau a deux dimensions contenant les valeurs a inserer
+     * @param list<array|object> $data Tableau a deux dimensions contenant les valeurs a inserer
      *
      * @return BaseResult|string
      */
@@ -1844,7 +1844,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Construit une requête d'insertion multiple de type INSERT IGNORE.
      *
-     * @param array<array|object> $data Tableau a deux dimensions contenant les valeurs a inserer
+     * @param list<array|object> $data Tableau a deux dimensions contenant les valeurs a inserer
      *
      * @return BaseResult|string
      */
@@ -2262,11 +2262,11 @@ class BaseBuilder implements BuilderInterface
     /**
      * Recupere la valeur d'un ou de plusieurs champs.
      *
-     * @param string|string[] $name   Le nom du/des champs de la base de donnees
-     * @param string|null     $key    Cle du cache
-     * @param int             $expire Délai d'expiration en secondes
+     * @param list<string>|string $name   Le nom du/des champs de la base de donnees
+     * @param string|null         $key    Cle du cache
+     * @param int                 $expire Délai d'expiration en secondes
      *
-     * @return mixed|mixed[] La valeur du/des champs
+     * @return list<mixed>|mixed La valeur du/des champs
      */
     final public function value(array|string $name, ?string $key = null, int $expire = 0)
     {
@@ -2286,11 +2286,11 @@ class BaseBuilder implements BuilderInterface
     /**
      * Recupere les valeurs d'un ou de plusieurs champs.
      *
-     * @param string|string[] $name   Le nom du/des champs de la base de donnees
-     * @param string|null     $key    Cle du cache
-     * @param int             $expire Délai d'expiration en secondes
+     * @param list<string>|string $name   Le nom du/des champs de la base de donnees
+     * @param string|null         $key    Cle du cache
+     * @param int                 $expire Délai d'expiration en secondes
      *
-     * @return mixed[] La/les valeurs du/des champs
+     * @return list<mixed> La/les valeurs du/des champs
      */
     final public function values(array|string $name, ?string $key = null, int $expire = 0): array
     {
@@ -2573,7 +2573,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @param mixed $match
      *
-     * @return string[] [column, match, condition]
+     * @return list<string> [column, match, condition]
      */
     protected function _likeStatement(string $column, $match, bool $not, bool $insensitiveSearch = false): array
     {
@@ -2589,7 +2589,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Genere la chaine REPLACE INTO conformement a la plateforme
      *
-     * @return string|string[]
+     * @return list<string>|string
      */
     protected function _replaceStatement(string $table, string $keys, string $values)
     {
@@ -2605,7 +2605,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Genere la chaine INSERT conformement a la plateforme
      *
-     * @return string|string[]
+     * @return list<string>|string
      */
     protected function _insertStatement(string $table, string $keys, string $values)
     {

@@ -237,7 +237,7 @@ class Postgre extends BaseBuilder
     /**
      * Genere la chaine INSERT conformement a la plateforme
      *
-     * @return string|string[]
+     * @return list<string>|string
      */
     protected function _insertStatement(string $table, string $keys, string $values)
     {
@@ -265,7 +265,7 @@ class Postgre extends BaseBuilder
     /**
      * {@inheritDoc}
      */
-    public function whereDate($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    public function whereDate($field, DateTimeInterface|int|string|null $value = null, string $bool = 'and'): self
     {
         $field = $this->buildDateBasedWhere($field, $value, 'Y-m-d');
         $bool  = $bool === 'or' ? '|' : '';
@@ -281,7 +281,7 @@ class Postgre extends BaseBuilder
     /**
      * {@inheritDoc}
      */
-    public function whereTime($field, null|DateTimeInterface|int|string $value = null, string $bool = 'and'): self
+    public function whereTime($field, DateTimeInterface|int|string|null $value = null, string $bool = 'and'): self
     {
         $field = $this->buildDateBasedWhere($field, $value, 'H:i:s');
         $bool  = $bool === 'or' ? '|' : '';

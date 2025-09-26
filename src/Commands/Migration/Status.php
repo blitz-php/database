@@ -39,7 +39,7 @@ class Status extends DatabaseCommand
     /**
      * Namespaces à ignorer quand on regarde les migrations.
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $ignoredNamespaces = [
         'BlitzPHP',

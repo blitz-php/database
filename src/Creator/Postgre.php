@@ -58,7 +58,7 @@ class Postgre extends BaseCreator
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @var ConnectionPostgre
      */
     protected BaseConnection $db;

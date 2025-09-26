@@ -124,9 +124,9 @@ class TableInfo extends DatabaseCommand
 
             return EXIT_SUCCESS;
         }
-        
+
         $this->showDataOfTable($tableName, $limitRows, $limitFieldValue);
-        
+
         return EXIT_SUCCESS;
     }
 
@@ -137,7 +137,7 @@ class TableInfo extends DatabaseCommand
             'database' => $this->db->getDatabase(),
             'username' => $this->db->username,
             'driver'   => $this->db->getPlatform(),
-            'prefix'  => $this->prefix,
+            'prefix'   => $this->prefix,
             'port'     => $this->db->port,
         ]]);
     }

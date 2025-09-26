@@ -354,8 +354,8 @@ class BaseCreator
 
     /**
      * Ajoute un champ.
-	 * 
-	 * @param array<string, array|string>|string $fields
+     *
+     * @param array<string, array|string>|string $fields
      */
     public function addField(array|string $field): static
     {
@@ -401,8 +401,8 @@ class BaseCreator
     /**
      * Ajoute une cle etrangere.
      *
-     * @param string|string[] $fieldName
-     * @param string|string[] $tableField
+     * @param list<string>|string $fieldName
+     * @param list<string>|string $tableField
      *
      * @throws DatabaseException
      */
@@ -568,8 +568,8 @@ class BaseCreator
         $columns = $this->_processFields(true);
 
         for ($i = 0, $c = count($columns); $i < $c; $i++) {
-            $columns[$i] = ($columns[$i]['_literal'] !== false) 
-				? "\n\t" . $columns[$i]['_literal']
+            $columns[$i] = ($columns[$i]['_literal'] !== false)
+                ? "\n\t" . $columns[$i]['_literal']
                 : "\n\t" . $this->_processColumn($columns[$i]);
         }
 
@@ -715,12 +715,12 @@ class BaseCreator
 
     /**
      * @param array<string, array|string>|string $field
-	 * 
+     *
      * @throws DatabaseException
      */
     public function addColumn(string $table, array|string $field): bool
     {
-		// Solution de contournement pour les définitions de colonnes littérales
+        // Solution de contournement pour les définitions de colonnes littérales
         if (! is_array($field)) {
             $field = [$field];
         }
@@ -759,8 +759,8 @@ class BaseCreator
     public function dropColumn(string $table, array|string $columnName)
     {
         $sql = $this->_alterTable('DROP', $this->db->prefix . $table, $columnName);
-        
-		if ($sql === false) {
+
+        if ($sql === false) {
             if ($this->db->debug) {
                 throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
             }
@@ -776,7 +776,7 @@ class BaseCreator
      */
     public function modifyColumn(string $table, array|string $field): bool
     {
-		// Solution de contournement pour les définitions de colonnes littérales
+        // Solution de contournement pour les définitions de colonnes littérales
         if (! is_array($field)) {
             $field = [$field];
         }
@@ -821,7 +821,7 @@ class BaseCreator
      */
     public function renameColumn(string $table, string $from, string $to): bool
     {
-        $field = array_filter($this->db->getFieldData($table), fn($field) => $field->name === $from);
+        $field = array_filter($this->db->getFieldData($table), static fn ($field) => $field->name === $from);
         $field = array_shift($field);
 
         if (null === $field) {
@@ -872,8 +872,8 @@ class BaseCreator
 
     /**
      * Process fields
-	 * 
-	 * @return array Retourne le tableau $processedFields à partir des données de $this->fields.
+     *
+     * @return array Retourne le tableau $processedFields à partir des données de $this->fields.
      */
     protected function _processFields(bool $createTable = false): array
     {
@@ -1101,7 +1101,7 @@ class BaseCreator
         $fk   = $this->foreignKeys;
 
         if ([] === $this->fields) {
-            $fieldData =  $this->db->getFieldData($this->db->prefix . $table);
+            $fieldData = $this->db->getFieldData($this->db->prefix . $table);
 
             $this->fields = array_combine(
                 array_map(static fn ($columnName) => $columnName->name, $fieldData),

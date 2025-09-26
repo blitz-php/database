@@ -1185,7 +1185,7 @@ abstract class BaseConnection implements ConnectionInterface
      * @param bool         $protectIdentifiers Protect table or column names?
      * @param bool         $fieldExists        Supplied $item contains a column name?
      *
-     * @return array|string
+     * @return         array|string
      * @phpstan-return ($item is array ? array : string)
      */
     public function protectIdentifiers($item, bool $prefixSingle = false, ?bool $protectIdentifiers = null, bool $fieldExists = true)
@@ -1433,6 +1433,8 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Échappe une valeur de la clause where
+     *
+     * @param mixed $value
      */
     public function escapeValue(bool $escape, $value)
     {
@@ -1440,13 +1442,12 @@ abstract class BaseConnection implements ConnectionInterface
             return $value;
         }
 
-        if (is_string($value) && ! str_starts_with($value, "'") && ! str_ends_with($value, "'") ) {
+        if (is_string($value) && ! str_starts_with($value, "'") && ! str_ends_with($value, "'")) {
             return $this->quote($value);
         }
-       
+
         return $value;
     }
-
 
     /**
      * "Chaîne d'échappement "intelligente
@@ -1485,7 +1486,7 @@ abstract class BaseConnection implements ConnectionInterface
      * @param list<string|Stringable>|string|Stringable $str
      * @param bool                                      $like Si la chaîne doit être utilisée dans une condition LIKE
      *
-     * @return string|string[]
+     * @return list<string>|string
      */
     public function escapeString($str, bool $like = false)
     {
@@ -1520,9 +1521,9 @@ abstract class BaseConnection implements ConnectionInterface
      *
      * Appelle le pilote individuel pour l'échappement spécifique à la plate-forme pour les conditions LIKE.
      *
-     * @param string|string[] $str
+     * @param list<string>|string $str
      *
-     * @return string|string[]
+     * @return list<string>|string
      */
     public function escapeLikeString($str)
     {
@@ -1734,7 +1735,7 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Returns an object with field data
      *
-     * @return stdClass[]
+     * @return list<stdClass>
      */
     public function getFieldData(string $table)
     {
@@ -1838,7 +1839,7 @@ abstract class BaseConnection implements ConnectionInterface
      *
      * Must return an array with keys 'code' and 'message':
      *
-     * @return array<string, int|string|null>
+     * @return         array<string, int|string|null>
      * @phpstan-return array{code: int|string|null, message: string|null}
      */
     abstract public function error(): array;

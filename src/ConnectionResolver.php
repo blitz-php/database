@@ -77,7 +77,7 @@ class ConnectionResolver implements ConnectionResolverInterface
     /**
      * {@inheritDoc}
      */
-    public function connectionInfo(null|array|string $group = null): array
+    public function connectionInfo(array|string|null $group = null): array
     {
         if (is_array($group)) {
             $config = $group;

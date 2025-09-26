@@ -22,7 +22,7 @@ use InvalidArgumentException;
 abstract class Migration
 {
     /**
-     * @var Structure[] Liste des taches
+     * @var list<Structure> Liste des taches
      */
     private array $structures = [];
 
@@ -42,13 +42,13 @@ abstract class Migration
     abstract public function down();
 
     public function __construct(protected BaseConnection $db)
-    {       
+    {
     }
 
     /**
      * Renvoi la liste des executions
      *
-     * @return Structure[]
+     * @return list<Structure>
      *
      * @internal Utilisee par le `runner`
      */

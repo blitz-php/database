@@ -58,8 +58,8 @@ abstract class DatabaseCommand extends Command
         if (property_exists($this, $name = '_' . $name)) {
             $this->{$name} = $value;
         } else {
-			throw new RuntimeException();
-		}
+            throw new RuntimeException();
+        }
     }
 
     protected function db(): BaseConnection

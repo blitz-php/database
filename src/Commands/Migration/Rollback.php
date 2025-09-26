@@ -65,7 +65,7 @@ class Rollback extends DatabaseCommand
 
             $batch = (int) $batch;
         }
-        
+
         $this->colorize(lang('Migrations.rollingBack') . ' ' . $batch, 'yellow');
 
         $runner->setFiles(Helper::getMigrationFiles(true));

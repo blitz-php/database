@@ -41,7 +41,7 @@ return [
      *
      * @see https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html#option_mysqldump_include-tables
      *
-     * @var string[]
+     * @var list<string>
      */
     'include_tables' => [],
 
@@ -50,7 +50,7 @@ return [
      *
      * @see https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html#option_mysqldump_exclude-tables
      *
-     * @var string[]
+     * @var list<string>
      */
     'exclude_tables' => [],
 
@@ -62,7 +62,7 @@ return [
     'include_views' => [],
 
     /**
-     * @var string[]
+     * @var list<string>
      *
      * @see https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html#option_mysqldump_single-transaction
      */
@@ -71,7 +71,7 @@ return [
     /**
      * Ne pas extraire les données de ces tables (tableau de noms de tables), prise en charge des expressions rationnelles.
      *
-     * @var bool|string[] TRUE pour ignorer toutes les tables.
+     * @var bool|list<string> TRUE pour ignorer toutes les tables.
      *
      * @see https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html#option_mysqldump_no-data
      */

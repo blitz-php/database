@@ -99,7 +99,7 @@ class Transformer
             $this->processKeys($column);
             $this->creator->processIndexes($table);
         }
-        
+
         foreach ($this->getColumns($structure, false) as $column) {
             $this->creator->modifyColumn($table, [$column->name => $this->makeColumn($column)]);
             $this->processKeys($column);
@@ -179,7 +179,7 @@ class Transformer
      *                        - onDelete, onUpdate: string (actions `ON DELETE` et `ON UPDATE` personnalisées)
      *
      * @return bool Retourne true si une commande a été traitée, false sinon.
-     */ 
+     */
     private function processCommand($command): bool
     {
         $process = false;

@@ -320,7 +320,7 @@ class SQLite extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @return stdClass[]
+     * @return list<stdClass>
      *
      * @throws DatabaseException
      */
@@ -355,7 +355,7 @@ class SQLite extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @return stdClass[]
+     * @return list<stdClass>
      *
      * @throws DatabaseException
      */
@@ -412,7 +412,7 @@ class SQLite extends BaseConnection
     /**
      * {@inheritDoc}
      *
-     * @return stdClass[]
+     * @return list<stdClass>
      */
     protected function _foreignKeyData(string $table): array
     {

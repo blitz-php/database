@@ -29,7 +29,7 @@ trait DatabaseRule
     /**
      * Tableau de callback de requêtes personnalisés.
      *
-     * @var Closure[]
+     * @var list<Closure>
      */
     protected array $using = [];
 

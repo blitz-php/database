@@ -53,7 +53,7 @@ class DatabaseCollector extends BaseCollector
     /**
      * Tableau de connexions à la base de données.
      *
-     * @var BaseConnection[]
+     * @var list<BaseConnection>
      */
     protected array $connections = [];
 
@@ -86,7 +86,7 @@ class DatabaseCollector extends BaseCollector
             $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
 
             if (! is_cli()) {
-                // lorsqu'ils sont appelés dans le navigateur, les deux premiers tableaux de traces 
+                // lorsqu'ils sont appelés dans le navigateur, les deux premiers tableaux de traces
                 // proviennent du déclencheur d'événement de la base de données, qui ne sont pas nécessaires
                 $backtrace = array_slice($backtrace, 2);
             }
@@ -247,7 +247,7 @@ class DatabaseCollector extends BaseCollector
     private function highlight(string $statement): string
     {
         // Liste des mots-clés à mettre en gras
-        $replacements = array_map(fn($term) => "<strong>{$term}</strong>", $search = [
+        $replacements = array_map(static fn ($term) => "<strong>{$term}</strong>", $search = [
             'SELECT',
             'DISTINCT',
             'FROM',
@@ -290,6 +290,6 @@ class DatabaseCollector extends BaseCollector
             ')',
         ]);
 
-       return strtr($statement, array_combine($search, $replacements));
+        return strtr($statement, array_combine($search, $replacements));
     }
 }

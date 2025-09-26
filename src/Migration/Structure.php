@@ -35,12 +35,12 @@ class Structure
     protected string $prefix;
 
     /**
-     * @var Column[] Colonnes que l'on veut ajouter a la table
+     * @var list<Column> Colonnes que l'on veut ajouter a la table
      */
     protected array $columns = [];
 
     /**
-     * @var Fluent[] Commandes qu'on souhaite executer sur la table.
+     * @var list<Fluent> Commandes qu'on souhaite executer sur la table.
      */
     protected array $commands = [];
 
@@ -156,7 +156,7 @@ class Structure
     /**
      * Indique qu'on veut supprimer une cle primaire.
      */
-    public function dropPrimary(null|array|string $index = null): Fluent
+    public function dropPrimary(array|string|null $index = null): Fluent
     {
         return $this->dropIndexCommand('dropPrimary', 'primary', $index);
     }
@@ -1115,7 +1115,7 @@ class Structure
     /**
      * Get the columns on the schema.
      *
-     * @return Column[]
+     * @return list<Column>
      *
      * @internal utilisee par le `transformer`
      */
@@ -1135,7 +1135,7 @@ class Structure
     /**
      * Get the commands on the schema.
      *
-     * @return Fluent[]
+     * @return list<Fluent>
      *
      * @internal utilisee par le `transformer`
      */
@@ -1147,7 +1147,7 @@ class Structure
     /**
      * Recupere les colones de la structure qui doivent etre ajoutees.
      *
-     * @return Column[]
+     * @return list<Column>
      *
      * @internal utilisee par le `transformer`
      */
@@ -1159,7 +1159,7 @@ class Structure
     /**
      * Recupere les colones de la structure qui doivent etre modifiees.
      *
-     * @return Column[]
+     * @return list<Column>
      *
      * @internal utilisee par le `transformer`
      */

@@ -23,7 +23,7 @@ use InvalidArgumentException;
 abstract class Seeder
 {
     /**
-     * @var Table[] Liste des tables a remplir
+     * @var list<Table> Liste des tables a remplir
      */
     private array $tables = [];
 
@@ -38,7 +38,7 @@ abstract class Seeder
     private array $filledTablesNames = [];
 
     /**
-     * @var string[] Liste des seeders executes
+     * @var list<string> Liste des seeders executes
      */
     private array $seeded = [];
 
@@ -87,7 +87,7 @@ abstract class Seeder
     /**
      * Recupere la liste des sous seeder executes via la methode call()
      *
-     * @return string[]
+     * @return list<string>
      */
     public function getSeeded(): array
     {

@@ -46,7 +46,7 @@ class Runner
      * Liste des fichiers des migrations.
      * Le framework est responsable de la recherche de tous les fichiers necessaires regroupes par namespace.
      *
-     * @var array<string, string[]> [namespace => [fichiers]]
+     * @var array<string, list<string>> [namespace => [fichiers]]
      */
     protected array $files = [];
 
@@ -76,7 +76,7 @@ class Runner
     protected bool $silent = false;
 
     /**
-     * @var array<string, string>[] utiliser pour renvoyer les messages pour la console.
+     * @var list<array<string, string>> utiliser pour renvoyer les messages pour la console.
      */
     protected array $messages = [];
 
@@ -111,8 +111,8 @@ class Runner
     public static int $defaultStringLength = 255;
 
     /**
-     * La migration peut gérer plusieurs bases de données. 
-     * Elle doit donc toujours utiliser le groupe de bases de données par défaut afin de créer la table `migrations` dans le groupe de bases de données par défaut. 
+     * La migration peut gérer plusieurs bases de données.
+     * Elle doit donc toujours utiliser le groupe de bases de données par défaut afin de créer la table `migrations` dans le groupe de bases de données par défaut.
      * Par conséquent, le passage de $db est uniquement à des fins de test.
      *
      * @param array|ConnectionInterface|string|null $db Groupe de DB. À des fins de test uniquement.
@@ -124,7 +124,7 @@ class Runner
 
         $this->namespace = defined('APP_NAMESPACE') ? constant('APP_NAMESPACE') : 'App';
 
-        // Même si une connexion DB est transmise comme il s'agit d'un test, 
+        // Même si une connexion DB est transmise comme il s'agit d'un test,
         // on suppose que le nom de groupe par défaut est utilisé.
         // $this->group = is_string($db) ? $db : config('database.connection');
 
@@ -137,6 +137,8 @@ class Runner
 
     /**
      * singleton constructor
+     *
+     * @param mixed|null $db
      */
     public static function instance(array $config, $db = null): self
     {
@@ -264,7 +266,7 @@ class Runner
         $this->namespace = null;
         $allMigrations   = $this->getMigrations();
 
-        $migrations    = [];
+        $migrations = [];
 
         while ($batch = array_pop($batches)) {
             if ($batch <= $targetBatch) {
@@ -427,7 +429,7 @@ class Runner
     }
 
     /**
-     * Si $silent == true, alors aucune exception ne sera levée 
+     * Si $silent == true, alors aucune exception ne sera levée
      * et le programme tentera de continuer normalement.
      */
     public function setSilent(bool $silent): self

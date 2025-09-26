@@ -117,8 +117,8 @@ use stdClass;
  * @method self                                                        testMode(bool $mode = true)
  * @method $this                                                       unless($value = null, ?callable $callback = null, ?callable $default = null)
  * @method $this|\BlitzPHP\Database\BaseResult                         update(array|string $data, bool $execute = true)
- * @method mixed|mixed[]                                               value(string|string[] $name, ?string $key = null, int $expire = 0)
- * @method mixed[]                                                     values(string|string[] $name, ?string $key = null, int $expire = 0)
+ * @method list<mixed>|mixed                                           value(string|string[] $name, ?string $key = null, int $expire = 0)
+ * @method list<mixed>                                                 values(string|string[] $name, ?string $key = null, int $expire = 0)
  * @method $this                                                       when($value = null, ?callable $callback = null, ?callable $default = null)
  * @method $this                                                       where(array|string $key, $value = null, ?bool $escape = null)
  * @method $this                                                       whereBetween(string $field, $value1, $value2)
@@ -194,7 +194,7 @@ abstract class Model
     /**
      * Un tableau de noms de champs qui peuvent être définis par l'utilisateur dans les insertions/mises à jour.
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $allowedFields = [];
 
@@ -261,7 +261,7 @@ abstract class Model
     /**
      * Methodes du builder qui ne doivent pas etre utilisees dans le model.
      *
-     * @var string[] method name
+     * @var list<string> method name
      */
     private array $builderMethodsNotAvailable = [
         'getCompiledInsert',
@@ -297,84 +297,84 @@ abstract class Model
     /**
      * Callbacks pour beforeInsert
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $beforeInsert = [];
 
     /**
      * Callbacks pour afterInsert
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $afterInsert = [];
 
     /**
      * Callbacks pour beforeUpdate
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $beforeUpdate = [];
 
     /**
      * Callbacks pour afterUpdate
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $afterUpdate = [];
 
     /**
      * Callbacks pour beforeInsertBatch
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $beforeInsertBatch = [];
 
     /**
      * Callbacks pour afterInsertBatch
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $afterInsertBatch = [];
 
     /**
      * Callbacks pour beforeUpdateBatch
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $beforeUpdateBatch = [];
 
     /**
      * Callbacks pour afterUpdateBatch
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $afterUpdateBatch = [];
 
     /**
      * Callbacks pour beforeFind
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $beforeFind = [];
 
     /**
      * Callbacks pour afterFind
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $afterFind = [];
 
     /**
      * Callbacks pour beforeDelete
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $beforeDelete = [];
 
     /**
      * Callbacks pour afterDelete
      *
-     * @var string[]
+     * @var list<string>
      */
     protected array $afterDelete = [];
 
@@ -439,7 +439,7 @@ abstract class Model
      *
      * @throws ReflectionException
      */
-    public function create(null|array|object $data = null, bool $returnID = true)
+    public function create(array|object|null $data = null, bool $returnID = true)
     {
         if (! empty($this->tempData['data'])) {
             if (empty($data)) {
@@ -815,7 +815,7 @@ abstract class Model
      * @throws InvalidArgumentException
      * @throws ReflectionException
      */
-    protected function transformDataToArray(null|array|object $data, string $type): array
+    protected function transformDataToArray(array|object|null $data, string $type): array
     {
         if (! in_array($type, ['insert', 'update'], true)) {
             throw new InvalidArgumentException(sprintf('Invalid type "%s" used upon transforming data to array.', $type));

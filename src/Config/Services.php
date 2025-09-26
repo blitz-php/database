@@ -41,7 +41,7 @@ class Services extends BaseServices
     {
         /** @var ConnectionResolverInterface */
         $connectionResolver = static::container()->get(ConnectionResolverInterface::class);
-        [$group] = $connectionResolver->connectionInfo($group);
+        [$group]            = $connectionResolver->connectionInfo($group);
 
         if (true === $shared && isset(static::$instances[Database::class]) && static::$instances[Database::class]->group === $group) {
             return static::$instances[Database::class];

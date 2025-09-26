@@ -30,7 +30,7 @@ class SQLite extends BaseCreator
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @var SQLiteConnection
      */
     protected BaseConnection $db;
@@ -159,7 +159,7 @@ class SQLite extends BaseCreator
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @param list<string>|string $columnNames
      *
      * @throws DatabaseException
@@ -168,13 +168,14 @@ class SQLite extends BaseCreator
     {
         $columns = is_array($columnNames) ? $columnNames : array_map(trim(...), explode(',', $columnNames));
 
-        $result  = (new Table($this->db, $this))
+        $result = (new Table($this->db, $this))
             ->fromTable($this->db->prefix . $table)
             ->dropColumn($columns)
             ->run();
 
         if (! $result && $this->db->debug) {
-            throw new DatabaseException(sprintf('Failed to drop column%s "%s" on "%s" table.',
+            throw new DatabaseException(sprintf(
+                'Failed to drop column%s "%s" on "%s" table.',
                 count($columns) > 1 ? 's' : '',
                 implode('", "', $columns),
                 $table,
