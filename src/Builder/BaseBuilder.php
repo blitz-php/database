@@ -1746,6 +1746,18 @@ class BaseBuilder implements BuilderInterface
     }
 
     /**
+     * Ajoute un champ brute a la selection.
+     */
+	public function selectRaw(string|RawSql $query): self
+	{
+        if (is_string($query)) {
+            $query = new RawSql($query);
+        }
+
+		return $this->select((string) $query);
+	}
+
+    /**
      * Définit un indicateur qui indique au compilateur de chaîne de requête d'ajouter IGNORE.
      */
     final public function ignore(bool $value = true): self
