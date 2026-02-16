@@ -22,17 +22,17 @@ class TableInfo extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    protected $name = 'db:table';
+    protected string $name = 'db:table';
 
     /**
      * {@inheritDoc}
      */
-    protected $description = 'Récupère les informations sur la table sélectionnée.';
+    protected string $description = 'Récupère les informations sur la table sélectionnée.';
 
     /**
      * {@inheritDoc}
      */
-    protected $usage = <<<'EOL'
+    protected string $usage = <<<'EOL'
             db:table --show
             db:table --metadata
             db:table my_table --metadata
@@ -43,14 +43,14 @@ class TableInfo extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    protected $arguments = [
+    protected array $arguments = [
         'table' => 'Le nom de la table dont on veut avoir les infos',
     ];
 
     /**
      * {@inheritDoc}
      */
-    protected $options = [
+    protected array $options = [
         '--show'              => 'Liste les noms de toutes les tables de la base de données.',
         '--metadata'          => 'Récupère la liste contenant les informations du champ.',
         '--desc'              => 'Trie les lignes du tableau dans l\'ordre DESC.',
@@ -71,7 +71,7 @@ class TableInfo extends DatabaseCommand
 
     private string $prefix = '';
 
-    public function execute(array $params)
+    public function handle()
     {
         try {
             $this->db = $this->resolver->connection($this->option('group'));
@@ -87,7 +87,7 @@ class TableInfo extends DatabaseCommand
 
         $this->showDBConfig();
 
-        if (array_key_exists('desc', $params)) {
+        if ($this->hasParameter('desc')) {
             $this->sortDesc = true;
         }
 

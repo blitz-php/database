@@ -23,36 +23,36 @@ class Migration extends Command
     use GeneratorTrait;
 
     /**
-     * @var string Groupe
+     * {@inheritDoc}
      */
-    protected $group = 'Generateurs';
+    protected string $group = 'Generateurs';
 
     /**
-     * @var string Nom
+     * {@inheritDoc}
      */
-    protected $name = 'make:migration';
+    protected string $name = 'make:migration';
 
     /**
-     * @var string Description
+     * {@inheritDoc}
      */
-    protected $description = 'Génère un nouveau fichier de migration.';
+    protected string $description = 'Génère un nouveau fichier de migration.';
 
     /**
-     * @var string
+     * {@inheritDoc}
      */
-    protected $service = 'Service de génération de code';
+    protected string $service = 'Service de génération de code';
 
     /**
-     * @var array Arguments
+     * {@inheritDoc}
      */
-    protected $arguments = [
+    protected array $arguments = [
         'name' => 'Le nom de la classe de migration.',
     ];
 
     /**
-     * @var array Options
+     * {@inheritDoc}
      */
-    protected $options = [
+    protected array $options = [
         '--table'     => 'Nom de la table à utiliser.',
         '--create'    => 'Spécifie qu\'on veut créer une nouvelle table.',
         '--modify'    => 'Spécifie qu\'on veut modifier une table existante.',
@@ -65,7 +65,7 @@ class Migration extends Command
     /**
      * {@inheritDoc}
      */
-    public function execute(array $params)
+    public function handle()
     {
         $this->component    = 'Migration';
         $this->directory    = 'Database\Migrations';
@@ -73,7 +73,9 @@ class Migration extends Command
         $this->templatePath = __DIR__ . '/Views';
 
         $this->classNameLang = 'CLI.generator.className.migration';
-        $this->generateClass($params);
+        $this->generateClass($this->parameters());
+
+        return EXIT_SUCCESS;
     }
 
     /**

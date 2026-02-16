@@ -14,7 +14,7 @@ namespace BlitzPHP\Database\Commands\Dump;
 use Ahc\Cli\Output\Color;
 use BlitzPHP\Database\Commands\DatabaseCommand;
 use BlitzPHP\Database\Config\Services;
-use BlitzPHP\Utilities\Date;
+use BlitzPHP\Utilities\DateTime\Date;
 use BlitzPHP\Utilities\Helpers;
 use BlitzPHP\Utilities\String\Text;
 use Dimtrovich\DbDumper\Exceptions\Exception as DumperException;
@@ -29,24 +29,24 @@ class Restore extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    protected $name = 'db:restore';
+    protected string $name = 'db:restore';
 
     /**
      * {@inheritDoc}
      */
-    protected $description = 'Restore votre base de données à partir d\'un fichier de sauvegarde';
+    protected string $description = 'Restore votre base de données à partir d\'un fichier de sauvegarde';
 
     /**
      * {@inheritDoc}
      */
-    protected $required = [
+    protected array $required = [
         'dimtrovich/db-dumper',
     ];
 
     /**
      * {@inheritDoc}
      */
-    protected $options = [
+    protected array $options = [
         '--path'  => 'Dossier à partir duquel on cherchera les fichiers de restauration des données',
         '--group' => 'Groupe de la base de données à utiliser',
         '--file'  => 'Fichier à utiliser pour la restauration des données',
@@ -55,9 +55,9 @@ class Restore extends DatabaseCommand
     /**
      * Execution de la commande
      */
-    public function execute(array $params)
+    public function handle()
     {
-        $config = $this->getConfig($params);
+        $config = $this->getConfig($this->parameters());
 
         try {
             $importer = Services::dbImporter();
@@ -139,6 +139,8 @@ class Restore extends DatabaseCommand
             'first'  => ['fg' => Color::YELLOW],
             'second' => ['fg' => Color::GREEN],
         ]);
+
+        return EXIT_SUCCESS;
     }
 
     private function getConfig(array $params): array

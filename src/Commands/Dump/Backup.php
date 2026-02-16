@@ -27,24 +27,24 @@ class Backup extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    protected $name = 'db:backup';
+    protected string $name = 'db:backup';
 
     /**
      * {@inheritDoc}
      */
-    protected $description = 'Exporte et sauvegarde votre base de données';
+    protected string $description = 'Exporte et sauvegarde votre base de données';
 
     /**
      * {@inheritDoc}
      */
-    protected $required = [
+    protected array $required = [
         'dimtrovich/db-dumper',
     ];
 
     /**
      * {@inheritDoc}
      */
-    protected $options = [
+    protected array $options = [
         '--path'  => 'Dossier de sauvegarde',
         '--group' => 'Groupe de la base de données à utiliser',
 
@@ -77,9 +77,9 @@ class Backup extends DatabaseCommand
     /**
      * Execution de la commande
      */
-    public function execute(array $params)
+    public function handle()
     {
-        $config            = $this->getConfig($params);
+        $config            = $this->getConfig($this->parameters());
         $config['message'] = $this->buildBackupMessage($config);
 
         try {
@@ -127,6 +127,8 @@ class Backup extends DatabaseCommand
             'first'  => ['fg' => Color::YELLOW],
             'second' => ['fg' => Color::GREEN],
         ]);
+
+        return EXIT_SUCCESS;
     }
 
     private function buildBackupMessage(array $config): string
