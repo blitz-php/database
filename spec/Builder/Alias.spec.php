@@ -11,59 +11,59 @@ describe("Database / Query Builder : Alias", function() {
 
     it(": Alias simple", function() {
         $builder = $this->builder->from('jobs j');
-        expect($builder->sql())->toBe('SELECT * FROM jobs As j');
+        expect($builder->sql())->toBe('SELECT * FROM jobs AS j');
         
-        $builder = $this->builder->from('jobs As j');
-        expect($builder->sql())->toBe('SELECT * FROM jobs As j');
+        $builder = $this->builder->from('jobs AS j');
+        expect($builder->sql())->toBe('SELECT * FROM jobs AS j');
     });
     
     it(": Prise en charge des tableau d'alias", function() {
         $builder = $this->builder->from(['jobs j', 'users u']);
-        expect($builder->sql())->toBe('SELECT * FROM jobs As j, users As u');
+        expect($builder->sql())->toBe('SELECT * FROM jobs AS j, users AS u');
         
         $builder = $this->builder->from(['jobs j', 'users as u']);
-        expect($builder->sql())->toBe('SELECT * FROM jobs As j, users As u');
+        expect($builder->sql())->toBe('SELECT * FROM jobs AS j, users AS u');
     });
     
     it(": Prise en charge de chaine d'alias", function() {
         $builder = $this->builder->from('jobs j, users u');
-        expect($builder->sql())->toBe('SELECT * FROM jobs As j, users As u');
+        expect($builder->sql())->toBe('SELECT * FROM jobs AS j, users AS u');
         
         $builder = $this->builder->from('jobs j, users AS u');
-        expect($builder->sql())->toBe('SELECT * FROM jobs As j, users As u');
+        expect($builder->sql())->toBe('SELECT * FROM jobs AS j, users AS u');
     });
     
     it(": Prise en charge de chaine d'alias", function() {
         $builder = $this->builder->from('jobs j, users u');
-        expect($builder->sql())->toBe('SELECT * FROM jobs As j, users As u');
+        expect($builder->sql())->toBe('SELECT * FROM jobs AS j, users AS u');
         
         $builder = $this->builder->from('jobs j, users AS u');
-        expect($builder->sql())->toBe('SELECT * FROM jobs As j, users As u');
+        expect($builder->sql())->toBe('SELECT * FROM jobs AS j, users AS u');
     });
 
     it(": Alias 'Join' avec un nom de table court", function() {
         $this->builder->db()->setPrefix('db_');
 
         $builder = $this->builder->from('jobs')->join('users as u', ['u.id' => 'jobs.id']);
-        expect($builder->sql())->toMatch('/^SELECT \* FROM db_jobs As jobs_(?:[a-z0-9]+) INNER JOIN db_users As u ON u\.id = jobs_(?:[a-z0-9]+)\.id$/');           
+        expect($builder->sql())->toMatch('/^SELECT \* FROM db_jobs AS jobs_(?:[a-z0-9]+) INNER JOIN db_users AS u ON u\.id = jobs_(?:[a-z0-9]+)\.id$/');           
     });
 
     it(": Alias 'Join' avec un nom de table long", function() {
         $this->builder->db()->setPrefix('db_');
 
         $builder = $this->builder->from('jobs')->join('users as u', ['users.id' => 'jobs.id']);
-        expect($builder->sql())->toMatch('/^SELECT \* FROM db_jobs As jobs_(?:[a-z0-9]+) INNER JOIN db_users As u ON u\.id = jobs_(?:[a-z0-9]+)\.id$/');           
+        expect($builder->sql())->toMatch('/^SELECT \* FROM db_jobs AS jobs_(?:[a-z0-9]+) INNER JOIN db_users AS u ON u\.id = jobs_(?:[a-z0-9]+)\.id$/');           
     });
     
     it(": Alias simple 'Like' avec le préfixe DB", function() {
         $this->builder->db()->setPrefix('db_');
 
         $builder = $this->builder->from('jobs j')->like('j.name', 'veloper');
-        expect($builder->sql())->toBe('SELECT * FROM db_jobs As j WHERE j.name LIKE \'%veloper%\'');           
+        expect($builder->sql())->toBe('SELECT * FROM db_jobs AS j WHERE j.name LIKE \'%veloper%\'');           
     });
 
     it(": Alias simple avec le préfixe table", function() {
         $builder = $this->builder->from('articles a')->select('articles.user_id as user')->where('articles.id', 1);
-        expect($builder->sql())->toBe('SELECT a.user_id As user FROM articles As a WHERE a.id = 1');  
+        expect($builder->sql())->toBe('SELECT a.user_id AS user FROM articles AS a WHERE a.id = 1');  
     });
 });
