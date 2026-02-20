@@ -42,6 +42,212 @@ abstract class QueryCompiler
     }
 
     /**
+     * Compile une requête SELECT
+     */
+    public function compileSelect(BaseBuilder $builder): string
+    {
+        $sql = ['SELECT'];
+
+        if ('' !== $distinct = $this->compileDistinct($builder->distinct)) {
+            $sql[] = $distinct;
+        }
+
+        $sql[] = $this->compileColumns($builder->columns ?: ['*']);
+
+        if ([] !== $builder->tables) {
+            $sql[] = 'FROM';
+            $sql[] = $this->compileTables($builder->tables);
+        }
+
+        if ([] !== $builder->joins) {
+            $sql[] = $this->compileJoins($builder->joins);
+        }
+
+        if ([] !== $builder->wheres) {
+            $sql[] = 'WHERE';
+            $sql[] = $this->compileWheres($builder->wheres);
+        }
+
+        if ([] !== $builder->groups) {
+            $sql[] = 'GROUP BY';
+            $sql[] = $this->compileGroups($builder->groups);
+        }
+
+        if ([] !== $builder->havings) {
+            $sql[] = 'HAVING';
+            $sql[] = $this->compileHavings($builder->havings);
+        }
+
+        if ([] !== $builder->orders) {
+            $sql[] = 'ORDER BY';
+            $sql[] = $this->compileOrders($builder->orders);
+        }
+
+        if ([] !== $builder->unions) {
+            $sql[] = $this->compileUnions($builder->unions);
+        }
+
+        if ('' !== $limit = $this->compileLimit($builder->limit, $builder->offset)) {
+            $sql[] = $limit;
+        }
+
+        if ('' !== $lock = $this->compileLock($builder->lock)) {
+            $sql[] = $lock;
+        }
+
+        return implode(' ', array_filter($sql));
+    }
+
+    /**
+     * Compile une requête INSERT
+     */
+    public function compileInsert(BaseBuilder $builder): string
+    {
+        $table = $this->db->escapeIdentifiers($builder->getTable());
+        
+        // Récupérer la première ligne pour les colonnes
+        $firstRow = $builder->values[0] ?? $builder->values;
+        $columns = implode(', ', array_map([$this->db, 'escapeIdentifiers'], array_keys($firstRow)));
+        
+        // Support des insertions multiples
+        if (isset($builder->values[0]) && is_array($builder->values[0])) {
+            $values = [];
+            foreach ($builder->values as $row) {
+                $rowValues = array_map([$this, 'wrapValue'], $row);
+                $values[] = '(' . implode(', ', $rowValues) . ')';
+            }
+            $values = implode(', ', $values);
+        } else {
+            $values = '(' . implode(', ', array_map([$this, 'wrapValue'], $builder->values)) . ')';
+        }
+
+        return $this->compileInsertion($table, $columns, $values, $builder->ignore);
+    }
+
+    /**
+     * Compile une requête INSERT USING (INSERT INTO ... SELECT)
+     */
+    public function compileInsertUsing(BaseBuilder $builder): string
+    {
+        $table = $this->db->escapeIdentifiers($builder->getTable());
+        $columns = implode(', ', array_map([$this->db, 'escapeIdentifiers'], $builder->columns));
+        
+        /** @var BaseBuilder $query */
+        $query = $builder->values['query'];
+        $subquery = $query->toSql();
+
+        return "INSERT INTO {$table} ({$columns}) {$subquery}";
+    }
+
+    /**
+     * Compile une requête UPDATE
+     */
+    public function compileUpdate(BaseBuilder $builder): string
+    {
+        $table = $this->db->escapeIdentifiers($builder->getTable());
+        
+        $sets = [];
+        foreach ($builder->values as $column => $value) {
+            $column = $this->db->escapeIdentifiers($column);
+            $sets[] = "{$column} = " . $this->wrapValue($value);
+        }
+
+        $sql = ["UPDATE {$table} SET " . implode(', ', $sets)];
+
+        if ([] !== $builder->joins) {
+            $sql[] = $this->compileJoins($builder->joins);
+        }
+
+        if ([] !== $builder->wheres) {
+            $sql[] = 'WHERE';
+            $sql[] = $this->compileWheres($builder->wheres);
+        }
+
+        if ('' !== $limit = $this->compileLimit($builder->limit, null)) {
+            $sql[] = $limit;
+        }
+
+        return implode(' ', array_filter($sql));
+    }
+
+    /**
+     * Compile une requête DELETE
+     */
+    public function compileDelete(BaseBuilder $builder): string
+    {
+        $table = $this->db->escapeIdentifiers($builder->getTable());
+        
+        $sql = ["DELETE FROM {$table}"];
+
+        if ([] !== $builder->joins) {
+            $sql[] = $this->compileJoins($builder->joins);
+        }
+
+        if ([] !== $builder->wheres) {
+            $sql[] = 'WHERE';
+            $sql[] = $this->compileWheres($builder->wheres);
+        }
+
+        if ('' !== $limit = $this->compileLimit($builder->limit, null)) {
+            $sql[] = $limit;
+        }
+
+        return implode(' ', array_filter($sql));
+    }
+
+    /**
+     * Compile une requête REPLACE
+     */
+    public function compileReplace(BaseBuilder $builder): string
+    {
+        $table = $this->db->escapeIdentifiers($builder->getTable());
+        
+        // Récupérer la première ligne pour les colonnes
+        $firstRow = $builder->values[0] ?? $builder->values;
+        $columns = implode(', ', array_map([$this->db, 'escapeIdentifiers'], array_keys($firstRow)));
+        
+        // Support des insertions multiples pour REPLACE
+        if (isset($builder->values[0]) && is_array($builder->values[0])) {
+            $values = [];
+            foreach ($builder->values as $row) {
+                $rowValues = array_map([$this, 'wrapValue'], $row);
+                $values[] = '(' . implode(', ', $rowValues) . ')';
+            }
+            $values = implode(', ', $values);
+        } else {
+            $values = '(' . implode(', ', array_map([$this, 'wrapValue'], $builder->values)) . ')';
+        }
+
+        return $this->compileReplacement($table, $columns, $values);
+    }
+
+    /**
+     * Compile une requête UPSERT
+     */
+    public function compileUpsert(BaseBuilder $builder): string
+    {
+        $table = $this->db->escapeIdentifiers($builder->getTable());
+        
+        // Récupérer la première ligne pour les colonnes
+        $firstRow = $builder->values[0] ?? $builder->values;
+        $columns = implode(', ', array_map([$this->db, 'escapeIdentifiers'], array_keys($firstRow)));
+        
+        // Construire les valeurs (support multi-insert)
+        if (isset($builder->values[0]) && is_array($builder->values[0])) {
+            $valueRows = [];
+            foreach ($builder->values as $row) {
+                $rowValues = array_map([$this, 'wrapValue'], $row);
+                $valueRows[] = '(' . implode(', ', $rowValues) . ')';
+            }
+            $values = implode(', ', $valueRows);
+        } else {
+            $values = '(' . implode(', ', array_map([$this, 'wrapValue'], $builder->values)) . ')';
+        }
+
+        return $this->compileUpsertment($table, $columns, $values, $builder);
+    }
+
+    /**
      * Compile les colonnes à sélectionner
      */
     public function compileColumns(array $columns): string
@@ -201,22 +407,118 @@ abstract class QueryCompiler
     }
 
     /**
+     * Compile une condition WHERE individuelle
+     */
+    protected function compileWhere(array $where): string
+    {
+        switch ($where['type']) {
+            case 'basic':
+                $column = $this->db->escapeIdentifiers($where['column']);
+                $operator = $this->translateOperator($where['operator']);
+                
+                if (isset($where['value']) && $where['value'] instanceof Expression) {
+                    return "{$column} {$operator} {$where['value']}";
+                }
+                
+                return "{$column} {$operator} ?";
+
+            case 'in':
+                $column = $this->db->escapeIdentifiers($where['column']);
+                $placeholders = implode(', ', array_fill(0, count($where['values']), '?'));
+                return "{$column} {$where['operator']} ({$placeholders})";
+
+            case 'insub':
+                $column = $this->db->escapeIdentifiers($where['column']);
+                $subquery = $where['query']->toSql();
+                $not = $where['not'] ? 'NOT ' : '';
+                return "{$column} {$not}IN ({$subquery})";
+
+            case 'null':
+                $column = $this->db->escapeIdentifiers($where['column']);
+                return "{$column} IS " . ($where['not'] ? 'NOT NULL' : 'NULL');
+
+            case 'between':
+                $column = $this->db->escapeIdentifiers($where['column']);
+                $not = $where['not'] ? 'NOT ' : '';
+                return "{$column} {$not}BETWEEN ? AND ?";
+
+            case 'betweencolumns':
+                $column = $this->db->escapeIdentifiers($where['column']);
+                $col1 = $this->db->escapeIdentifiers($where['values'][0]);
+                $col2 = $this->db->escapeIdentifiers($where['values'][1]);
+                $not = $where['not'] ? 'NOT ' : '';
+                return "{$column} {$not}BETWEEN {$col1} AND {$col2}";
+
+            case 'valuebetween':
+                $col1 = $this->db->escapeIdentifiers($where['column1']);
+                $col2 = $this->db->escapeIdentifiers($where['column2']);
+                $not = $where['not'] ? 'NOT ' : '';
+                return "? {$not}BETWEEN {$col1} AND {$col2}";
+
+            case 'column':
+                $first = $this->db->escapeIdentifiers($where['first']);
+                $second = $this->db->escapeIdentifiers($where['second']);
+                return "{$first} {$where['operator']} {$second}";
+
+            case 'nested':
+                return '(' . $this->compileWheres($where['query']->wheres) . ')';
+
+            case 'exists':
+                $subquery = $where['query']->toSql();
+                $not = $where['not'] ? 'NOT ' : '';
+                return "{$not}EXISTS ({$subquery})";
+
+            case 'raw':
+                return $where['sql'];
+
+            case 'json':
+            case 'jsonkey':
+            case 'jsonlength':
+            case 'jsonsearch':
+                return $this->compileJsonWhere($where);
+
+            case 'any':
+            case 'all':
+                return $this->compileAnyAll(
+                    strtoupper($where['type']),
+                    $where['column'],
+                    $where['operator'],
+                    $where['values']
+                );
+
+            default:
+                throw new InvalidArgumentException("Unknown where type: {$where['type']}");
+        }
+    }
+
+    protected function compileJsonWhere(array $where): string
+    {
+        switch ($where['type']) {
+            case 'json':
+                if ($where['operator'] === 'JSON_CONTAINS') {
+                    return $this->compileJsonContains($where['column'], $where['value'], $where['not']);
+                }
+                return '';
+
+            case 'jsonkey':
+                return $this->compileJsonContainsKey($where['column'], $where['not']);
+
+            case 'jsonlength':
+                return $this->compileJsonLength($where['column'], $where['operator'], $where['value']);
+
+            case 'jsonsearch':
+                return $this->compileJsonSearch($where['column'], $where['value'], $where['not']);
+            default:
+                return '';
+        }
+    }
+
+    /**
      * Compile les valeurs pour INSERT/UPDATE
      */
     public function compileValues(array $values): string
     {
         return '(' . implode(', ', array_map([$this, 'wrapValue'], $values)) . ')';
-    }
-
-    /**
-     * Compile une clause WHERE ANY/ALL
-     */
-    public function compileAnyAll(string $type, string $column, string $operator, array $values): string
-    {
-        $column = $this->db->escapeIdentifiers($column);
-        $placeholders = implode(', ', array_fill(0, count($values), '?'));
-        
-        return "{$column} {$operator} {$type} ({$placeholders})";
     }
 
     /**
@@ -242,49 +544,6 @@ abstract class QueryCompiler
         $notStr = $not ? 'NOT ' : '';
         
         return "? {$notStr}BETWEEN {$col1} AND {$col2}";
-    }
-
-    /**
-     * Compile une clause JSON CONTAINS
-     */
-    public function compileJsonContains(string $column, $value, bool $not = false): string
-    {
-        $column = $this->db->escapeIdentifiers($column);
-        $notStr = $not ? 'NOT ' : '';
-        
-        return "{$notStr}JSON_CONTAINS({$column}, ?)";
-    }
-
-    /**
-     * Compile une clause JSON CONTAINS KEY
-     */
-    public function compileJsonContainsKey(string $column, bool $not = false): string
-    {
-        $column = $this->db->escapeIdentifiers($column);
-        $notStr = $not ? 'NOT ' : '';
-        
-        return "JSON_CONTAINS_PATH({$column}, 'one', ?) {$notStr}= 1";
-    }
-
-    /**
-     * Compile une clause JSON LENGTH
-     */
-    public function compileJsonLength(string $column, string $operator, int $value): string
-    {
-        $column = $this->db->escapeIdentifiers($column);
-        
-        return "JSON_LENGTH({$column}) {$operator} ?";
-    }
-
-    /**
-     * Compile une clause JSON SEARCH
-     */
-    public function compileJsonSearch(string $column, string $value, bool $not = false): string
-    {
-        $column = $this->db->escapeIdentifiers($column);
-        $notStr = $not ? 'NOT ' : '';
-        
-        return "JSON_SEARCH({$column}, 'one', ?) IS {$notStr}NULL";
     }
 
     /**
@@ -356,29 +615,29 @@ abstract class QueryCompiler
     }
 
     /**
-     * Compile une requête SELECT
+     * Compile la clause DISTINCT
      */
-    abstract public function compileSelect(BaseBuilder $builder): string;
+    abstract protected function compileDistinct(bool|string $distinct): string;
+     
+    /**
+     * Compile la clause LOCK
+     */
+    abstract protected function compileLock(?string $lock): string;
 
     /**
-     * Compile une requête INSERT
+     * Compile la clause INSERT INTO
      */
-    abstract public function compileInsert(BaseBuilder $builder): string;
+    abstract protected function compileInsertion(string $table, string $columns, string $values, bool $ignore, ?string $returning = null): string;
 
     /**
-     * Compile une requête INSERT USING (INSERT INTO ... SELECT)
+     * Compile la clause REPLACE
      */
-    abstract public function compileInsertUsing(BaseBuilder $builder): string;
+    abstract protected function compileReplacement(string $table, string $columns, string $values): string;
 
     /**
-     * Compile une requête UPDATE
+     * Compile la clause UPSERT
      */
-    abstract public function compileUpdate(BaseBuilder $builder): string;
-
-    /**
-     * Compile une requête DELETE
-     */
-    abstract public function compileDelete(BaseBuilder $builder): string;
+    abstract protected function compileUpsertment(string $table, string $columns, string $values, BaseBuilder $builder): string;
 
     /**
      * Compile une requête TRUNCATE
@@ -386,17 +645,27 @@ abstract class QueryCompiler
     abstract public function compileTruncate(BaseBuilder $builder): string;
 
     /**
-     * Compile une requête REPLACE
+     * Compile une clause JSON CONTAINS
      */
-    abstract public function compileReplace(BaseBuilder $builder): string;
+    abstract protected function compileJsonContains(string $column, $value, bool $not = false): string;
+    
+    /**
+     * Compile une clause JSON CONTAINS KEY
+     */
+    abstract protected function compileJsonContainsKey(string $column, bool $not = false): string;
 
     /**
-     * Compile une requête UPSERT
+     * Compile une clause JSON LENGTH
      */
-    abstract public function compileUpsert(BaseBuilder $builder): string;
+    abstract protected function compileJsonLength(string $column, string $operator, int $value): string;
 
     /**
-     * Compile une condition WHERE individuelle
+     * Compile une clause JSON SEARCH
      */
-    abstract public function compileWhere(array $where): string;
+    abstract protected function compileJsonSearch(string $column, string $value, bool $not = false): string;
+
+    /**
+     * Compile une clause WHERE ANY/ALL
+     */
+    abstract protected function compileAnyAll(string $type, string $column, string $operator, array $values): string;
 }
