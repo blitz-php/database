@@ -12,6 +12,7 @@
 namespace BlitzPHP\Database\Builder;
 
 use BlitzPHP\Database\Connection\BaseConnection;
+use BlitzPHP\Database\Utils;
 use Closure;
 
 class JoinClause
@@ -213,30 +214,12 @@ class JoinClause
     {
         foreach (['first', 'second', 'column'] as $item) {
             if (isset($condition[$item]) && is_string($condition[$item])) {
-                $condition[$item] = $this->formatColumnName($condition[$item]);
+                $condition[$item] = Utils::formatQualifiedColumn($this->db, $condition[$item]);
             }
         }
 
         $this->conditions[] = $condition;
 
         return $this;
-    }
-
-    /**
-     * Formate un nom de colonne avec son alias de table
-     */
-    private function formatColumnName(string $name): string
-    {
-        if (! str_contains($name, '.')) {
-            return $this->db->escapeIdentifiers($name);
-        }
-        
-        [$table, $column] = explode('.', $name);        
-        [$table] = $this->db->getTableAlias($table);
-
-        return implode('.', [
-            $this->db->escapeIdentifiers($table), 
-            $this->db->escapeIdentifiers($column)
-        ]);
     }
 }

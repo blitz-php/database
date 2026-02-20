@@ -69,7 +69,7 @@ trait DataMethods
         $column = $this->buildColumnName($column);
 
         if ($builder->distinct || $builder->hasGroup()) {
-            $builder = $builder->fromSubquery($builder, 'count_table')
+            $builder = $this->fromSubquery($builder, 'count_table')
                 ->selectRaw('COUNT(' . $column . ') AS count_value');
         } else {
             $builder = $builder->selectRaw('COUNT(' . $column . ') AS count_value');

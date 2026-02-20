@@ -14,6 +14,7 @@ namespace BlitzPHP\Database\Builder\Concerns;
 use BlitzPHP\Database\Builder\JoinClause;
 use BlitzPHP\Database\Query\Expression;
 use BlitzPHP\Contracts\Database\BuilderInterface;
+use BlitzPHP\Database\Utils;
 use Closure;
 use DateTimeInterface;
 use InvalidArgumentException;
@@ -77,19 +78,13 @@ trait CoreMethods
             return $this->whereNull($column, $boolean, $operator !== '=');
         }
 
-        // Gestion des opérateurs spéciaux
-        $operator = $this->normalizeOperator($operator);
-
         if ($value instanceof Expression) {
-            $this->wheres[] = [
-                'type'     => 'basic',
+            return $this->addCondition('wheres', 'basic', [
                 'column'   => $column,
                 'operator' => $operator,
                 'value'    => $value,
                 'boolean'  => $boolean
-            ];
-
-            return $this;
+            ]);
         }
 
         if ($value instanceof DateTimeInterface) {
@@ -114,17 +109,12 @@ trait CoreMethods
             return $this->whereLike($column, $value, $boolean, $operator === 'NOT LIKE' || $operator === '!%', false);
         }
 
-        $this->wheres[] = [
-            'type'     => 'basic',
-            'column'   => $this->buildColumnName($column),
+        return $this->addCondition('wheres', 'basic', [
+            'column'   => $column,
             'operator' => $operator,
             'value'    => $value,
             'boolean'  => $boolean
-        ];
-
-        $this->bindings->add($value);
-
-        return $this;
+        ]);
     }
 
     /**
@@ -173,19 +163,12 @@ trait CoreMethods
             return $this->whereInSub($column, $values, $boolean, $not);
         }
 
-        $this->wheres[] = [
-            'type' => 'in',
-            'column' => $this->buildColumnName($column),
+        return $this->addCondition('wheres', 'in', [
+            'column' => $column,
             'values' => $values,
             'boolean' => $boolean,
-            'operator' => $not ? 'NOT IN' : 'IN'
-        ];
-
-        foreach ($values as $value) {
-            $this->bindings->add($value);
-        }
-
-        return $this;
+            'operator' => $not ? 'NOT IN' : 'IN',
+        ]);
     }
 
     /**
@@ -220,13 +203,14 @@ trait CoreMethods
         $query = $this->newQuery();
         $callback($query);
 
-        $this->wheres[] = [
-            'type' => 'insub',
-            'column' => $this->buildColumnName($column),
+        $this->addCondition('wheres', 'insub', [
+            'column' => $column,
             'query' => $query,
             'boolean' => $boolean,
-            'not' => $not
-        ];
+            'not' => $not,
+        ]);
+
+        $this->bindings->addMany($query->bindings->getValues());
 
         return $this;
     }
@@ -236,18 +220,12 @@ trait CoreMethods
      */
     public function whereBetween(string $column, $value1, $value2, string $boolean = 'and', bool $not = false): static
     {
-        $this->wheres[] = [
-            'type' => 'between',
-            'column' =>$this->buildColumnName($column),
+        return $this->addCondition('wheres', 'between', [
+            'column' => $column, 
             'values' => [$value1, $value2],
             'boolean' => $boolean,
-            'not' => $not
-        ];
-
-        $this->bindings->add($value1);
-        $this->bindings->add($value2);
-
-        return $this;
+            'not' => $not,
+        ]);
     }
 
     /**
@@ -259,15 +237,12 @@ trait CoreMethods
             throw new InvalidArgumentException("whereBetweenColumns requires an array with exactly 2 columns");
         }
 
-        $this->wheres[] = [
-            'type' => 'betweencolumns',
-            'column' => $this->buildColumnName($column),
+        return $this->addCondition('wheres', 'betweencolumns', [
+            'column' => $column,
             'values' => $values,
             'boolean' => $boolean,
-            'not' => $not
-        ];
-
-        return $this;
+            'not' => $not,
+        ]);
     }
 
     /**
@@ -305,22 +280,27 @@ trait CoreMethods
     /**
      * Ajoute une clause WHERE NULL
      */
-    public function whereNull(string $column, string $boolean = 'and', bool $not = false): static
+    public function whereNull(array|string $column, string $boolean = 'and', bool $not = false): static
     {
-        $this->wheres[] = [
-            'type' => 'null',
-            'column' => $this->buildColumnName($column),
-            'boolean' => $boolean,
-            'not' => $not
-        ];
+        if (is_array($column)) {
+            foreach ($column as $value) {
+                $this->whereNull($value, $boolean, $not);
+            }
 
-        return $this;
+            return $this;
+        }
+
+        return $this->addCondition('wheres', 'null', [
+            'column' => $column, 
+            'boolean' => $boolean,
+            'not' => $not,
+        ]);
     }
 
     /**
      * Ajoute une clause WHERE NOT NULL
      */
-    public function whereNotNull(string $column, string $boolean = 'and'): static
+    public function whereNotNull(array|string $column, string $boolean = 'and'): static
     {
         return $this->whereNull($column, $boolean, true);
     }
@@ -328,7 +308,7 @@ trait CoreMethods
     /**
      * Ajoute une clause WHERE NULL avec OR
      */
-    public function orWhereNull(string $column): static
+    public function orWhereNull(array|string $column): static
     {
         return $this->whereNull($column, 'or');
     }
@@ -336,7 +316,7 @@ trait CoreMethods
     /**
      * Ajoute une clause WHERE NOT NULL avec OR
      */
-    public function orWhereNotNull(string $column): static
+    public function orWhereNotNull(array|string $column): static
     {
         return $this->whereNotNull($column, 'or');
     }
@@ -371,17 +351,12 @@ trait CoreMethods
             default  => $value
         };
 
-        $this->wheres[] = [
-            'type'     => 'basic',
-            'column'   => $this->buildColumnName($column),
+        return $this->addCondition('wheres', 'basic', [
+            'column' => $column,
             'operator' => $operator,
             'value'    => $value,
-            'boolean'  => $boolean
-        ];
-
-        $this->bindings->add($value);
-
-        return $this;
+            'boolean'  => $boolean,
+        ]);
     }
 
     /**
@@ -416,14 +391,11 @@ trait CoreMethods
         $query = $this->newQuery();
         $callback($query);
 
-        $this->wheres[] = [
-            'type' => 'exists',
+        return $this->addCondition('wheres', 'exists', [
             'query' => $query,
             'boolean' => $boolean,
-            'not' => $not
-        ];
-
-        return $this;
+            'not' => $not,
+        ]);
     }
 
     /**
@@ -453,28 +425,29 @@ trait CoreMethods
     /**
      * Ajoute une clause WHERE sur une colonne par rapport à une autre colonne
      */
-    public function whereColumn(string $first, string $operator, ?string $second = null, string $boolean = 'and'): static
+    public function whereColumn(array|string $first, ?string $operator = null, ?string $second = null, string $boolean = 'and'): static
     {
+        if (is_array($first)) {
+            return $this->whereArray($first, $operator ?? $boolean, false, 'whereColumn');
+        }
+
         if ($second === null) {
             $second = $operator;
             $operator = '=';
         }
 
-        $this->wheres[] = [
-            'type' => 'column',
-            'first' => $this->buildColumnName($first),
+        return $this->addCondition('wheres', 'column', [
+            'first' => $first,
             'operator' => $operator,
-            'second' => $this->buildColumnName($second),
-            'boolean' => $boolean
-        ];
-
-        return $this;
+            'second' => $second,
+            'boolean' => $boolean,
+        ]);
     }
 
     /**
      * Ajoute une clause WHERE Column avec OR
      */
-    public function orWhereColumn(string $first, string $operator, ?string $second = null): static
+    public function orWhereColumn(array|string $first, ?string $operator = null, ?string $second = null): static
     {
         return $this->whereColumn($first, $operator, $second, 'or');
     }
@@ -482,8 +455,12 @@ trait CoreMethods
     /**
      * Ajoute une clause WHERE NOT Column
      */
-    public function whereNotColumn(string $first, string $operator, ?string $second = null, string $boolean = 'and'): static
+    public function whereNotColumn(array|string $first, ?string $operator = null, ?string $second = null, string $boolean = 'and'): static
     {
+        if (is_array($first)) {
+            return $this->whereArray($first, $operator ?? $boolean, true, 'whereColumn');
+        }
+
         if ($second === null) {
             $second = $operator;
             $operator = '=';
@@ -498,7 +475,7 @@ trait CoreMethods
     /**
      * Ajoute une clause WHERE NOT Column avec OR
      */
-    public function orWhereNotColumn(string $first, string $operator, ?string $second = null): static
+    public function orWhereNotColumn(array|string $first, ?string $operator = null, ?string $second = null): static
     {
         return $this->whereNotColumn($first, $operator, $second, 'or');
     }
@@ -508,19 +485,12 @@ trait CoreMethods
      */
     public function whereAny(string $column, string $operator, array $values, string $boolean = 'and'): static
     {
-        $this->wheres[] = [
-            'type' => 'any',
-            'column' => $this->buildColumnName($column),
+        return $this->addCondition('wheres', 'any', [
+            'column' => $column,
             'operator' => $operator,
             'values' => $values,
-            'boolean' => $boolean
-        ];
-
-        foreach ($values as $value) {
-            $this->bindings->add($value);
-        }
-
-        return $this;
+            'boolean' => $boolean,
+        ]);
     }
 
     /**
@@ -528,19 +498,12 @@ trait CoreMethods
      */
     public function whereAll(string $column, string $operator, array $values, string $boolean = 'and'): static
     {
-        $this->wheres[] = [
-            'type' => 'all',
-            'column' => $this->buildColumnName($column),
+        return $this->addCondition('wheres', 'all', [
+            'column' => $column,
             'operator' => $operator,
             'values' => $values,
-            'boolean' => $boolean
-        ];
-
-        foreach ($values as $value) {
-            $this->bindings->add($value);
-        }
-
-        return $this;
+            'boolean' => $boolean,
+        ]);
     }
 
     /**
@@ -556,18 +519,13 @@ trait CoreMethods
      */
     public function whereValueBetween($value, string $column1, string $column2, string $boolean = 'and', bool $not = false): static
     {
-        $this->wheres[] = [
-            'type' => 'valuebetween',
+        return $this->addCondition('wheres', 'valuebetween', [
             'value' => $value,
-            'column1' => $this->buildColumnName($column1),
-            'column2' => $this->buildColumnName($column2),
+            'column1' => $column1,
+            'column2' => $column2,
             'boolean' => $boolean,
             'not' => $not
-        ];
-
-        $this->bindings->add($value);
-
-        return $this;
+        ]);
     }
 
     /**
@@ -577,9 +535,15 @@ trait CoreMethods
      * - having(string $column, string $operator, mixed $value)
      * - having(string $column, mixed $value) // operator = '='
      * - having(array $conditions)
+     * 
+     * @param array|Closure|Expression|string $column
      */
     public function having($column, $operator = null, $value = null, string $boolean = 'and'): static
     {
+        if ($column instanceof Closure) {
+            return $this->havingNested($column, $boolean);
+        }
+
         if (is_array($column)) {
             foreach ($column as $key => $val) {
                 $this->having($key, '=', $val, $boolean);
@@ -593,17 +557,13 @@ trait CoreMethods
             return $this->havingNull($column, $boolean, $operator !== '=');
         }
 
-        $operator = $this->normalizeOperator($operator);
-
         if ($value instanceof Expression) {
-            $this->havings[] = [
-                'type' => 'basic',
+            return $this->addCondition('havings', 'basic', [
                 'column' => $column,
                 'operator' => $operator,
                 'value' => $value,
                 'boolean' => $boolean
-            ];
-            return $this;
+            ]);
         }
 
         if ($value instanceof DateTimeInterface) {
@@ -628,15 +588,12 @@ trait CoreMethods
             return $this->havingLike($column, $value, $boolean, $operator === 'NOT LIKE' || $operator === '!%');
         }
 
-        $this->havings[] = [
-            'type' => 'basic',
-            'column' => $this->buildColumnName($column),
+        return $this->addCondition('havings', 'basic', [
+            'column' => $column,
             'operator' => $operator,
             'value' => $value,
             'boolean' => $boolean
-        ];
-
-        return $this->asCrud('select');
+        ])->asCrud('select');
     }
 
     /**
@@ -650,23 +607,24 @@ trait CoreMethods
     /**
      * Ajoute une clause HAVING IN
      */
-    public function havingIn(string $column, array $values, string $boolean = 'and', bool $not = false): static
+    public function havingIn(string $column, array|Closure $values, string $boolean = 'and', bool $not = false): static
     {
-        $this->havings[] = [
-            'type' => 'in',
-            'column' => $this->buildColumnName($column),
+        if ($values instanceof Closure) {
+            return $this->havingInSub($column, $values, $boolean, $not);
+        }
+
+        return $this->addCondition('havings', 'in', [
+            'column' => $column,
             'values' => $values,
             'boolean' => $boolean,
             'operator' => $not ? 'NOT IN' : 'IN'
-        ];
-
-        return $this;
+        ]);
     }
 
     /**
      * Ajoute une clause HAVING NOT IN
      */
-    public function havingNotIn(string $column, array $values, string $boolean = 'and'): static
+    public function havingNotIn(string $column, array|Closure $values, string $boolean = 'and'): static
     {
         return $this->havingIn($column, $values, $boolean, true);
     }
@@ -674,7 +632,7 @@ trait CoreMethods
     /**
      * Ajoute une clause HAVING IN avec OR
      */
-    public function orHavingIn(string $column, array $values): static
+    public function orHavingIn(string $column, array|Closure $values): static
     {
         return $this->havingIn($column, $values, 'or');
     }
@@ -682,25 +640,42 @@ trait CoreMethods
     /**
      * Ajoute une clause HAVING NOT IN avec OR
      */
-    public function orHavingNotIn(string $column, array $values): static
+    public function orHavingNotIn(string $column, array|Closure $values): static
     {
         return $this->havingNotIn($column, $values, 'or');
     }
 
     /**
+     * Ajoute une clause HAVING IN avec une sous-requête
+     */
+    public function havingInSub(string $column, Closure $callback, string $boolean = 'and', bool $not = false): static
+    {
+        $query = $this->newQuery();
+        $callback($query);
+
+        $this->addCondition('havings', 'insub', [
+            'column' => $column,
+            'query' => $query,
+            'boolean' => $boolean,
+            'not' => $not
+        ]);
+
+        $this->bindings->addMany($query->bindings->getValues());
+
+        return $this;
+    }
+    
+    /**
      * Ajoute une clause HAVING BETWEEN
      */
     public function havingBetween(string $column, $value1, $value2, string $boolean = 'and', bool $not = false): static
     {
-        $this->havings[] = [
-            'type' => 'between',
-            'column' => $this->buildColumnName($column),
+        return $this->addCondition('havings', 'between', [
+            'column' => $column,
             'values' => [$value1, $value2],
             'boolean' => $boolean,
             'not' => $not
-        ];
-
-        return $this;
+        ]);
     }
 
     /**
@@ -732,14 +707,11 @@ trait CoreMethods
      */
     public function havingNull(string $column, string $boolean = 'and', bool $not = false): static
     {
-        $this->havings[] = [
-            'type' => 'null',
-            'column' => $this->buildColumnName($column),
+        return $this->addCondition('havings', 'null', [
+            'column' => $column,
             'boolean' => $boolean,
             'not' => $not
-        ];
-
-        return $this;
+        ]);
     }
 
     /**
@@ -769,33 +741,63 @@ trait CoreMethods
     /**
      * Ajoute une clause HAVING LIKE
      */
-    public function havingLike(string $column, string $value, string $boolean = 'and', bool $not = false): static
+    public function havingLike(string $column, string $value, string $boolean = 'and', bool $not = false, bool $caseSensitive = false, string $side = 'both'): static
     {
-        return $this->having($column, $not ? 'NOT LIKE' : 'LIKE', $value, $boolean);
+        $operator = $not ? 'NOT LIKE' : 'LIKE';
+        
+        if ($caseSensitive && $this->db->getPlatform() === 'pgsql') {
+            $operator = $not ? 'NOT ILIKE' : 'ILIKE';
+        } elseif ($caseSensitive && $this->db->getPlatform() === 'mysql') {
+            $operator .= ' BINARY';
+        }
+
+        if (false !== $pos = strpos($value, '%')) {
+            if (2 === substr_count($value, '%')) {
+                $side = 'both';
+            } else {
+                $side = $pos === 0 ? 'before' : 'after';
+            }
+
+            $value = str_replace('%', '', $value);
+        }
+
+        $value = match($side) {
+            'before' => "%{$value}",
+            'after'  => "{$value}%",
+            'both'   => "%{$value}%",
+            default  => $value
+        };
+
+        return $this->addCondition('havings', 'basic', [
+            'column'   => $column,
+            'operator' => $operator,
+            'value'    => $value,
+            'boolean'  => $boolean,
+        ]);
     }
 
     /**
      * Ajoute une clause HAVING NOT LIKE
      */
-    public function havingNotLike(string $column, string $value, string $boolean = 'and'): static
+    public function havingNotLike(string $column, string $value, string $boolean = 'and', bool $caseSensitive = false, string $side = 'both'): static
     {
-        return $this->havingLike($column, $value, $boolean, true);
+        return $this->havingLike($column, $value, $boolean, true, $caseSensitive, $side);
     }
 
     /**
      * Ajoute une clause HAVING LIKE avec OR
      */
-    public function orHavingLike(string $column, string $value): static
+    public function orHavingLike(string $column, string $value, bool $caseSensitive = false, string $side = 'both'): static
     {
-        return $this->havingLike($column, $value, 'or');
+        return $this->havingLike($column, $value, 'or', false, $caseSensitive, $side);
     }
 
     /**
      * Ajoute une clause HAVING NOT LIKE avec OR
      */
-    public function orHavingNotLike(string $column, string $value): static
+    public function orHavingNotLike(string $column, string $value, bool $caseSensitive = false, string $side = 'both'): static
     {
-        return $this->havingNotLike($column, $value, 'or');
+        return $this->havingNotLike($column, $value, 'or', $caseSensitive, $side);
     }
 
     /**
@@ -806,14 +808,11 @@ trait CoreMethods
         $query = $this->newQuery();
         $callback($query);
 
-        $this->havings[] = [
-            'type' => 'exists',
+        return $this->addCondition('havings', 'exists', [
             'query' => $query,
             'boolean' => $boolean,
             'not' => $not
-        ];
-
-        return $this;
+        ]);
     }
 
     /**
@@ -867,7 +866,7 @@ trait CoreMethods
     {
         // Ancienne syntaxe : join(table, array|string $fields, string $type) ou avec un tableau associatif
         if ((is_string($first) && $second === null) || is_array($first)) {
-            return $this->legacyJoin($table, $first, $type);
+            return $this->legacyJoin($table, $first, $operator ?? $type);
         }
 
         $join = new JoinClause($this->db, $type, $this->db->makeTableName($table));
@@ -1025,14 +1024,13 @@ trait CoreMethods
         }
 
         if ($column instanceof Expression) {
-            $this->orders[] = [
+            return $this->addCondition('orders', [
                 'column' => $column,
                 'direction' => '',
                 'raw' => true
-            ];
-
-            return $this->asCrud('select');
+            ])->asCrud('select');
         }
+
         if ($column instanceof Closure) {
             return $this->orderBySub($column);
         }
@@ -1047,13 +1045,11 @@ trait CoreMethods
             return $this->orderByRandom($column);
         }
 
-        $this->orders[] = [
-            'column'    => $this->buildColumnName($column),
+        return $this->addCondition('orders', [
+            'column'    => $column,
             'direction' => in_array($direction, ['ASC', 'DESC'], true) ? ' ' . $direction : '',
             'raw'       => false
-        ];
-
-        return $this->asCrud('select');
+        ])->asCrud('select');
     }
 
     /**
@@ -1150,7 +1146,6 @@ trait CoreMethods
      */
     public function orderByPrepend(string $column, string $direction = 'ASC'): self
     {
-        $column = $this->buildParseField($column);
         $direction = in_array($direction, ['ASC', 'DESC'], true) ? ' ' . $direction : '';
         
         $order = [
@@ -1284,20 +1279,77 @@ trait CoreMethods
     /**
      * Traite un tableau de conditions WHERE
      */
-    protected function whereArray(array $conditions, string $boolean = 'and'): static
+    protected function whereArray(array $conditions, string $boolean = 'and', bool $not = false, string $function = 'where'): static
     {
+        if (! in_array($function, ['where', 'whereColumn', 'whereDate'])) {
+            $function = 'where';
+        }
+
         foreach ($conditions as $key => $val) {
             if (is_int($key)) {
                 // Condition brute
                 $this->whereRaw($val, [], $boolean);
             } elseif (is_array($val) && count($val) === 2) {
                 // [$operator, $value]
-                $this->where($key, $val[0], $val[1], $boolean);
+                $val[0] = $not ? $this->invertOperator($val[0]) : $val[0];
+                $this->{$function}($key, $val[0], $val[1], $boolean);
             } else {
-                // [$value] avec opérateur par défaut '='
-                $this->where($key, '=', $val, $boolean);
+                [$key, $operator, $val] = $this->normalizeWhereParameters($key, $val, null);
+                $operator = $not ? $this->invertOperator($operator) : $operator;
+                $this->{$function}($key, $operator, $val, $boolean);
             }
         }
+
+        return $this;
+    }
+
+    /**
+     * Ajoute une clause HAVING imbriquée
+     */
+    protected function havingNested(Closure $callback, string $boolean = 'and'): static
+    {
+        $query = $this->newQuery();
+        $callback($query);
+
+        if (count($query->havings)) {
+            $this->havings[] = [
+                'type' => 'nested',
+                'query' => $query,
+                'boolean' => $boolean
+            ];
+        }
+
+        return $this;
+    }
+    
+    protected function addCondition(string $property, array|string $type, ?array $condition = null): self
+    {
+        if (! in_array($property, ['wheres', 'havings', 'orders'], true)) {
+            throw new InvalidArgumentException();
+        }
+
+        if (is_array($type)) {
+            $condition = $type;
+            $type = null;
+        }
+
+        if ($type !== null) {
+            $condition['type'] = $type;
+        }
+        
+        foreach (['column', 'column1', 'column2', 'first', 'second'] as $column) {
+            if (isset($condition[$column]) && is_string($condition[$column])) {
+                $condition[$column] = $this->buildColumnName($condition[$column]);
+            }
+        }
+
+        if (isset($condition['values'])) {
+            $this->bindings->addMany($condition['values']);
+        } else if (isset($condition['value'])) {
+            $this->bindings->add($condition['value']);
+        }
+
+        $this->{$property}[] = $condition;
 
         return $this;
     }
@@ -1307,10 +1359,18 @@ trait CoreMethods
      */
     protected function normalizeWhereParameters(mixed $column, mixed $operator, mixed $value): array
     {
-        // Si seulement 2 paramètres sont fournis, le deuxième est la valeur
-        if ($value === null && $operator !== null) {
-            $value    = $operator;
-            $operator = '=';
+        if ($value === null) {
+            // Si seulement 2 paramètres sont fournis, le deuxième est la valeur
+            if ($operator !== null) {
+                $value    = $operator;
+                [$column, $operator] = Utils::extractOperatorFromColumn($column, $operator);
+            } else if (null !== $parsed = Utils::parseExpression($column)) {
+                [$column, $operator, $value] = $parsed; 
+            }
+        }
+
+        if ($operator !== null) {
+            $operator = Utils::translateOperator($operator);
         }
 
         return [$column, $operator, $value];
@@ -1318,16 +1378,12 @@ trait CoreMethods
 
     /**
      * Normalise les opérateurs personnalisés
+     * 
+     * @deprecated use Utils::translateOperator() instead
      */
     protected function normalizeOperator(string $operator): string
     {
-        return match($operator) {
-            '%'     => 'LIKE',
-            '!%'    => 'NOT LIKE',
-            '@'     => 'IN',
-            '!@'    => 'NOT IN',
-            default => $operator
-        };
+        return Utils::translateOperator($operator);
     }
 
     /**
@@ -1335,21 +1391,8 @@ trait CoreMethods
      */
     protected function invertOperator(string $operator): string
     {
-        return match($operator) {
-            '='         => '!=',
-            '!='        => '=',
-            '<'         => '>=',
-            '>'         => '<=',
-            '<='        => '>',
-            '>='        => '<',
-            'LIKE', '%' => 'NOT LIKE',
-            'NOT LIKE', '!%' => 'LIKE',
-            'IN', '@'   => 'NOT IN',
-            'NOT IN', '!@' => 'IN',
-            default     => $operator
-        };
+        return Utils::invertOperator($operator);
     }
-
     /**
      * Support de l'ancienne syntaxe de jointure
      */
@@ -1379,7 +1422,13 @@ trait CoreMethods
                     $join->on($this->buildColumnName($value), '=', $this->buildColumnName($value));
                 } else {
                     // Tableau associatif
-                    $join->on($this->buildColumnName($key), '=', $this->buildColumnName($value));
+                    [$key, $operator, $value] = $this->normalizeWhereParameters($key, $value, null);
+                    
+                    $join->on($this->buildColumnName($key), 
+                        $operator, 
+                        $this->buildColumnName($value),
+                        $key[0] === '|' ? 'or' : 'and'  
+                    );
                 }
             }
         }

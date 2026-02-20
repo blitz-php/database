@@ -51,6 +51,8 @@ trait ProxyMethods
         'notBetween'        => 'whereNotBetween',
         'orBetween'         => 'orWhereBetween',
         'orNotBetween'      => 'orWhereNotBetween',
+        'notWhereColumn'    => 'whereNotColumn',
+        'orNotWhereColumn'  => 'orWhereNotColumn',
         
         // Conditions HAVING
         'notHavingLike'     => 'havingNotLike',

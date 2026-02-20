@@ -274,8 +274,9 @@ class BaseBuilder implements BuilderInterface
     {
         $table = $this->buildSubquery($from, true, $alias);
         $this->db->addTableAlias($alias);
-        $this->tables[] = $table;
-        $this->from = $table;
+        
+        $this->reset();
+        $this->tables = [$table];
 
         return $this;
     }
@@ -309,10 +310,12 @@ class BaseBuilder implements BuilderInterface
     {
         // Gestion de l'ancienne signature avec limit/offset
         if (func_num_args() > 1 && is_int(func_get_arg(1))) {
-            trigger_error(
-                'Passing limit/offset to select() is deprecated. Use limit() and offset() methods instead.',
-                E_USER_DEPRECATED
-            );
+            if (! $this->testMode) {
+                trigger_error(
+                    'Passing limit/offset to select() is deprecated. Use limit() and offset() methods instead.',
+                    E_USER_DEPRECATED
+                );
+            }
             
             $limit = func_get_arg(1);
             $offset = func_num_args() > 2 ? func_get_arg(2) : null;
@@ -487,8 +490,9 @@ class BaseBuilder implements BuilderInterface
         }
 
         if ($this->testMode) {
-            return $this->compiler->compileInsert($this);
+            return $this->sql();
         }
+
         if (true === $execute) {
             return $this->execute();
         }
@@ -554,28 +558,6 @@ class BaseBuilder implements BuilderInterface
     public function bulkInsertIgnore(array $data)
     {
         return $this->bulkInsert($data, true);
-    }
-
-    /**
-     * Alias de bulkInsert() pour la rétrocompatibilité
-     * 
-     * @deprecated use bulkInsert instead
-     */
-    final public function bulckInsert(array $data, bool $ignore = false)
-    {
-        trigger_error('bulckInsert() is deprecated. Use bulkInsert() instead.', E_USER_DEPRECATED);
-        return $this->bulkInsert($data, $ignore);
-    }
-
-    /**
-     * Alias de bulkInsertIgnore() pour la rétrocompatibilité
-     * 
-     * @deprecated use bulkInsertIgnore instead
-     */
-    final public function bulckInsertIgnore(array $data)
-    {
-        trigger_error('bulckInsertIgnore() is deprecated. Use bulkInsertIgnore() instead.', E_USER_DEPRECATED);
-        return $this->bulkInsertIgnore($data);
     }
 
     /**
@@ -755,7 +737,10 @@ class BaseBuilder implements BuilderInterface
         }
 
         if ($this->testMode) {
-            return $this->compiler->compileDelete($this);
+            $sql = $this->compiler->compileDelete($this);
+            $this->reset();
+
+            return $sql;
         }
 
         if ($execute) {
@@ -1139,6 +1124,7 @@ class BaseBuilder implements BuilderInterface
         $this->lock = null;
         $this->uniqueBy = [];
         $this->updateColumns = [];
+        $this->db->reset();
 
         return $this->asCrud('select');
     }
@@ -1243,7 +1229,7 @@ class BaseBuilder implements BuilderInterface
         if (preg_match('/^\(.*\)$/', $column) || Utils::isRawExpression($column)) {
             return $column;
         }
-
+        
         $parts     = explode(' ', $column);
         $column    = array_shift($parts);
         $operator  = implode(' ', $parts);
@@ -1253,14 +1239,14 @@ class BaseBuilder implements BuilderInterface
         // Étape 1: Détection des fonctions SQL composées (ex: "NOT EXISTS")
         if (isset($parts[0])) {
             $possibleFunction = rtrim($column) . ' ' . ltrim($parts[0]);
-            if (in_array(strtoupper($possibleFunction), Utils::SQL_FUNCTIONS, true)) {
+            if (Utils::isSqlFunction($possibleFunction)) {
                 $column .= ' ' . array_shift($parts);
                 $operator = implode(' ', $parts);
             }
         }
 
         // Étape 2: Extraction des alias (améliorée)
-        if ($operator !== '' && !Utils::isOperator($operator)) {
+        if ($operator !== '' && !Utils::hasOperator($operator)) {
             if (Utils::isAlias($operator)) {
                 $alias = Utils::extractAlias($operator);
                 $operator = '';
@@ -1279,12 +1265,8 @@ class BaseBuilder implements BuilderInterface
         }
 
         // Étape 4: Gestion des alias de table
-        if (str_contains($column, '.')) {
-            $column = Utils::formatQualifiedColumn($this->db, $column);
-        } else {
-            $column = $this->db->escapeIdentifiers($column);
-        }
-
+        $column = Utils::formatQualifiedColumn($this->db, $column);
+        
         // Étape 5: Reconstruction avec fonction d'agrégation
         if ($aggregate !== null) {
             $column = strtoupper($aggregate) . '(' . $column . ')';

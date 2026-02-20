@@ -16,6 +16,7 @@ use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Database\Query;
 use BlitzPHP\Database\Result\BaseResult;
+use BlitzPHP\Database\Utils;
 use BlitzPHP\Utilities\Helpers;
 use Closure;
 use Exception;
@@ -91,7 +92,7 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Pilote de la base de données
      */
-    public string $driver = 'pdomysql';
+    public string $driver = 'mysql';
 
     /**
      * Sub-driver
@@ -559,7 +560,7 @@ abstract class BaseConnection implements ConnectionInterface
             return $this->prefixTable($table);
         }
 
-        return $this->prefixTable($table) . ' As ' . $this->escapeIdentifiers($alias);
+        return $this->prefixTable($table) . ' AS ' . $this->escapeIdentifiers($alias);
     }
 
     /**
@@ -673,6 +674,13 @@ abstract class BaseConnection implements ConnectionInterface
         if (! in_array($table, $this->aliasedTables, true)) {
             $this->aliasedTables[] = $table;
         }
+
+        return $this;
+    }
+
+    public function reset(): self 
+    {
+        $this->aliasedTables = [];
 
         return $this;
     }
@@ -1380,7 +1388,7 @@ abstract class BaseConnection implements ConnectionInterface
      */
     public function escapeIdentifiers($item)
     {
-        if ($this->escapeChar === '' || empty($item) || in_array($item, $this->reservedIdentifiers, true) || in_array($item, BaseBuilder::sqlFunctions(), true)) {
+        if ($this->escapeChar === '' || empty($item) || in_array($item, $this->reservedIdentifiers, true) || Utils::isSqlFunction($item)) {
             return $item;
         }
 

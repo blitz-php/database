@@ -15,17 +15,11 @@ use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Builder\JoinClause;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Query\Expression;
+use BlitzPHP\Database\Utils;
 use InvalidArgumentException;
 
 abstract class QueryCompiler
 {
-    protected array $operators = [
-        '%'  => 'LIKE',
-        '!%' => 'NOT LIKE',
-        '@'  => 'IN',
-        '!@' => 'NOT IN',
-    ];
-
     public function __construct(protected BaseConnection $db)
     {
     }
@@ -127,15 +121,11 @@ abstract class QueryCompiler
         foreach ($havings as $having) {
             $boolean = $having['boolean'] ?? 'and';
 
-            if ($parts !== []) {
+            if ([] !== $parts) {
                 $parts[] = strtoupper($boolean);
             }
 
-            if ($having['value'] instanceof Expression) {
-                $parts[] = "{$having['column']} {$having['operator']} {$having['value']}";
-            } else {
-                $parts[] = "{$having['column']} {$having['operator']} ?";
-            }
+            $parts[] = $this->compileWhere($having);
         }
 
         return implode(' ', $parts);
@@ -150,13 +140,13 @@ abstract class QueryCompiler
 
         foreach ($orders as $order) {
             if ($order['column'] instanceof Expression) {
-                $compiled[] = (string) $order['column'] . ' ' . $order['direction'];
+                $compiled[] = (string) $order['column'] . ' ' . trim($order['direction']);
             } else {
-                $compiled[] = $this->db->escapeIdentifiers($order['column']) . ' ' . $order['direction'];
+                $compiled[] = $this->db->escapeIdentifiers($order['column']) . ' ' . trim($order['direction']);
             }
         }
-
-        return implode(', ', $compiled);
+        
+        return implode(', ', array_map('trim', $compiled));
     }
 
     /**
@@ -200,7 +190,7 @@ abstract class QueryCompiler
         foreach ($wheres as $where) {
             $boolean = $where['boolean'] ?? 'and';
 
-            if (!empty($parts)) {
+            if ([] !== $parts) {
                 $parts[] = strtoupper($boolean);
             }
 
@@ -362,7 +352,7 @@ abstract class QueryCompiler
      */
     protected function translateOperator(string $operator): string
     {
-        return $this->operators[$operator] ?? $operator;
+        return Utils::translateOperator($operator);
     }
 
     /**

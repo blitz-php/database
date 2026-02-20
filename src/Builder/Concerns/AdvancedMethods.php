@@ -36,11 +36,16 @@ trait AdvancedMethods
     /**
      * Ajoute une clause WHERE pour les dates
      */
-    public function whereDate(string $column, $operator, $value = null, string $boolean = 'and'): static
+    public function whereDate(array|string $column, $operator = null, $value = null, string $boolean = 'and'): static
     {
-        if ($value === null) {
-            $value = $operator;
-            $operator = '=';
+        if (is_array($column)) {
+            return $this->whereArray($column, $operator ?? $boolean, false, 'whereDate');
+        }
+
+        [$column, $operator, $value] = $this->normalizeWhereParameters($column, $operator, $value);
+
+        if (is_int($value)) {
+            $value = Date::createFromTimestamp($value);
         }
 
         if ($value instanceof DateTimeInterface) {
@@ -53,12 +58,13 @@ trait AdvancedMethods
     /**
      * Ajoute une clause WHERE NOT DATE
      */
-    public function whereNotDate(string $column, $operator, $value = null, string $boolean = 'and'): static
+    public function whereNotDate(array|string $column, $operator = null, $value = null, string $boolean = 'and'): static
     {
-        if ($value === null) {
-            $value = $operator;
-            $operator = '=';
+        if (is_array($column)) {
+            return $this->whereArray($column, $operator ?? $boolean, true, 'whereDate');
         }
+
+        [$column, $operator, $value] = $this->normalizeWhereParameters($column, $operator, $value);
 
         $operator = $this->invertOperator($operator);
         
@@ -68,7 +74,7 @@ trait AdvancedMethods
     /**
      * Ajoute une clause WHERE DATE avec OR
      */
-    public function orWhereDate(string $column, $operator, $value = null): static
+    public function orWhereDate(array|string $column, $operator = null, $value = null): static
     {
         return $this->whereDate($column, $operator, $value, 'or');
     }
@@ -76,7 +82,7 @@ trait AdvancedMethods
     /**
      * Ajoute une clause WHERE NOT DATE avec OR
      */
-    public function orWhereNotDate(string $column, $operator, $value = null): static
+    public function orWhereNotDate(array|string $column, $operator = null, $value = null): static
     {
         return $this->whereNotDate($column, $operator, $value, 'or');
     }
