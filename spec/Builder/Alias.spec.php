@@ -31,13 +31,8 @@ describe("Database / Query Builder : Alias", function() {
         
         $builder = $this->builder->from('jobs j, users AS u');
         expect($builder->sql())->toBe('SELECT * FROM jobs AS j, users AS u');
-    });
     
-    it(": Prise en charge de chaine d'alias", function() {
-        $builder = $this->builder->from('jobs j, users u');
-        expect($builder->sql())->toBe('SELECT * FROM jobs AS j, users AS u');
-        
-        $builder = $this->builder->from('jobs j, users AS u');
+        $builder = $this->builder->from('jobs as j, users u');
         expect($builder->sql())->toBe('SELECT * FROM jobs AS j, users AS u');
     });
 
@@ -45,14 +40,14 @@ describe("Database / Query Builder : Alias", function() {
         $this->builder->db()->setPrefix('db_');
 
         $builder = $this->builder->from('jobs')->join('users as u', ['u.id' => 'jobs.id']);
-        expect($builder->sql())->toMatch('/^SELECT \* FROM db_jobs AS jobs_(?:[a-z0-9]+) INNER JOIN db_users AS u ON u\.id = jobs_(?:[a-z0-9]+)\.id$/');           
+        expect($builder->sql())->toBe('SELECT * FROM db_jobs INNER JOIN db_users AS u ON u.id = db_jobs.id');           
     });
 
     it(": Alias 'Join' avec un nom de table long", function() {
         $this->builder->db()->setPrefix('db_');
 
         $builder = $this->builder->from('jobs')->join('users as u', ['users.id' => 'jobs.id']);
-        expect($builder->sql())->toMatch('/^SELECT \* FROM db_jobs AS jobs_(?:[a-z0-9]+) INNER JOIN db_users AS u ON u\.id = jobs_(?:[a-z0-9]+)\.id$/');           
+        expect($builder->sql())->toBe('SELECT * FROM db_jobs INNER JOIN db_users AS u ON u.id = db_jobs.id');           
     });
     
     it(": Alias simple 'Like' avec le préfixe DB", function() {

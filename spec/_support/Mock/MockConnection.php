@@ -1,9 +1,10 @@
 <?php
 namespace BlitzPHP\Database\Spec\Mock;
 
-use BlitzPHP\Database\Connection\BaseConnection;
+use BlitzPHP\Contracts\Database\ResultInterface;
+use BlitzPHP\Database\Connection\SQLite;
 
-class MockConnection extends BaseConnection
+class MockConnection extends SQLite
 {
     /**
      * {@inheritDoc}
@@ -11,16 +12,6 @@ class MockConnection extends BaseConnection
     public string $escapeChar = '';
 
     protected array $returnValues = [];
-
-    /**
-     * Database schema for Postgre and SQLSRV
-     */
-    protected string $schema;
-
-    /**
-     * {@inheritDoc}
-     */
-    public string $database;
 
     /**
      * {@inheritDoc}
@@ -34,99 +25,41 @@ class MockConnection extends BaseConnection
         return $this;
     }
 
-    /**
-     * Orchestrates a query against the database. Queries must use
-     * Database\Statement objects to store the query and build it.
-     * This method works with the cache.
-     *
-     * Should automatically handle different connections for read/write
-     * queries if needed.
-     *
-     * @param mixed ...$binds
-     *
-     * @return BaseResult|bool|Query
-     *
-     * @todo BC set $queryClass default as null in 4.1
-     */
-    public function query(string $sql, $binds = null, bool $setEscapeFlags = true, string $queryClass = '')
+    protected function afterConnect(): void
     {
-        $queryClass = str_replace('Connection', 'Query', static::class);
-
-        $query = new $queryClass($this);
-
-        $query->setQuery($sql, $binds, $setEscapeFlags);
-
-        if (! empty($this->swapPre) && ! empty($this->prefix)) {
-            $query->swapPrefix($this->prefix, $this->swapPre);
-        }
-
-        $startTime = microtime(true);
-
-        $this->lastQuery = $query;
-
-        // Run the query
-        if (false === ($this->result = $this->simpleQuery($query->getQuery()))) {
-            $query->setDuration($startTime, $startTime);
-
-            // @todo deal with errors
-
-            return false;
-        }
-
-        $query->setDuration($startTime);
-
-        // resultID is not false, so it must be successful
-        if ($query->isWriteType($sql)) {
-            return true;
-        }
-
-        // query is not write-type, so it must be read-type query; return QueryResult
-        $resultClass = str_replace('Connection', 'Result', static::class);
-
-        return new $resultClass($this->conn, $this->result);
+        
     }
 
     /**
-     * Connect to the database.
-     *
-     * @return mixed
+     * {@inheritDoc}
      */
-    public function connect(bool $persistent = false)
+    protected function getDsn(): string
     {
-        $return = $this->returnValues['connect'] ?? true;
-
-        if (is_array($return)) {
-            // By removing the top item here, we can
-            // get a different value for, say, testing failover connections.
-            $return = array_shift($this->returnValues['connect']);
-        }
-
-        return $return;
+        return 'sqlite::memory:';
     }
 
     /**
-     * Keep or establish the connection if no queries have been sent for
-     * a length of time exceeding the server's idle timeout.
+     * {@inheritDoc}
      */
-    public function reconnect(): bool
+    public function setDatabase(string $databaseName): bool
     {
+        $this->config['database'] = $databaseName;
+
         return true;
     }
 
     /**
-     * Select a specific database table to use.
-     *
-     * @return mixed
+     * {@inheritDoc}
      */
-    public function setDatabase(string $databaseName)
+    public function getDriver(): string
     {
-        $this->database = $databaseName;
+        $this->initialize();
 
-        return $this;
+        return 'mysql';
     }
 
     /**
-     * Returns a string containing the version of the database being used.
+     * {@inheritDoc}
      */
     public function getVersion(): string
     {
@@ -160,11 +93,7 @@ class MockConnection extends BaseConnection
     }
 
     /**
-     * Returns the last error code and message.
-     *
-     * Must return an array with keys 'code' and 'message':
-     *
-     *  return ['code' => null, 'message' => null);
+     * {@inheritDoc}
      */
     public function error(): array
     {
@@ -181,7 +110,7 @@ class MockConnection extends BaseConnection
      */
     public function insertID(?string $table = null)
     {
-        return $this->conn->insert_id;
+        return 1;
     }
 
     /**
@@ -190,84 +119,5 @@ class MockConnection extends BaseConnection
     protected function _escapeString(string $str): string
     {
         return "'" . parent::_escapeString($str) . "'";
-    }
-
-    /**
-     * Generates the SQL for listing tables in a platform-dependent manner.
-     */
-    protected function _listTables(bool $constrainByPrefix = false): string
-    {
-        return '';
-    }
-
-    /**
-     * Generates a platform-specific query string so that the column names can be fetched.
-     */
-    protected function _listColumns(string $table = ''): string
-    {
-        return '';
-    }
-
-    protected function _fieldData(string $table): array
-    {
-        return [];
-    }
-
-    protected function _indexData(string $table): array
-    {
-        return [];
-    }
-
-    protected function _foreignKeyData(string $table): array
-    {
-        return [];
-    }
-
-    /**
-     * Close the connection.
-     */
-    protected function _close()
-    {
-    }
-
-    /**
-     * Begin Transaction
-     */
-    protected function _transBegin(): bool
-    {
-        return true;
-    }
-
-    /**
-     * Commit Transaction
-     */
-    protected function _transCommit(): bool
-    {
-        return true;
-    }
-
-    /**
-     * Rollback Transaction
-     */
-    protected function _transRollback(): bool
-    {
-        return true;
-    }
-
-
-    /**
-	 * Returns platform-specific SQL to disable foreign key checks.
-	 */
-	protected function _disableForeignKeyChecks(): string
-    {
-        return '';
-    }
-
-    /**
-	 * Returns platform-specific SQL to disable foreign key checks.
-	 */
-    protected function _enableForeignKeyChecks(): string
-    {
-        return '';
     }
 }

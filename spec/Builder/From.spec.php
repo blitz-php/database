@@ -12,24 +12,24 @@ describe("Database / Query Builder : Tables (FROM)", function() {
     it(": Table simple", function() {
         $builder = $this->builder->from('jobs');
 
-        expect($builder->sql())->toMatch('/^SELECT \* FROM jobs AS jobs_(?:[a-z0-9]+)$/'); 
+        expect($builder->sql())->toBe('SELECT * FROM jobs'); 
     });
     
     it(": Appel multiple de la méthode `from`", function() {
         $builder = $this->builder->from('jobs')->from('users u');
 
-        expect($builder->sql())->toMatch('/^SELECT \* FROM jobs AS jobs_(?:[a-z0-9]+), users AS u$/'); 
+        expect($builder->sql())->toBe('SELECT * FROM jobs, users AS u'); 
     });
     
     it(": Utilisation d'un tableau de tables", function() {
         $builder = $this->builder->from(['jobs', 'users u']);
-        expect($builder->sql())->toMatch('/^SELECT \* FROM jobs AS jobs_(?:[a-z0-9]+), users AS u$/'); 
+        expect($builder->sql())->toBe('SELECT * FROM jobs, users AS u'); 
     });
     
     it(": Réinitialisation de la table", function() {
         $builder = $this->builder->from('jobs')->from('users u', true);
 
-        expect($builder->sql())->toMatch('/^SELECT \* FROM users AS u$/'); 
+        expect($builder->sql())->toBe('SELECT * FROM users AS u'); 
     });
     
     it(": Réinitialisations", function() {

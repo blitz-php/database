@@ -18,7 +18,7 @@ describe("Query Builder : Where", function() {
     describe('Simple where', function() {
         it(": Where simple", function() {
             $builder = $this->builder->from('users')->where('id', 3);
-            expect($builder->sql())->toMatch('/^SELECT \* FROM users AS users_(?:[a-z0-9]+) WHERE id = 3$/');           
+            expect($builder->sql())->toBe('SELECT * FROM users WHERE id = 3');           
         });
     
         it(": Where avec un operateur personnalisé", function() {
@@ -69,13 +69,13 @@ describe("Query Builder : Where", function() {
             expect($builder->sql())->toBe('SELECT * FROM users AS u, jobs AS j WHERE u.id_user = j.id_user');
 
             $builder = $this->builder->from(['users', 'jobs'])->whereColumn('users.id_user', 'jobs.id_user');
-            expect($builder->sql())->toMatch('/^SELECT \* FROM users AS users_(?:[a-z0-9]+), jobs AS jobs_(?:[a-z0-9]+) WHERE users_(?:[a-z0-9]+)\.id_user = jobs_(?:[a-z0-9]+)\.id_user$/');
+            expect($builder->sql())->toBe('SELECT * FROM users, jobs WHERE users.id_user = jobs.id_user');
             
             $builder = $this->builder->from(['users u', 'jobs j'])->whereColumn(['users.id_user' => 'jobs.id_user', 'u.name' => 'j.username']);
             expect($builder->sql())->toBe('SELECT * FROM users AS u, jobs AS j WHERE u.id_user = j.id_user AND u.name = j.username');
 
             $builder = $this->builder->from(['users u', 'jobs'])->whereColumn('u.id_user', 'jobs.id_user');
-            expect($builder->sql())->toMatch('/^SELECT \* FROM users AS u, jobs AS jobs_(?:[a-z0-9]+) WHERE u\.id_user = jobs_(?:[a-z0-9]+)\.id_user$/');
+            expect($builder->sql())->toBe('SELECT * FROM users AS u, jobs WHERE u.id_user = jobs.id_user');
         });
 
         it(": NotWhereColumn", function() {

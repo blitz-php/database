@@ -60,6 +60,6 @@ describe("Database / Query Builder : Tri", function() {
     it(": Tri sans definition explicite d'alias", function() {
         $builder = $this->builder->from('user')->sortDesc('user.id');
 
-        expect($builder->sql())->toMatch('/^SELECT \* FROM user AS user_(?:[a-z0-9]+) ORDER BY user_(?:[a-z0-9]+)\.id DESC$/');
+        expect($builder->sql())->toBe('SELECT * FROM user ORDER BY user.id DESC');
     });
 });
