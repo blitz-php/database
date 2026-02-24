@@ -595,7 +595,11 @@ abstract class BaseConnection implements ConnectionInterface
      */
     protected function escapeIdentifier(string $item): string
     {
-        return $this->escapeChar . str_replace($this->escapeChar, $this->escapeChar . $this->escapeChar, $item) . $this->escapeChar;
+        if ($this->isEscapedIdentifier($item)) {
+            return $item;
+        }
+
+        return $this->escapeChar . $item . $this->escapeChar;
     }
 
     /**
@@ -604,6 +608,22 @@ abstract class BaseConnection implements ConnectionInterface
     protected function isReserved(string $item): bool
     {
         return in_array($item, ['*'], true);
+    }
+
+    /**
+     * Determine si une chaine est échappée comme un identifiant SQL
+     */
+    public function isEscapedIdentifier(string $value): bool
+    {
+        if ($value === '') {
+            return false;
+        }
+
+        $value = trim($value);
+
+        return str_starts_with($value, $this->escapeChar)
+            // && str_contains($value, '.')
+            && str_ends_with($value, $this->escapeChar);
     }
 
     /**

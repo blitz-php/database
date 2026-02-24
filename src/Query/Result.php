@@ -206,7 +206,11 @@ class Result implements ResultInterface
 
     public function result(int $mode = PDO::FETCH_OBJ, ?string $className = null): array
     {
-        $this->statement->setFetchMode($mode, $className);
+        if ($mode === PDO::FETCH_CLASS) {
+            $this->statement->setFetchMode($mode, $className);
+        } else {
+            $this->statement->setFetchMode($mode);
+        }
         
         $data = $this->statement->fetchAll();
      
