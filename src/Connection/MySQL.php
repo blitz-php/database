@@ -12,9 +12,6 @@
 namespace BlitzPHP\Database\Connection;
 
 use BlitzPHP\Database\Exceptions\DatabaseException;
-use LogicException;
-use mysqli;
-use PDO;
 use PDOException;
 use stdClass;
 
@@ -23,106 +20,67 @@ use stdClass;
  */
 class MySQL extends BaseConnection
 {
-    protected array $error = [
-        'message' => '',
-        'code'    => 0,
-    ];
-
     /**
-     * DELETE hack flag
-     *
-     * Whether to use the MySQL "delete hack" which allows the number
-     * of affected rows to be shown. Uses a preg_replace when enabled,
-     * adding a bit more processing to all queries.
+     * Caractère d'échappement MySQL
      */
-    public bool $deleteHack = true;
+    protected string $escapeChar = '`';
 
     /**
      * {@inheritDoc}
      */
-    public string $escapeChar = '`';
+    protected string $disableForeignKeyChecks = 'SET FOREIGN_KEY_CHECKS = 0';
 
     /**
-     * Connect to the database.
-     *
-     * @return mixed
-     *
-     * @throws DatabaseException
+     * {@inheritDoc}
      */
-    public function connect(bool $persistent = false)
+    protected string $enableForeignKeyChecks = 'SET FOREIGN_KEY_CHECKS = 1';
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function getDsn(): string
     {
-        $db = null;
-
-        if (! $this->isPdo()) {
-            $db = new mysqli(
-                $this->host,
-                $this->username,
-                $this->password,
-                true === $this->withDatabase ? $this->database : null,
-                $this->port
-            );
-
-            if ($db->connect_error) {
-                throw new DatabaseException('Connection error: ' . $db->connect_error);
-            }
-        } else {
-            $this->dsn = true === $this->withDatabase ? sprintf(
-                'mysql:host=%s;port=%d;dbname=%s',
-                $this->hostname,
-                $this->port,
-                $this->database
-            ) : sprintf(
-                'mysql:host=%s;port=%d',
-                $this->hostname,
-                $this->port
-            );
-            $db               = new PDO($this->dsn, $this->username, $this->password);
-            $this->commands[] = 'SET SQL_MODE=ANSI_QUOTES';
+        if (!empty($this->config['dsn'])) {
+            return $this->config['dsn'];
         }
 
-        if (! empty($this->charset)) {
-            $this->commands[] = "SET NAMES '{$this->charset}'" . (! empty($this->collation) ? " COLLATE '{$this->collation}'" : '');
+        $dsn = "mysql:host={$this->config['hostname']}";
+        
+        if (!empty($this->config['port'])) {
+            $dsn .= ";port={$this->config['port']}";
         }
-
-        if ($this->strictOn === true) {
-            if (! $this->isPdo()) {
-                $db->options(MYSQLI_INIT_COMMAND, "SET SESSION sql_mode = CONCAT(@@sql_mode, ',', 'STRICT_ALL_TABLES')");
-            } else {
-                $this->commands[] = (version_compare($db->getAttribute(PDO::ATTR_SERVER_VERSION), '8.0.11') >= 0)
-                    ? "set session sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'"
-                    : "set session sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'";
-            }
-        } else {
-            if (! $this->isPdo()) {
-                $db->options(
-                    MYSQLI_INIT_COMMAND,
-                    "SET SESSION sql_mode = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                                        @@sql_mode,
-                                        'STRICT_ALL_TABLES,', ''),
-                                    ',STRICT_ALL_TABLES', ''),
-                                'STRICT_ALL_TABLES', ''),
-                            'STRICT_TRANS_TABLES,', ''),
-                        ',STRICT_TRANS_TABLES', ''),
-                    'STRICT_TRANS_TABLES', '')"
-                );
-            } else {
-                $this->commands[] = "set session sql_mode='NO_ENGINE_SUBSTITUTION'";
-            }
+        
+        if (!empty($this->config['database'])) {
+            $dsn .= ";dbname={$this->config['database']}";
         }
-
-        return self::pushConnection('mysql', $this, $db);
+        
+        if (!empty($this->config['charset'])) {
+            $dsn .= ";charset={$this->config['charset']}";
+        }
+        
+        return $dsn;
     }
 
     /**
      * {@inheritDoc}
      */
-    protected function _close()
+    protected function afterConnect(): void
     {
-        if ($this->isPdo()) {
-            return $this->conn = null;
-        }
+        // Configuration du charset
+        if (!empty($this->config['charset'])) {
+            $statement = "SET NAMES '{$this->config['charset']}'";
+            
+            if (!empty($this->config['collation'])) {
+                $statement .= " COLLATE '{$this->config['collation']}'";
+            }
 
-        $this->conn->close();
+            $this->pdo->exec($statement);
+        }
+        
+        // Mode strict
+        if (isset($this->config['strict_on']) && $this->config['strict_on'] === true) {
+            $this->pdo->exec("SET sql_mode = 'STRICT_ALL_TABLES'");
+        }
     }
 
     /**
@@ -130,440 +88,119 @@ class MySQL extends BaseConnection
      */
     public function setDatabase(string $databaseName): bool
     {
-        if ($databaseName === '') {
-            $databaseName = $this->database;
+        try {
+            $this->pdo->exec("USE {$this->escapeIdentifiers($databaseName)}");
+            $this->config['database'] = $databaseName;
+            return true;
+        } catch (PDOException $e) {
+            throw new DatabaseException(
+                "Impossible de sélectionner la base de données : " . $e->getMessage(),
+                0,
+                $e
+            );
         }
-        if (empty($this->conn)) {
-            $this->initialize();
-        }
-
-        if (! $this->isPdo()) {
-            if ($this->conn->select_db($databaseName)) {
-                $this->database = $databaseName;
-
-                return true;
-            }
-
-            return false;
-        }
-
-        return true;
     }
 
     /**
      * {@inheritDoc}
      */
-    public function getPlatform(): string
+    public function _listTables(bool $constrainByPrefix = false): string
     {
-        if (isset($this->dataCache['platform'])) {
-            return $this->dataCache['platform'];
+        $sql = "SHOW TABLES FROM `{$this->getDatabase()}`";
+        
+        if ($constrainByPrefix && $this->getPrefix() !== '') {
+            $sql .= " LIKE '" . $this->getPrefix() . "%'";
         }
-
-        if (empty($this->conn)) {
-            $this->initialize();
-        }
-
-        return $this->dataCache['platform'] = ! $this->isPdo() ? 'mysql' : $this->conn->getAttribute(PDO::ATTR_DRIVER_NAME);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function getVersion(): string
-    {
-        if (isset($this->dataCache['version'])) {
-            return $this->dataCache['version'];
-        }
-
-        if (empty($this->conn)) {
-            $this->initialize();
-        }
-
-        return $this->dataCache['version'] = ! $this->isPdo() ? $this->conn->server_version : $this->conn->getAttribute(PDO::ATTR_SERVER_VERSION);
-    }
-
-    /**
-     * Executes the query against the database.
-     *
-     * @return mixed
-     */
-    public function execute(string $sql, array $params = [])
-    {
-        $sql = $this->prepQuery($sql);
-
-        $error  = null;
-        $result = false;
-        $time   = microtime(true);
-
-        if (! $this->isPdo()) {
-            $result = $this->conn->query($sql);
-            if (! $result) {
-                $this->error['code']    = $this->conn->errno;
-                $this->error['message'] = $error = $this->conn->error;
-            }
-        } else {
-            try {
-                $result = $this->conn->prepare($sql);
-
-                if (! $result) {
-                    $error = $this->conn->errorInfo();
-                } else {
-                    foreach ($params as $key => $value) {
-                        $result->bindValue(
-                            is_int($key) ? $key + 1 : $key,
-                            $value,
-                            is_int($value) || is_bool($value) ? PDO::PARAM_INT : PDO::PARAM_STR
-                        );
-                    }
-                    $result->execute();
-                }
-            } catch (PDOException $ex) {
-                $this->error['code']    = $ex->getCode();
-                $this->error['message'] = $error = $ex->getMessage();
-            }
-        }
-
-        if ($error !== null) {
-            $error = 'Database Error: ' . $error . "\nSQL: " . $sql;
-
-            if ($this->logger) {
-                $this->logger->error($error);
-            }
-
-            throw new DatabaseException($error);
-        }
-
-        $this->lastQuery = [
-            'sql'      => $sql,
-            'start'    => $time,
-            'duration' => microtime(true) - $time,
-        ];
-        $this->stats['queries'][] = &$this->lastQuery;
-
-        return $result;
-    }
-
-    /**
-     * Returns the last error code and message.
-     * Must return this format: ['code' => string|int, 'message' => string]
-     * intval(code) === 0 means "no error".
-     *
-     * @return array<string, int|string>
-     */
-    public function error(): array
-    {
-        return $this->error;
-    }
-
-    /**
-     * Prep the query. If needed, each database adapter can prep the query string
-     */
-    protected function prepQuery(string $sql): string
-    {
-        // mysqli_affected_rows() returns 0 for "DELETE FROM TABLE" queries. This hack
-        // modifies the query so that it a proper number of affected rows is returned.
-        if ($this->deleteHack === true && preg_match('/^\s*DELETE\s+FROM\s+(\S+)\s*$/i', $sql)) {
-            return trim($sql) . ' WHERE 1=1';
-        }
-
+        
         return $sql;
     }
-
+    
     /**
      * {@inheritDoc}
      */
-    protected function _escapeString(string $str): string
+    public function _listIndexes(string $table): array
     {
-        if (is_bool($str)) {
-            return (string) $str;
+        $sql = "SHOW INDEX FROM {$this->escapeIdentifiers($table)}";
+
+        $rows    = $this->query($sql)->resultObject();
+        $indexes = [];
+
+        foreach ($rows as $row) {
+            $index = new stdClass();
+            $index->name = $row->Key_name;
+            $index->type = match(true) {
+                $row->Key_name === 'PRIMARY' => 'PRIMARY',
+                $row->Index_type === 'FULLTEXT' => 'FULLTEXT',
+                isset($row->Non_unique) => $row->Index_type === 'SPATIAL' ? 'SPATIAL' : 'INDEX',
+                default => 'UNIQUE',
+            };
+
+            $indexes[] = $index;
         }
 
-        if (! $this->conn) {
-            $this->initialize();
-        }
-
-        if (! $this->isPdo()) {
-            return "'" . $this->conn->real_escape_string($str) . "'";
-        }
-
-        return $this->conn->quote($str);
-    }
-
-    /**
-     * Escape Like String Direct
-     * There are a few instances where MySQLi queries cannot take the
-     * additional "ESCAPE x" parameter for specifying the escape character
-     * in "LIKE" strings, and this handles those directly with a backslash.
-     *
-     * @param list<string>|string $str Input string
-     *
-     * @return list<string>|string
-     */
-    public function escapeLikeStringDirect($str)
-    {
-        if (is_array($str)) {
-            foreach ($str as $key => $val) {
-                $str[$key] = $this->escapeLikeStringDirect($val);
-            }
-
-            return $str;
-        }
-
-        $str = $this->_escapeString($str);
-
-        // Escape LIKE condition wildcards
-        return str_replace(
-            [$this->likeEscapeChar, '%', '_'],
-            ['\\' . $this->likeEscapeChar, '\\%', '\\_'],
-            $str
-        );
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @uses escapeLikeStringDirect().
-     */
-    protected function _listTables(bool $prefixLimit = false): string
-    {
-        $sql = 'SHOW TABLES FROM ' . $this->escapeIdentifier($this->database);
-
-        if ($prefixLimit !== false && $this->prefix !== '') {
-            return $sql . " LIKE '" . $this->escapeLikeStringDirect($this->prefix) . "%'";
-        }
-
-        return $sql;
+        return $indexes;
     }
 
     /**
      * {@inheritDoc}
      */
-    protected function _listColumns(string $table = ''): string
+    public function _listColumns(string $table): array
     {
-        return 'SHOW COLUMNS FROM ' . $this->protectIdentifiers($this->prefixTable($table), true, null, false);
+        $sql = "SHOW COLUMNS FROM {$this->escapeIdentifiers($table)}";
+
+        $rows    = $this->query($sql)->resultObject();
+        $columns = [];
+        
+        foreach ($rows as $row) {
+            $column              = new stdClass();
+            $column->name        = $row->Field;
+            $column->type        = $row->Type;
+            $column->nullable    = $row->Null === 'YES';
+            $column->default     = $row->Default;
+            $column->primary_key = $row->Key  === 'PRI';
+            
+            $columns[] = $column;
+        }
+        
+        return $columns;
     }
 
     /**
      * {@inheritDoc}
-     *
-     * @return list<stdClass>
-     *
-     * @throws DatabaseException
      */
-    protected function _fieldData(string $table): array
+    public function _listForeignKeys(string $table): array
     {
-        $table = $this->protectIdentifiers($this->prefixTable($table), true, null, false);
+        $sql ='
+            SELECT
+                tc.CONSTRAINT_NAME,
+                tc.TABLE_NAME,
+                kcu.COLUMN_NAME,
+                rc.REFERENCED_TABLE_NAME,
+                kcu.REFERENCED_COLUMN_NAME
+            FROM information_schema.TABLE_CONSTRAINTS AS tc
+            INNER JOIN information_schema.REFERENTIAL_CONSTRAINTS AS rc
+                ON tc.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+            INNER JOIN information_schema.KEY_COLUMN_USAGE AS kcu
+                ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+            WHERE
+                tc.CONSTRAINT_TYPE = ' . $this->escape('FOREIGN KEY') . ' AND
+                tc.TABLE_SCHEMA = ' . $this->escape($this->getDatabase()) . ' AND
+                tc.TABLE_NAME = ' . $this->escape($this->prefixTable($table));
 
-        if (($query = $this->query('SHOW COLUMNS FROM ' . $table)) === false) {
-            throw new DatabaseException('No data fied found');
-        }
-        $query = $query->result(PDO::FETCH_OBJ);
-
-        $retVal = [];
-
-        for ($i = 0, $c = count($query); $i < $c; $i++) {
-            $retVal[$i]       = new stdClass();
-            $retVal[$i]->name = $query[$i]->field ?? $query[$i]->Field;
-
-            sscanf(($query[$i]->type ?? $query[$i]->Type), '%[a-z](%d)', $retVal[$i]->type, $retVal[$i]->max_length);
-
-            $retVal[$i]->nullable    = ($query[$i]->null ?? $query[$i]->Null) === 'YES';
-            $retVal[$i]->default     = $query[$i]->default ?? $query[$i]->Default;
-            $retVal[$i]->primary_key = (int) (($query[$i]->key ?? $query[$i]->Key) === 'PRI');
-        }
-
-        return $retVal;
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @return list<stdClass>
-     *
-     * @throws DatabaseException
-     * @throws LogicException
-     */
-    public function _indexData(string $table): array
-    {
-        $table = $this->protectIdentifiers($this->prefixTable($table), true, null, false);
-
-        if (($query = $this->query('SHOW INDEX FROM ' . $table)) === false) {
-            throw new DatabaseException('No index data found');
-        }
-
-        if (! $indexes = $query->result(PDO::FETCH_ASSOC)) {
-            return [];
-        }
-
+        $rows = $this->query($sql)->resultObject();
         $keys = [];
 
-        foreach ($indexes as $index) {
-            if (empty($keys[$index['Key_name']])) {
-                $keys[$index['Key_name']]       = new stdClass();
-                $keys[$index['Key_name']]->name = $index['Key_name'];
+        foreach ($rows as $row) {
+            $key                      = new stdClass();
+            $key->constraint_name     = $row->CONSTRAINT_NAME;
+            $key->table_name          = $row->TABLE_NAME;
+            $key->column_name         = $row->COLUMN_NAME;
+            $key->foreign_table_name  = $row->REFERENCED_TABLE_NAME;
+            $key->foreign_column_name = $row->REFERENCED_COLUMN_NAME;
 
-                if ($index['Key_name'] === 'PRIMARY') {
-                    $type = 'PRIMARY';
-                } elseif ($index['Index_type'] === 'FULLTEXT') {
-                    $type = 'FULLTEXT';
-                } elseif ($index['Non_unique']) {
-                    if ($index['Index_type'] === 'SPATIAL') {
-                        $type = 'SPATIAL';
-                    } else {
-                        $type = 'INDEX';
-                    }
-                } else {
-                    $type = 'UNIQUE';
-                }
-
-                $keys[$index['Key_name']]->type = $type;
-            }
-
-            $keys[$index['Key_name']]->fields[] = $index['Column_name'];
+            $keys[] = $key;
         }
 
         return $keys;
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @return list<stdClass>
-     *
-     * @throws DatabaseException
-     */
-    public function _foreignKeyData(string $table): array
-    {
-        $sql = '
-				SELECT
-					tc.CONSTRAINT_NAME,
-					tc.TABLE_NAME,
-					kcu.COLUMN_NAME,
-					rc.REFERENCED_TABLE_NAME,
-					kcu.REFERENCED_COLUMN_NAME
-				FROM information_schema.TABLE_CONSTRAINTS AS tc
-				INNER JOIN information_schema.REFERENTIAL_CONSTRAINTS AS rc
-					ON tc.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
-				INNER JOIN information_schema.KEY_COLUMN_USAGE AS kcu
-					ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
-				WHERE
-					tc.CONSTRAINT_TYPE = ' . $this->escape('FOREIGN KEY') . ' AND
-					tc.TABLE_SCHEMA = ' . $this->escape($this->database) . ' AND
-					tc.TABLE_NAME = ' . $this->escape($this->prefixTable($table));
-
-        if (($query = $this->query($sql)) === false) {
-            throw new DatabaseException('No foreign keys found for table ' . $table);
-        }
-
-        $query = $query->result(PDO::FETCH_OBJ);
-
-        $retVal = [];
-
-        foreach ($query as $row) {
-            $obj                      = new stdClass();
-            $obj->constraint_name     = $row->CONSTRAINT_NAME;
-            $obj->table_name          = $row->TABLE_NAME;
-            $obj->column_name         = $row->COLUMN_NAME;
-            $obj->foreign_table_name  = $row->REFERENCED_TABLE_NAME;
-            $obj->foreign_column_name = $row->REFERENCED_COLUMN_NAME;
-
-            $retVal[] = $obj;
-        }
-
-        return $retVal;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected function _disableForeignKeyChecks(): string
-    {
-        return 'SET FOREIGN_KEY_CHECKS=0';
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected function _enableForeignKeyChecks(): string
-    {
-        return 'SET FOREIGN_KEY_CHECKS=1';
-    }
-
-    /**
-     * Insert ID
-     */
-    public function insertID(?string $table = null): int
-    {
-        if (! $this->isPdo()) {
-            return $this->conn->insert_id;
-        }
-
-        return $this->conn->lastInsertId($table);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function affectedRows(): int
-    {
-        if (! $this->isPdo()) {
-            return $this->result->affected_rows ?? 0;
-        }
-
-        return $this->result->rowCount();
-    }
-
-    /**
-     * Renvoi le nombre de ligne retourné par la requete
-     */
-    public function numRows(): int
-    {
-        if (! $this->isPdo()) {
-            return $this->result->num_rows ?? 0;
-        }
-
-        return $this->result->rowCount();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected function _transBegin(): bool
-    {
-        if (! $this->isPdo()) {
-            $this->conn->autocommit(false);
-
-            return $this->conn->begin_transaction();
-        }
-
-        return $this->conn->beginTransaction();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected function _transCommit(): bool
-    {
-        if (! $this->isPdo()) {
-            $this->conn->autocommit(true);
-
-            return true;
-        }
-
-        return $this->conn->commit();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected function _transRollback(): bool
-    {
-        if (! $this->isPdo()) {
-            $this->conn->autocommit(true);
-
-            return true;
-        }
-
-        return $this->conn->rollback();
     }
 }
