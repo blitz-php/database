@@ -51,6 +51,18 @@ class Utils
     }
 
     /**
+     * Determine si la requete est une requete qui ecrit des donnees en bd
+     */
+    public static function isWritableSql(string $value): bool
+    {
+        return (bool) preg_match(
+            '/^\s*"?(SET|INSERT|UPDATE|DELETE|REPLACE|CREATE|DROP|TRUNCATE|LOAD|COPY|ALTER|RENAME|GRANT|REVOKE|LOCK|UNLOCK|REINDEX|MERGE)\s/i',
+            $value
+        );
+    }
+
+
+    /**
      * Vérifie si une chaîne contient un opérateur SQL
      */
     public static function hasOperator(string $value): bool

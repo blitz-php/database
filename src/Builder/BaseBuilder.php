@@ -154,14 +154,8 @@ class BaseBuilder implements BuilderInterface
     /**
      * @param BaseConnection $db
      */
-    public function __construct(protected ConnectionInterface $db, protected array $options = [])
+    public function __construct(protected ConnectionInterface $db)
     {
-        foreach ($options as $key => $value) {
-            if (property_exists($this, $key)) {
-                $this->{$key} = $value;
-            }
-        }
-
         $this->bindings = new BindingCollection();
         $this->compiler = $this->createCompiler();
     }
@@ -185,7 +179,7 @@ class BaseBuilder implements BuilderInterface
      */
     protected function createCompiler(): QueryCompiler
     {
-        $driver = $this->db->getPlatform();
+        $driver = $this->db->getDriver();
         
         return match($driver) {
             'mysql' => new MySQLCompiler($this->db),
@@ -210,7 +204,7 @@ class BaseBuilder implements BuilderInterface
      */
     public function newQuery(): static
     {
-        return new static($this->db, $this->options);
+        return new static($this->db);
     }
 
     /**
@@ -395,7 +389,7 @@ class BaseBuilder implements BuilderInterface
      */
     public function distinctOn(array $columns): self
     {
-        if ($this->db->getPlatform() !== 'pgsql') {
+        if ($this->db->getDriver() !== 'pgsql') {
             throw new DatabaseException('DISTINCT ON is only supported by PostgreSQL');
         }
 
@@ -979,7 +973,7 @@ class BaseBuilder implements BuilderInterface
      */
     public function lockForUpdate(): self
     {
-        $this->lock = match($this->db->getPlatform()) {
+        $this->lock = match($this->db->getDriver()) {
             'sqlite' => '', // SQLite ne supporte pas le verrouillage
             default => 'FOR UPDATE'
         };
@@ -992,7 +986,7 @@ class BaseBuilder implements BuilderInterface
      */
     public function sharedLock(): self
     {
-        $this->lock = match($this->db->getPlatform()) {
+        $this->lock = match($this->db->getDriver()) {
             'mysql' => 'LOCK IN SHARE MODE',
             'pgsql' => 'FOR SHARE',
             'sqlite' => '', // SQLite ne supporte pas le verrouillage
@@ -1124,7 +1118,7 @@ class BaseBuilder implements BuilderInterface
         $this->lock = null;
         $this->uniqueBy = [];
         $this->updateColumns = [];
-        $this->db->reset();
+        $this->db->setAliasedTables([]);
 
         return $this->asCrud('select');
     }

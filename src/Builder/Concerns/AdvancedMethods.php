@@ -290,7 +290,7 @@ trait AdvancedMethods
             $operator = '=';
         }
 
-        $function = $this->db->getPlatform() === 'pgsql' ? 'EXTRACT(DOW FROM ' : 'DAYOFWEEK(';
+        $function = $this->db->getDriver() === 'pgsql' ? 'EXTRACT(DOW FROM ' : 'DAYOFWEEK(';
         
         return $this->whereRaw($function . $column . ') ' . $operator . ' ?', [$value], $boolean);
     }

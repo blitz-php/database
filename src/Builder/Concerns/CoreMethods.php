@@ -328,9 +328,9 @@ trait CoreMethods
     {
         $operator = $not ? 'NOT LIKE' : 'LIKE';
         
-        if ($caseSensitive && $this->db->getPlatform() === 'pgsql') {
+        if ($caseSensitive && $this->db->getDriver() === 'pgsql') {
             $operator = $not ? 'NOT ILIKE' : 'ILIKE';
-        } elseif ($caseSensitive && $this->db->getPlatform() === 'mysql') {
+        } elseif ($caseSensitive && $this->db->getDriver() === 'mysql') {
             $operator .= ' BINARY';
         }
 
@@ -745,9 +745,9 @@ trait CoreMethods
     {
         $operator = $not ? 'NOT LIKE' : 'LIKE';
         
-        if ($caseSensitive && $this->db->getPlatform() === 'pgsql') {
+        if ($caseSensitive && $this->db->getDriver() === 'pgsql') {
             $operator = $not ? 'NOT ILIKE' : 'ILIKE';
-        } elseif ($caseSensitive && $this->db->getPlatform() === 'mysql') {
+        } elseif ($caseSensitive && $this->db->getDriver() === 'mysql') {
             $operator .= ' BINARY';
         }
 
@@ -1443,7 +1443,7 @@ trait CoreMethods
      */
     protected function orderByRandom(string $column): self
     {
-        $driver = $this->db->getPlatform();
+        $driver = $this->db->getDriver();
         
         // Si le champ est numérique, c'est une seed
         if (ctype_digit($column)) {
