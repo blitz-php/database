@@ -14,7 +14,8 @@ namespace BlitzPHP\Database\Providers;
 use BlitzPHP\Container\AbstractProvider;
 use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Contracts\Database\ConnectionResolverInterface;
-use BlitzPHP\Database\ConnectionResolver;
+use BlitzPHP\Database\Config\Services;
+use BlitzPHP\Database\DatabaseManager;
 
 class DatabaseProvider extends AbstractProvider
 {
@@ -24,7 +25,7 @@ class DatabaseProvider extends AbstractProvider
     public static function definitions(): array
     {
         return [
-            ConnectionResolverInterface::class => static fn () => new ConnectionResolver(),
+            ConnectionResolverInterface::class => static fn ()                                      => new DatabaseManager(Services::logger(), Services::event()),
             ConnectionInterface::class         => static fn (ConnectionResolverInterface $resolver) => $resolver->connect(),
         ];
     }

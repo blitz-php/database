@@ -12,87 +12,114 @@
 namespace BlitzPHP\Database\Config;
 
 use BlitzPHP\Container\Services as BaseServices;
-use BlitzPHP\Contracts\Database\ConnectionResolverInterface;
 use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Connection\BaseConnection;
-use BlitzPHP\Database\Database;
-use Dimtrovich\DbDumper\Exceptions\Exception as DumperException;
+use BlitzPHP\Database\DatabaseManager;
 use Dimtrovich\DbDumper\Exporter;
 use Dimtrovich\DbDumper\Importer;
+use InvalidArgumentException;
 
+/**
+ * Services de base de données
+ */
 class Services extends BaseServices
 {
     /**
-     * Query Builder
+     * Instance du gestionnaire de base de données
      */
-    public static function builder(?string $group = null, bool $shared = true): BaseBuilder
+    protected static ?DatabaseManager $manager = null;
+
+    /**
+     * Récupère le gestionnaire de base de données
+     */
+    protected static function manager(): DatabaseManager
     {
-        if (true === $shared && isset(static::$instances[BaseBuilder::class])) {
-            return static::$instances[BaseBuilder::class];
+        if (static::$manager === null) {
+            static::$manager = new DatabaseManager(static::logger(), static::event());
         }
 
-        return static::$instances[BaseBuilder::class] = Database::builder(static::database($group));
+        return static::$manager;
     }
 
     /**
-     * Connexion a la base de données
+     * Récupère une connexion à la base de données
      */
     public static function database(?string $group = null, bool $shared = true): BaseConnection
     {
-        /** @var ConnectionResolverInterface */
-        $connectionResolver = static::container()->get(ConnectionResolverInterface::class);
-        [$group]            = $connectionResolver->connectionInfo($group);
+        $connection = static::manager()->connect($group, $shared);
 
-        if (true === $shared && isset(static::$instances[Database::class]) && static::$instances[Database::class]->group === $group) {
-            return static::$instances[Database::class];
+        if (!$connection instanceof BaseConnection) {
+            throw new InvalidArgumentException('La connexion retournée n\'est pas une instance de BaseConnection');
         }
 
-        return static::$instances[Database::class] = $connectionResolver->connect($group);
+        return $connection;
     }
 
     /**
-     * Systeme d'exportation de la base de donnees
+     * Récupère un query builder
+     */
+    public static function builder(?string $group = null, bool $shared = true): BaseBuilder
+    {
+        $key = 'builder_' . ($group ?? 'default');
+
+        if ($shared && isset(static::$instances[$key])) {
+            return static::$instances[$key];
+        }
+
+        $builder = static::manager()->builder(static::database($group, $shared));
+
+        if ($shared) {
+            static::$instances[$key] = $builder;
+        }
+
+        return $builder;
+    }
+
+    /**
+     * Récupère un exportateur de base de données
      */
     public static function dbExporter(?BaseConnection $db = null, array $config = [], bool $shared = true): Exporter
     {
-        if (true === $shared && isset(static::$instances[Exporter::class])) {
-            return static::$instances[Exporter::class];
+        if ($shared) {
+            return static::sharedInstance('dbExporter', $db, $config);
         }
 
-        $db ??= self::database();
-        $config ??= config('dump', []);
+        $db ??= static::database();
+        $config = $config ?: (array) config('dump', []);
 
-        if (! $db->conn) {
-            $db->initialize();
+        // Initialiser la connexion si nécessaire
+        $db->initialize();
+
+        $exporter = new Exporter($db->getDatabase(), $db->getConnection(), $config);
+
+        if ($shared) {
+            static::$instances[Exporter::class] = $exporter;
         }
 
-        if (! $db->isPdo()) {
-            throw new DumperException('Impossible de sauvegarder la base de données. Vous devez utiliser un pilote PDO', DumperException::PDO_EXCEPTION);
-        }
-
-        return static::$instances[Exporter::class] = new Exporter($db->database, $db->conn, $config);
+        return $exporter;
     }
 
     /**
-     * Systeme d'importation de la base de donnees
+     * Récupère un importateur de base de données
      */
     public static function dbImporter(?BaseConnection $db = null, array $config = [], bool $shared = true): Importer
     {
-        if (true === $shared && isset(static::$instances[Importer::class])) {
-            return static::$instances[Importer::class];
+        if ($shared) {
+            return static::sharedInstance('dbImporter', $db, $config);
         }
 
-        $db ??= self::database();
-        $config ??= config('dump', []);
+        $db ??= static::database();
+        $config = $config ?: (array) config('dump', []);
 
-        if (! $db->conn) {
-            $db->initialize();
+        // Initialiser la connexion si nécessaire
+        $db->initialize();
+
+        $importer = new Importer($db->getDatabase(), $db->getConnection(), $config);
+
+        if ($shared) {
+            static::$instances[Importer::class] = $importer;
         }
 
-        if (! $db->isPdo()) {
-            throw new DumperException('Impossible de restaurer la base de données. Vous devez utiliser un pilote PDO', DumperException::PDO_EXCEPTION);
-        }
-
-        return static::$instances[Importer::class] = new Importer($db->database, $db->conn, $config);
+        return $importer;
     }
 }
