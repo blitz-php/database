@@ -38,8 +38,6 @@ class {class} extends Migration
 <?php else: ?>
             //
 <?php endif; ?>
-
-            return $table;
         });
 <?php endif; ?>
     }
@@ -53,8 +51,6 @@ class {class} extends Migration
 <?php else: ?>
         $this->modify('<?= $table ?>', function(Structure $table) {
             //
-
-            return $table;
         });
 <?php endif; ?>
     }

@@ -18,33 +18,33 @@ use InvalidArgumentException;
 class CreateDatabase extends DatabaseCommand
 {
     /**
-     * @var string Nom
+     * {@inheritDoc}
      */
-    protected $name = 'db:create';
+    protected string $name = 'db:create';
 
     /**
      * {@inheritDoc}
      */
-    protected $description = 'Créez un nouveau schéma de base de données.';
+    protected string $description = 'Créez un nouveau schéma de base de données.';
 
     /**
      * {@inheritDoc}
      */
-    protected $arguments = [
+    protected array $arguments = [
         'name' => 'Le nom de la base de données à utiliser',
     ];
 
     /**
      * {@inheritDoc}
      */
-    protected $options = [
+    protected array $options = [
         '--ext' => 'Extension de fichier du fichier de base de données pour SQLite3. Peut être `db` ou `sqlite`. La valeur par défaut est `db`.',
     ];
 
     /**
      * {@inheritDoc}
      */
-    public function execute(array $params)
+    public function handle()
     {
         if (empty($name = $this->argument('name'))) {
             $name = $this->prompt('Nom de la base de données', null, static function ($val) {
@@ -110,5 +110,7 @@ class CreateDatabase extends DatabaseCommand
         }
 
         $this->success("Base de données \"{$name}\" créée avec succès.");
+
+        return EXIT_SUCCESS;
     }
 }

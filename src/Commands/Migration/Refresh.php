@@ -19,19 +19,19 @@ use BlitzPHP\Database\Commands\DatabaseCommand;
 class Refresh extends DatabaseCommand
 {
     /**
-     * @var string Nom
+     * {@inheritDoc}
      */
-    protected $name = 'migrate:refresh';
+    protected string $name = 'migrate:refresh';
 
     /**
      * {@inheritDoc}
      */
-    protected $description = 'Effectue une restauration suivie d\'une migration pour actualiser l\'état actuel de la base de données.';
+    protected string $description = 'Effectue une restauration suivie d\'une migration pour actualiser l\'état actuel de la base de données.';
 
     /**
      * {@inheritDoc}
      */
-    protected $options = [
+    protected array $options = [
         '-n, --namespace' => 'Défini le namespace de la migration',
         '-g, --group'     => 'Défini le groupe de la base de données',
         '--all'           => 'Défini pour tous les namespaces, ignore l\'option (-n)',
@@ -41,9 +41,9 @@ class Refresh extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    public function execute(array $params)
+    public function handle()
     {
-        $params['batch'] = 0;
+        $params = array_merge($this->parameters(), ['batch' => 0]);
 
         if (on_prod()) {
             // @codeCoverageIgnoreStart
@@ -60,5 +60,7 @@ class Refresh extends DatabaseCommand
         $this->call('migrate:rollback', [], $params);
         $this->newLine();
         $this->call('migrate', [], $params);
+
+        return EXIT_SUCCESS;
     }
 }

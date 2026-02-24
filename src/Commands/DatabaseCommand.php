@@ -26,22 +26,17 @@ abstract class DatabaseCommand extends Command
     /**
      * {@inheritDoc}
      */
-    protected $group = 'Base de données';
+    protected string $group = 'Base de données';
 
     /**
      * {@inheritDoc}
      */
-    protected $service = 'Service de gestion de base de données';
+    protected string $service = 'Service de gestion de base de données';
 
     private ?BaseConnection $_db = null;
 
-    /**
-     * @param Console         $app    Application Console
-     * @param LoggerInterface $logger Le Logger à utiliser
-     */
-    public function __construct(Console $app, LoggerInterface $logger, protected ConnectionResolverInterface $resolver)
+    public function __construct(protected ConnectionResolverInterface $resolver)
     {
-        parent::__construct($app, $logger);
     }
 
     public function __get($name)

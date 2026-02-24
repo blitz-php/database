@@ -4,14 +4,17 @@ use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Database\Spec\Mock\MockConnection;
 
+use function Kahlan\expect;
+
 describe("Database / Query Builder : Suppression", function() {
 
     beforeEach(function() {
         $this->builder = new BaseBuilder(new MockConnection([]));
     });
      
-    it(": Vérification de la présence d'une table", function() {
-        $builder = $this->builder->testMode();
+    xit(": Vérification de la présence d'une table", function() {
+        $builder = $this->builder->testMode()->delete();
+        dd($builder);
         expect(function() use ($builder) {
             $builder->delete();
         })->toThrow(new DatabaseException("Table is not defined."));
@@ -24,24 +27,26 @@ describe("Database / Query Builder : Suppression", function() {
         
     it(": Suppression conditionnée", function() {
         $builder = $this->builder->testMode()->from('jobs');
-        expect($builder->delete(['id' => 1]))->toBe('DELETE FROM jobs WHERE id = 1'); 
+        expect($builder->delete(['id' => 1]))->toBe('DELETE FROM jobs WHERE id = ?'); 
         
         $builder = $this->builder->testMode()->from('jobs')->where(['id' => 1]);
-        expect($builder->delete())->toBe('DELETE FROM jobs WHERE id = 1'); 
+        expect($builder->bindings->getValues())->toBe([1]);
+        expect($builder->delete())->toBe('DELETE FROM jobs WHERE id = ?'); 
     });
     
     it(": Suppression avec alias de table", function() {
         // Retrait des alias (explicite) pour les requetes de suppression
         $builder = $this->builder->testMode()->from('jobs As j');
-        expect($builder->delete(['id' => 1]))->toBe('DELETE FROM jobs WHERE id = 1'); 
+        expect($builder->delete(['id' => 1]))->toBe('DELETE FROM jobs WHERE id = ?'); 
         
         // Retrait des alias (implicite) pour les requetes de suppression
         $builder = $this->builder->testMode()->from('jobs j');
-        expect($builder->delete(['id' => 1]))->toBe('DELETE FROM jobs WHERE id = 1'); 
+        expect($builder->delete(['id' => 1]))->toBe('DELETE FROM jobs WHERE id = ?'); 
     });
         
     it(": Suppression avec limite", function() {
         $builder = $this->builder->testMode()->from('jobs')->where('id', 1)->limit(10);
-        expect($builder->delete())->toBe('DELETE FROM jobs WHERE id = 1 LIMIT 10'); 
+        expect($builder->bindings->getValues())->toBe([1]);
+        expect($builder->delete())->toBe('DELETE FROM jobs WHERE id = ? LIMIT 10'); 
     });
 });

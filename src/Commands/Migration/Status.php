@@ -20,19 +20,19 @@ use BlitzPHP\Database\Commands\Helper;
 class Status extends DatabaseCommand
 {
     /**
-     * @var string Nom
+     * {@inheritDoc}
      */
-    protected $name = 'migrate:status';
+    protected string $name = 'migrate:status';
 
     /**
      * {@inheritDoc}
      */
-    protected $description = 'Affiche une liste de toutes les migrations et indique si elles ont été exécutées ou non.';
+    protected string $description = 'Affiche une liste de toutes les migrations et indique si elles ont été exécutées ou non.';
 
     /**
      * {@inheritDoc}
      */
-    protected $options = [
+    protected array $options = [
         '-g, --group' => 'Défini le groupe de la base de données',
     ];
 
@@ -53,7 +53,7 @@ class Status extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    public function execute(array $params)
+    public function handle()
     {
         $group = $this->option('group', 'default');
 
@@ -124,5 +124,7 @@ class Status extends DatabaseCommand
         }
 
         $this->table($status, ['head' => 'boldYellow']);
+
+        return EXIT_SUCCESS;
     }
 }

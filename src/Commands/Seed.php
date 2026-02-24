@@ -23,24 +23,24 @@ class Seed extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    protected $name = 'db:seed';
+    protected string $name = 'db:seed';
 
     /**
      * {@inheritDoc}
      */
-    protected $description = 'Exécute le seeder spécifié pour remplir les données connues dans la base de données.';
+    protected string $description = 'Exécute le seeder spécifié pour remplir les données connues dans la base de données.';
 
     /**
      * {@inheritDoc}
      */
-    protected $arguments = [
+    protected array $arguments = [
         'name' => 'Nom du seedr a executer',
     ];
 
     /**
      * {@inheritDoc}
      */
-    public function execute(array $params)
+    public function handle()
     {
         if (empty($name = $this->argument('name'))) {
             $name = $this->prompt(lang('Migrations.migSeeder'), null, static function ($val) {
@@ -82,5 +82,7 @@ class Seed extends DatabaseCommand
         foreach ($usedSeed as $seeded) {
             $this->eol()->write('- ')->writer->yellow($seeded);
         }
+
+        return EXIT_SUCCESS;
     }
 }

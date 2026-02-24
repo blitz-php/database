@@ -20,19 +20,19 @@ use BlitzPHP\Database\Commands\Helper;
 class Migrate extends DatabaseCommand
 {
     /**
-     * @var string Nom
+     * {@inheritDoc}
      */
-    protected $name = 'migrate';
+    protected string $name = 'migrate';
 
     /**
      * {@inheritDoc}
      */
-    protected $description = 'Recherche et exécute toutes les nouvelles migrations dans la base de données.';
+    protected string $description = 'Recherche et exécute toutes les nouvelles migrations dans la base de données.';
 
     /**
      * {@inheritDoc}
      */
-    protected $options = [
+    protected array $options = [
         '-n, --namespace' => 'Défini le namespace de la migration',
         '-g, --group'     => 'Défini le groupe de la base de données',
         '--all'           => 'Défini pour tous les namespaces, ignore l\'option (-n)',
@@ -41,7 +41,7 @@ class Migrate extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    public function execute(array $params)
+    public function handle()
     {
         $this->colorize(lang('Migrations.latest'), 'yellow');
 
@@ -65,5 +65,7 @@ class Migrate extends DatabaseCommand
         }
 
         $this->newLine()->success(lang('Migrations.migrated'));
+
+        return EXIT_SUCCESS;
     }
 }

@@ -20,19 +20,19 @@ use BlitzPHP\Database\Commands\Helper;
 class Rollback extends DatabaseCommand
 {
     /**
-     * @var string Nom
+     * {@inheritDoc}
      */
-    protected $name = 'migrate:rollback';
+    protected string $name = 'migrate:rollback';
 
     /**
      * {@inheritDoc}
      */
-    protected $description = 'Recherche et annule toutes les migrations précédement exécutees.';
+    protected string $description = 'Recherche et annule toutes les migrations précédement exécutees.';
 
     /**
      * {@inheritDoc}
      */
-    protected $options = [
+    protected array $options = [
         '-b, --batch' => "Spécifiez un lot à restaurer\u{a0}; par exemple. \"3\" pour revenir au lot #3 ou \"-2\" pour revenir en arrière deux fois",
         '-f, --force' => 'Forcer la commande - cette option vous permet de contourner la question de confirmation lors de l\'exécution de cette commande dans un environnement de production',
     ];
@@ -40,7 +40,7 @@ class Rollback extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    public function execute(array $params)
+    public function handle()
     {
         if (on_prod()) {
             // @codeCoverageIgnoreStart
@@ -81,5 +81,7 @@ class Rollback extends DatabaseCommand
         }
 
         $this->newLine()->success('Fin de l\'annulation des migrations.');
+
+        return EXIT_SUCCESS;
     }
 }

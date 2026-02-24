@@ -24,34 +24,34 @@ class Seeder extends Command
     /**
      * {@inheritDoc}
      */
-    protected $group = 'Generateurs';
+    protected string $group = 'Generateurs';
 
     /**
      * {@inheritDoc}
      */
-    protected $name = 'make:seeder';
+    protected string $name = 'make:seeder';
 
     /**
      * {@inheritDoc}
      */
-    protected $description = 'Génère un nouveau fichier seeder.';
-
-    /**
-     * @var string
-     */
-    protected $service = 'Service de génération de code';
+    protected string $description = 'Génère un nouveau fichier seeder.';
 
     /**
      * {@inheritDoc}
      */
-    protected $arguments = [
+    protected string $service = 'Service de génération de code';
+
+    /**
+     * {@inheritDoc}
+     */
+    protected array $arguments = [
         'name' => 'Le nom de la classe du seeder.',
     ];
 
     /**
      * {@inheritDoc}
      */
-    protected $options = [
+    protected array $options = [
         '--namespace' => "Définissez l'espace de noms racine. Par défaut\u{a0}: \"APP_NAMESPACE\".",
         '--suffix'    => 'Ajoutez le titre du composant au nom de la classe (par exemple, User => UserSeeder).',
         '--force'     => 'Forcer l\'écrasement du fichier existant.',
@@ -60,7 +60,7 @@ class Seeder extends Command
     /**
      * {@inheritDoc}
      */
-    public function execute(array $params)
+    public function handle()
     {
         $this->component    = 'Seeder';
         $this->directory    = 'Database\Seeds';
@@ -68,6 +68,6 @@ class Seeder extends Command
         $this->templatePath = __DIR__ . '/Views';
 
         $this->classNameLang = 'CLI.generator.className.seeder';
-        $this->generateClass($params);
+        $this->generateClass($this->parameters());
     }
 }

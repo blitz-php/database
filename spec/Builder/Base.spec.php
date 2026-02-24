@@ -18,6 +18,6 @@ describe("Database / Query Builder", function() {
     it(": Séléction distincte", function() {
         $builder = $this->builder->select('country')->distinct()->from('users u');
         
-        expect($builder->sql())->toBe('SELECT DISTINCT country FROM users As u');
+        expect($builder->sql())->toBe('SELECT DISTINCT country FROM users AS u');
     });
 });

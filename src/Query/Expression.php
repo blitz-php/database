@@ -9,31 +9,36 @@
  * the LICENSE file that was distributed with this source code.
  */
 
-namespace BlitzPHP\Database;
+namespace BlitzPHP\Database\Query;
 
 use Stringable;
 
-class RawSql implements Stringable
+class Expression implements Stringable
 {
     /**
-     * @param string $sql Chaîne SQL brute
+     * @param string $value Chaîne SQL brute
      */
-    public function __construct(private string $sql)
+    public function __construct(protected string $value)
     {
+    }
+
+    public function getValue(): string
+    {
+        return $this->value;
     }
 
     public function __toString(): string
     {
-        return $this->sql;
+        return $this->value;
     }
 
     /**
      * Créer une nouvelle instance avec une nouvelle chaîne SQL
      */
-    public function with(string $newSql): self
+    public function with(string $newSql): static
     {
-        $new      = clone $this;
-        $new->sql = $newSql;
+        $new        = clone $this;
+        $new->value = $newSql;
 
         return $new;
     }

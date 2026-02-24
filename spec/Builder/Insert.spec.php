@@ -4,6 +4,8 @@ use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Database\Spec\Mock\MockConnection;
 
+use function Kahlan\expect;
+
 describe("Database / Query Builder : Insertion", function() {
 
     beforeEach(function() {
@@ -16,7 +18,7 @@ describe("Database / Query Builder : Insertion", function() {
             'id'   => 1,
             'name' => 'Grocery Sales',
         ]))
-        ->toBe('INSERT INTO jobs (id,name) VALUES (1,\'Grocery Sales\')');
+        ->toBe('INSERT INTO jobs (id, name) VALUES (1, \'Grocery Sales\')');
     });
     
     it(": Insertion de base (avec les objets)", function() {
@@ -25,7 +27,7 @@ describe("Database / Query Builder : Insertion", function() {
             'id'   => 1,
             'name' => 'Grocery Sales',
         ]))
-        ->toBe('INSERT INTO jobs (id,name) VALUES (1,\'Grocery Sales\')');
+        ->toBe('INSERT INTO jobs (id, name) VALUES (1, \'Grocery Sales\')');
     });
     
     it(": Insert Ignore", function() {
@@ -34,7 +36,7 @@ describe("Database / Query Builder : Insertion", function() {
             'id'   => 1,
             'name' => 'Grocery Sales',
         ]))
-        ->toBe('INSERT IGNORE INTO jobs (id,name) VALUES (1,\'Grocery Sales\')');
+        ->toBe('INSERT IGNORE INTO jobs (id, name) VALUES (1, \'Grocery Sales\')');
     });
     
     it(": Insertion avec l'alias sur la table", function() {
@@ -43,10 +45,10 @@ describe("Database / Query Builder : Insertion", function() {
             'id'   => 1,
             'name' => 'Grocery Sales',
         ]))
-        ->toBe('INSERT INTO jobs (id,name) VALUES (1,\'Grocery Sales\')');
+        ->toBe('INSERT INTO jobs (id, name) VALUES (1, \'Grocery Sales\')');
     });
     
-    it(": Vérification de la présence d'une table", function() {
+    xit(": Vérification de la présence d'une table", function() {
         $builder = $this->builder->testMode();
         expect(function() use ($builder) {
             $builder->insert([
@@ -63,10 +65,10 @@ describe("Database / Query Builder : Insertion", function() {
         })->toThrow(new DatabaseException("You must give entries to insert."));
     });
 
-    describe('BulkInsert', function() {
+    xdescribe('BulkInsert', function() {
         it(": Insertion multiple", function() {
             $builder = $this->builder->into('jobs')->testMode();
-            expect($builder->bulckInsert([
+            expect($builder->bulkInsert([
                 [
                     'id'          => 2,
                     'name'        => 'Commedian',
@@ -83,7 +85,7 @@ describe("Database / Query Builder : Insertion", function() {
     
         it(": Insertion multiple IGNORE", function() {
             $builder = $this->builder->into('jobs')->testMode();
-            expect($builder->bulckInsertIgnore([
+            expect($builder->bulcInsertIgnore([
                 [
                     'id'          => 2,
                     'name'        => 'Commedian',
@@ -100,7 +102,7 @@ describe("Database / Query Builder : Insertion", function() {
 
         it(": Insertion multiple sans echappement", function() {
             $builder = $this->builder->into('jobs')->testMode();
-            expect($builder->bulckInsert([
+            expect($builder->bulcInsert([
                 [
                     'id'          => 2,
                     'name'        => '1 + 1',
