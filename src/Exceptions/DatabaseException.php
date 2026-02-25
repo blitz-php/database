@@ -21,4 +21,9 @@ class DatabaseException extends Error implements ExceptionInterface
      * @var int
      */
     protected $code = 8;
+
+    protected static function t(string $message, array $args = []): string
+    {
+        return sprintf($message, $args);
+    }
 }

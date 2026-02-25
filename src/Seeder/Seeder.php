@@ -11,53 +11,80 @@
 
 namespace BlitzPHP\Database\Seeder;
 
+use BlitzPHP\Database\Commands\Seed as SeedCommand;
 use BlitzPHP\Database\Connection\BaseConnection;
-use BlitzPHP\Database\Exceptions\DatabaseException;
-use InvalidArgumentException;
+use BlitzPHP\Database\Exceptions\SeederException;
 
 /**
- * Genere du faux contenu pour remplir une base de donnees.
+ * Classe de base pour les seeders
  *
- * @credit <a href="https://github.com/tebazil/db-seeder">tebazil/db-seeder</a>
+ * @inspired https://github.com/tebazil/db-seeder
  */
 abstract class Seeder
 {
     /**
-     * @var list<Table> Liste des tables a remplir
+     * Connexion à la base de données
      */
-    private array $tables = [];
+    protected BaseConnection $db;
 
     /**
-     * Générateur de contenu
+     * Factory pour les configurations
      */
-    private ?Generator $generator = null;
+    protected Factory $factory;
 
     /**
-     * Liste des tables qui ont deja été remplies
+     * Instance de la console
      */
-    private array $filledTablesNames = [];
+    protected ?SeedCommand $command = null;
 
     /**
-     * @var list<string> Liste des seeders executes
+     * Tables à remplir
+     *
+     * @var array<string, Seed>
      */
-    private array $seeded = [];
+    protected array $seeds = [];
 
     /**
-     * Langue à utiliser pour la génération des fake data via Faker
+     * Seeders appelés
+     * 
+     * @var list<class-string>
      */
-    protected string $locale = '';
+    protected array $called = [];
 
     /**
-     * If true, will not display CLI messages.
+     * Mode silencieux (pas de sortie)
      */
     protected bool $silent = false;
 
-    public function __construct(protected BaseConnection $db)
+    /**
+     * Langue pour Faker
+     */
+    protected string $locale = 'fr_FR';
+
+    /**
+     * Constructeur
+     * 
+     * @param BaseConnection $db Connexion à la base de données
+     */
+    public function __construct(BaseConnection $db)
     {
+        $this->db = $db;
+
+        $this->factory = new Factory($this->locale);
     }
 
     /**
-     * Sets the silent treatment.
+     * Définit l'instance de commande
+     */
+    public function setCommand(SeedCommand $command): self
+    {
+        $this->command = $command;
+
+        return $this;
+    }
+
+    /**
+     * Définit le mode silencieux
      */
     public function setSilent(bool $silent): self
     {
@@ -67,7 +94,18 @@ abstract class Seeder
     }
 
     /**
-     * Recupere la langue de generation de contenu
+     * Définit la langue
+     */
+    public function setLocale(string $locale): self
+    {
+        $this->locale = $locale;
+        $this->factory = new Factory($locale);
+        
+        return $this;
+    }
+
+    /**
+     * Récupère la langue
      */
     public function getLocale(): string
     {
@@ -75,132 +113,99 @@ abstract class Seeder
     }
 
     /**
-     * Modifie la langue de generation de contenu
+     * Récupère les seeders appelés
+     * 
+     * @return list<class-string>
      */
-    public function setLocale(string $locale): self
+    public function getCalled(): array
     {
-        $this->locale = $locale;
+        return $this->called;
+    }
+
+    /**
+     * Accès à la factory (pour la syntaxe $this->faker->...)
+     */
+    public function __get(string $name): mixed
+    {
+        if ($name === 'faker') {
+            return $this->factory;
+        }
+        
+        throw SeederException::propertyNotFound($name);
+    }
+
+    /**
+     * Méthode principale à implémenter
+     */
+    abstract public function run(): void;
+
+    /**
+     * Définit une table à remplir
+     */
+    protected function table(string $table): Seed
+    {
+        if (!isset($this->seeds[$table])) {
+            $this->seeds[$table] = new Seed($this->db, $table, $this->factory->faker);
+        }
+
+        return $this->seeds[$table];
+    }
+
+    /**
+     * Appelle d'autres seeders
+     */
+    protected function call(array|string $seeders): self
+    {
+        foreach ((array) $seeders as $seeder) {
+            $seeder = $this->resolve($seeder);
+            $seeder->setSilent($this->silent)->run();
+            $this->called[] = $seeder::class;
+        }
 
         return $this;
     }
 
     /**
-     * Recupere la liste des sous seeder executes via la methode call()
-     *
-     * @return list<string>
+     * Résout un nom de seeder en instance
      */
-    public function getSeeded(): array
+    protected function resolve(string $class): self
     {
-        return $this->seeded;
+        if (!class_exists($class)) {
+            throw SeederException::seederClassDoesNotExist($class);
+        }
+        
+        return new $class($this->db);
     }
 
     /**
-     *  Lance la generation des donnees
+     * Exécute le seeder
      */
-    public function execute(): string
+    public function execute(): void
     {
-        $this->checkCrossDependentTables();
+        $this->run();
 
-        $tableNames = array_keys($this->tables);
-        sort($tableNames);
-
-        $foolProofCounter       = 0;
-        $tableNamesIntersection = [];
-
-        while ($tableNamesIntersection !== $tableNames) {
-            if ($foolProofCounter++ > 500) {
-                throw new DatabaseException("Quelque chose d'inattendu s'est produit\u{a0}: certaines tables ne peuvent peut-être pas être remplies");
-            }
-
-            foreach ($this->tables as $tableName => $table) {
-                if (! $table->isFilled() && $table->canBeFilled($this->filledTablesNames)) {
-                    $table->fill();
-                    $this->generator->setColumns($tableName, $table->getColumns());
-
-                    if (! in_array($tableName, $this->filledTablesNames, true)) {
-                        $this->filledTablesNames[] = $tableName;
-                    }
-                }
-            }
-
-            $tableNamesIntersection = array_intersect($this->filledTablesNames, $tableNames);
-            sort($tableNamesIntersection);
+        foreach ($this->seeds as $seed) {
+            $seed->execute();
         }
 
-        return static::class;
+        $this->seeds = [];
     }
 
     /**
-     * Specifie la table a remplir.
+     * Affiche un message si pas en mode silencieux
      */
-    protected function table(string $name, bool $truncate = false): TableDef
+    protected function output(string $message, string $type = 'info'): void
     {
-        if (! isset($this->tables[$name])) {
-            $this->tables[$name] = new Table($this->generator(), $this->db->table($name), $truncate);
+        if ($this->silent) {
+            return;
         }
 
-        return new TableDef($this->tables[$name]);
-    }
-
-    /**
-     * Charge le seeder spécifié et l'exécute.
-     *
-     * @throws InvalidArgumentException
-     */
-    protected function call(array|string $classes)
-    {
-        $classes = (array) $classes;
-
-        foreach ($classes as $class) {
-            $class = trim($class);
-
-            if ($class === '') {
-                throw new InvalidArgumentException('Aucun seeder n\'a été spécifié.');
-            }
-
-            /** @var Seeder $seeder */
-            $seeder = new $class($this->db);
-            $seeder->setSilent($this->silent);
-
-            if (method_exists($seeder, 'run')) {
-                call_user_func([$seeder, 'run'], new Faker());
-            }
-
-            $this->seeded[] = $seeder->execute();
-
-            unset($seeder);
-        }
-    }
-
-    /**
-     * Singleton pour avoir le générateur
-     */
-    private function generator(): Generator
-    {
-        if (null === $this->generator) {
-            $this->generator = new Generator($this->locale);
-        }
-
-        return $this->generator;
-    }
-
-    /**
-     * Verifie les dependences entres les tables
-     */
-    private function checkCrossDependentTables()
-    {
-        $dependencyMap = [];
-
-        foreach ($this->tables as $tableName => $table) {
-            $dependencyMap[$tableName] = $table->getDependsOn();
-        }
-
-        foreach ($dependencyMap as $tableName => $tableDependencies) {
-            foreach ($tableDependencies as $dependencyTableName) {
-                if (in_array($tableName, $dependencyMap[$dependencyTableName], true)) {
-                    throw new InvalidArgumentException('Vous ne pouvez pas passer des tables qui dépendent les unes des autres');
-                }
-            }
+        if ($this->command) {
+            $this->command->{$type}($message);
+        } else if(defined('STDOUT')) {
+            fwrite(STDOUT, $message . PHP_EOL);
+        } else {
+            echo $message . PHP_EOL;
         }
     }
 }

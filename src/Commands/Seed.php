@@ -11,7 +11,7 @@
 
 namespace BlitzPHP\Database\Commands;
 
-use BlitzPHP\Container\Services;
+use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Seeder\Seeder;
 use InvalidArgumentException;
 
@@ -34,55 +34,151 @@ class Seed extends DatabaseCommand
      * {@inheritDoc}
      */
     protected array $arguments = [
-        'name' => 'Nom du seedr a executer',
+        'name' => 'Nom du seeder à exécuter (ex: DatabaseSeeder ou Users\\UserSeeder)',
     ];
+
+    /**
+     * {@inheritDoc}
+     */
+    protected array $options = [
+        '--group'  => 'Groupe de connexion à utiliser',
+        '--silent' => 'Mode silencieux (pas de sortie)',
+        '--locale' => 'Langue à utiliser pour Faker (ex: fr_FR, en_US)',
+    ];
+
+    protected ?BaseConnection $db = null;
 
     /**
      * {@inheritDoc}
      */
     public function handle()
     {
-        if (empty($name = $this->argument('name'))) {
-            $name = $this->prompt(lang('Migrations.migSeeder'), null, static function ($val) {
+        $group = $this->option('group');
+        $silent = $this->option('silent') !== null;
+        $locale = $this->option('locale');
+
+        $this->db = $this->resolver->connect($group);
+
+        $name = $this->getSeederName();
+
+        $seeder = $this->resolveSeeder($name);
+
+        $this->configureSeeder($seeder, $locale, $silent);
+
+        $this->runSeeder($seeder);
+
+        return EXIT_SUCCESS;
+    }
+
+    /**
+     * Récupère le nom du seeder
+     */
+    protected function getSeederName(): string
+    {
+        if (null !== $name = $this->argument('name')) {
+            return $name;
+        }
+
+        return $this->prompt(
+            'Quel seeder souhaitez-vous exécuter ?',
+            'DatabaseSeeder',
+            function ($val) {
                 if (empty($val)) {
                     throw new InvalidArgumentException('Veuillez entrer le nom du seeder.');
                 }
-
                 return $val;
-            });
-        }
+            }
+        );
+    }
 
-        $seedClass = APP_NAMESPACE . '\Database\Seeds\\';
-        $seedClass .= str_replace($seedClass, '', $name);
-
-        /**
-         * @var Seeder
-         */
-        $seeder = new $seedClass($this->db);
-
-        if ($seeder->getLocale() === '') {
-            $seeder->setLocale(config('app.language'));
-        }
-
-        $this->task('Demarrage du seed')->eol();
-        sleep(2);
-        $this->info('Remplissage en cours de traitement');
-
-        if (method_exists($seeder, 'run')) {
-            Services::container()->call([$seeder, 'run']);
-        }
-
-        $usedSeed = [
-            Services::container()->call([$seeder, 'execute']),
-            ...$seeder->getSeeded(),
+    /**
+     * Résout la classe du seeder
+     */
+    protected function resolveSeeder(string $name): Seeder
+    {
+        // Chemins possibles
+        $paths = [
+            APP_NAMESPACE . '\\Database\\Seeds\\',
+            APP_NAMESPACE . '\\Database\\Seeders\\',
+            'Database\\Seeds\\',
+            'Database\\Seeders\\',
         ];
 
-        $this->eol()->success('Opération terminée.');
+        $className = $name;
 
-        foreach ($usedSeed as $seeded) {
-            $this->eol()->write('- ')->writer->yellow($seeded);
+        // Si le nom ne contient pas de namespace, on essaie les chemins standards
+        if (!str_contains($name, '\\')) {
+            foreach ($paths as $path) {
+                $fullClass = $path . $name;
+                if (class_exists($fullClass)) {
+                    $className = $fullClass;
+                    break;
+                }
+            }
         }
 
-        return EXIT_SUCCESS;
+        if (!class_exists($className)) {
+            throw new InvalidArgumentException(
+                "Le seeder '{$name}' n'a pas été trouvé.\n" .
+                "Chemins recherchés :\n" .
+                implode("\n", array_map(fn($p) => "- {$p}{$name}", $paths))
+            );
+        }
+
+        return new $className($this->db);
+    }
+
+    /**
+     * Configure le seeder
+     */
+    protected function configureSeeder(Seeder $seeder, ?string $locale, bool $silent): void
+    {
+        if ($locale !== null) {
+            $seeder->setLocale($locale);
+        } elseif ($seeder->getLocale() === '') {
+            $seeder->setLocale(config('app.language', 'fr_FR'));
+        }
+
+        if ($silent) {
+            $seeder->setSilent(true);
+        }
+    }
+
+    /**
+     * Exécute le seeder
+     */
+    protected function runSeeder(Seeder $seeder): void
+    {
+        $this->task('Démarrage du seed')->eol();
+
+        $this->info('Remplissage en cours...');
+
+        $seeder->setCommand($this)->execute();
+
+        $executed = [
+            $seeder::class,
+            ...$seeder->getCalled(),
+        ];
+
+        $this->eol()->success('Opération terminée avec succès !');
+
+        $this->eol()->write('Seeders exécutés :');
+
+        foreach (array_unique($executed) as $seeded) {
+            $this->eol()->write('  ✔ ')->writer->green($seeded);
+        }
+
+        $this->displayStats($seeder);
+    }
+
+    /**
+     * Affiche les statistiques d'exécution
+     */
+    protected function displayStats(Seeder $seeder): void
+    {
+        // Note: Cette méthode suppose que vous avez un moyen de récupérer les stats
+        // À adapter selon votre implémentation réelle
+        
+        $this->eol()->write('Langue utilisée : ')->writer->yellow($seeder->getLocale());
     }
 }

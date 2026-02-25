@@ -23,6 +23,7 @@
     "require-dev": {
         "blitz-php/coding-standard": "^1.5",
         "blitz-php/framework": "^1.0.0-rc",
+        "fakerphp/faker": "^1.24",
         "kahlan/kahlan": "^6.1.0",
         "phpstan/phpstan": "^2.1.36"
     },
