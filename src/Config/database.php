@@ -29,11 +29,11 @@ return [
         /**
          * @var string Pilote de base de données à utiliser
          */
-        'driver' => env('db.default.driver', 'pdomysql'),
+        'driver' => env('db.default.driver', 'mysql'),
         /** @var int */
         'port' => env('db.default.port', 3306),
         /** @var string */
-        'host' => env('db.default.hostname', 'localhost'),
+        'hostname' => env('db.default.hostname', 'localhost'),
         /** @var string */
         'username' => env('db.default.username', 'root'),
         /** @var string */

@@ -794,7 +794,7 @@ class BaseBuilder implements BuilderInterface
      */
     public function result(int|string $type = PDO::FETCH_OBJ): array
     {
-        return $this->execute()->result($type);
+        return $this->execute()->get($type);
     }
 
     /**
