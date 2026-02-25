@@ -57,6 +57,20 @@ class Seed
     protected bool $truncate = false;
 
     /**
+     * Callbacks avant insertion
+     * 
+     * @var list<callable>
+     */
+    protected array $beforeInsertCallbacks = [];
+
+    /**
+     * Callbacks après insertion
+     * 
+     * @var list<callable>
+     */
+    protected array $afterInsertCallbacks = [];
+
+    /**
      * Données générées
      */
     protected array $generated = [];
@@ -146,6 +160,26 @@ class Seed
     }
 
     /**
+     * Ajoute un callback avant chaque insertion
+     */
+    public function beforeInsert(callable $callback): self
+    {
+        $this->beforeInsertCallbacks[] = $callback;
+        
+        return $this;
+    }
+
+    /**
+     * Ajoute un callback après chaque insertion
+     */
+    public function afterInsert(callable $callback): self
+    {
+        $this->afterInsertCallbacks[] = $callback;
+        
+        return $this;
+    }
+
+    /**
      * Exécute le seed
      */
     public function execute(): void
@@ -168,13 +202,15 @@ class Seed
     {
         $columns = array_keys(reset($this->rawData));
 
-        foreach ($this->rawData as $row) {
+        foreach ($this->rawData as $index => $row) {
             $data = [];
             foreach ($columns as $column) {
                 $data[$column] = $row[$column] ?? null;
             }
 
+            $this->executeCallbacks($this->beforeInsertCallbacks, $data, $index);
             $this->builder->insert($data);
+            $this->executeCallbacks($this->afterInsertCallbacks, $data, $index, $this->db->lastId());
         }
     }
 
@@ -204,8 +240,10 @@ class Seed
         }
 
         // Insérer les données
-        foreach ($this->generated as $row) {
+        foreach ($this->generated as $index => $row) {
+            $this->executeCallbacks($this->beforeInsertCallbacks, $row, $index);
             $this->builder->insert($row);
+            $this->executeCallbacks($this->afterInsertCallbacks, $row, $index, $this->db->lastId());
         }
     }
 
@@ -354,5 +392,18 @@ class Seed
         return $this->db->table($table)
             ->select($column)
             ->all(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Exécute les callbacks
+     */
+    protected function executeCallbacks(array $callbacks, array &$data, int $index, $insertId = null): void
+    {
+        foreach ($callbacks as $callback) {
+            $result = $callback($data, $index, $insertId);
+            if ($result !== null) {
+                $data = $result; // Permet de modifier les données
+            }
+        }
     }
 }

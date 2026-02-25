@@ -55,7 +55,7 @@ class Seed extends DatabaseCommand
     {
         $group = $this->option('group');
         $silent = $this->option('silent') !== null;
-        $locale = $this->option('locale');
+        $locale = $this->option('locale', config('app.language', 'fr_FR'));
 
         $this->db = $this->resolver->connect($group);
 
@@ -167,18 +167,5 @@ class Seed extends DatabaseCommand
         foreach (array_unique($executed) as $seeded) {
             $this->eol()->write('  ✔ ')->writer->green($seeded);
         }
-
-        $this->displayStats($seeder);
-    }
-
-    /**
-     * Affiche les statistiques d'exécution
-     */
-    protected function displayStats(Seeder $seeder): void
-    {
-        // Note: Cette méthode suppose que vous avez un moyen de récupérer les stats
-        // À adapter selon votre implémentation réelle
-        
-        $this->eol()->write('Langue utilisée : ')->writer->yellow($seeder->getLocale());
     }
 }

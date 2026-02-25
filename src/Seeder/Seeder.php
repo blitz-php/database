@@ -11,7 +11,7 @@
 
 namespace BlitzPHP\Database\Seeder;
 
-use BlitzPHP\Database\Commands\Seed as SeedCommand;
+use BlitzPHP\Cli\Console\Command;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Exceptions\SeederException;
 
@@ -35,7 +35,7 @@ abstract class Seeder
     /**
      * Instance de la console
      */
-    protected ?SeedCommand $command = null;
+    protected ?Command $command = null;
 
     /**
      * Tables à remplir
@@ -76,7 +76,7 @@ abstract class Seeder
     /**
      * Définit l'instance de commande
      */
-    public function setCommand(SeedCommand $command): self
+    public function setCommand(?Command $command): self
     {
         $this->command = $command;
 
@@ -158,7 +158,12 @@ abstract class Seeder
     {
         foreach ((array) $seeders as $seeder) {
             $seeder = $this->resolve($seeder);
-            $seeder->setSilent($this->silent)->run();
+            
+            $seeder->setSilent($this->silent)
+                    ->setCommand($this->command)
+                    ->setLocale($this->locale)
+                    ->run();
+            
             $this->called[] = $seeder::class;
         }
 
