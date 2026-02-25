@@ -23,6 +23,11 @@ use PDO;
 class Seed
 {
     /**
+     * Taille des lots pour bulk insert
+     */
+    protected const DEFAULT_BULK_SIZE = 100;
+
+    /**
      * Builder pour la table
      */
     protected BaseBuilder $builder;
@@ -50,6 +55,11 @@ class Seed
      * Nombre de lignes à générer
      */
     protected int $rowCount = 30;
+
+    /**
+     * Taille des lots pour bulk insert
+     */
+    protected int $bulkSize = self::DEFAULT_BULK_SIZE;
 
     /**
      * Faut-il vider la table avant ?
@@ -130,6 +140,16 @@ class Seed
     }
 
     /**
+     * Définit la taille des lots pour bulk insert
+     */
+    public function bulkSize(int $size): self
+    {
+        $this->bulkSize = max(1, $size);
+
+        return $this;
+    }
+
+    /**
      * Définit des données brutes
      */
     public function data(array $data): self
@@ -161,6 +181,8 @@ class Seed
 
     /**
      * Ajoute un callback avant chaque insertion
+     * 
+     * @param Closure(array $data, int $index, ?int $insertId): array|null|void $callback
      */
     public function beforeInsert(callable $callback): self
     {
@@ -171,6 +193,8 @@ class Seed
 
     /**
      * Ajoute un callback après chaque insertion
+     * 
+     * @param Closure(array $data, int $index, ?int $insertId): array|null|void $callback
      */
     public function afterInsert(callable $callback): self
     {
@@ -188,10 +212,10 @@ class Seed
             $this->builder->truncate();
         }
 
-        if (!empty($this->rawData)) {
+        if ($this->rawData !== []) {
             $this->insertRawData();
         } else {
-            $this->generateData();
+            $this->generateAndInsertData();
         }
     }
 
@@ -202,50 +226,73 @@ class Seed
     {
         $columns = array_keys(reset($this->rawData));
 
-        foreach ($this->rawData as $index => $row) {
+        $chunks = array_chunk($this->rawData, $this->bulkSize);
+        
+        foreach ($chunks as $chunkIndex => $chunk) {
             $data = [];
-            foreach ($columns as $column) {
-                $data[$column] = $row[$column] ?? null;
+            foreach ($chunk as $rowIndex => $row) {
+                $preparedRow = [];
+                foreach ($columns as $column) {
+                    $preparedRow[$column] = $row[$column] ?? null;
+                }
+                
+                $this->executeCallbacks($this->beforeInsertCallbacks, $preparedRow, $rowIndex);
+                $data[] = $preparedRow;
             }
-
-            $this->executeCallbacks($this->beforeInsertCallbacks, $data, $index);
-            $this->builder->insert($data);
-            $this->executeCallbacks($this->afterInsertCallbacks, $data, $index, $this->db->lastId());
+            
+            $this->builder->bulkInsert($data);
+            
+            // Callbacks after (avec l'ID du premier élément comme approximation)
+            $firstId = $this->db->lastId();
+            foreach ($data as $index => $row) {
+                $this->executeCallbacks($this->afterInsertCallbacks, $row, $index, $firstId + $index);
+            }
         }
     }
 
     /**
-     * Génère les données
+     * Génère et insère les données
      */
-    protected function generateData(): void
+    protected function generateAndInsertData(): void
     {
-        // Résoudre les dépendances une seule fois
-        $dependencies = $this->resolveDependencies();
+       // Résoudre les dépendances une seule fois
+       $dependencies = $this->resolveDependencies();
 
-        // Générer les données ligne par ligne
-        for ($i = 0; $i < $this->rowCount; $i++) {
-            $row = [];
-            
-            // Traiter les configurations d'abord (plus rapides)
-            foreach ($this->columns as $column => $definition) {
-                $row[$column] = $this->resolveConfig($definition, $dependencies);
-            }
-            
-            // Traiter les closures ensuite (plus flexibles)
-            foreach ($this->closures as $column => $closure) {
-                $row[$column] = $closure($this->faker, $dependencies, $i);
-            }
-            
-            $this->generated[] = $row;
-        }
-
-        // Insérer les données
-        foreach ($this->generated as $index => $row) {
-            $this->executeCallbacks($this->beforeInsertCallbacks, $row, $index);
-            $this->builder->insert($row);
-            $this->executeCallbacks($this->afterInsertCallbacks, $row, $index, $this->db->lastId());
-        }
-    }
+       // Générer les données par lots
+       $batches = (int) ceil($this->rowCount / $this->bulkSize);
+       
+       for ($batch = 0; $batch < $batches; $batch++) {
+           $batchData = [];
+           $start = $batch * $this->bulkSize;
+           $end = min($start + $this->bulkSize, $this->rowCount);
+           
+           for ($i = $start; $i < $end; $i++) {
+               $row = [];
+               
+               // Traiter les configurations d'abord (plus rapides)
+               foreach ($this->columns as $column => $definition) {
+                   $row[$column] = $this->resolveConfig($definition, $dependencies);
+               }
+               
+               // Traiter les closures ensuite (plus flexibles)
+               foreach ($this->closures as $column => $closure) {
+                   $row[$column] = $closure($this->faker, $dependencies, $i);
+               }
+               
+               $this->executeCallbacks($this->beforeInsertCallbacks, $row, $i);
+               
+               $batchData[] = $row;
+           }
+           
+           $this->builder->bulkInsert($batchData);
+           
+           // Callbacks after (avec approximation des IDs)
+           $firstId = $this->db->lastId();
+           foreach ($batchData as $offset => $row) {
+               $this->executeCallbacks($this->afterInsertCallbacks, $row, $start + $offset, $firstId + $offset);
+           }
+       }
+   }
 
     /**
      * Résout une configuration
