@@ -12,6 +12,8 @@
 namespace BlitzPHP\Database\Config;
 
 use BlitzPHP\Container\Services as BaseServices;
+use BlitzPHP\Contracts\Database\BuilderInterface;
+use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\DatabaseManager;
@@ -32,7 +34,7 @@ class Services extends BaseServices
     /**
      * Récupère le gestionnaire de base de données
      */
-    protected static function manager(): DatabaseManager
+    public static function dbManager(): DatabaseManager
     {
         if (static::$manager === null) {
             static::$manager = new DatabaseManager(static::logger(), static::event());
@@ -43,10 +45,12 @@ class Services extends BaseServices
 
     /**
      * Récupère une connexion à la base de données
+     * 
+     * @return BaseConnection
      */
-    public static function database(?string $group = null, bool $shared = true): BaseConnection
+    public static function database(?string $group = null, bool $shared = true): ConnectionInterface
     {
-        $connection = static::manager()->connect($group, $shared);
+        $connection = static::dbManager()->connect($group, $shared);
 
         if (!$connection instanceof BaseConnection) {
             throw new InvalidArgumentException('La connexion retournée n\'est pas une instance de BaseConnection');
@@ -57,8 +61,12 @@ class Services extends BaseServices
 
     /**
      * Récupère un query builder
+     * 
+     * @return BaseBuilder
+     * 
+     * @deprecated 1.0 use static::database()->table($tablename) instead
      */
-    public static function builder(?string $group = null, bool $shared = true): BaseBuilder
+    public static function builder(?string $group = null, bool $shared = true): BuilderInterface
     {
         $key = 'builder_' . ($group ?? 'default');
 
@@ -66,7 +74,7 @@ class Services extends BaseServices
             return static::$instances[$key];
         }
 
-        $builder = static::manager()->builder(static::database($group, $shared));
+        $builder = static::dbManager()->builder(static::database($group, $shared));
 
         if ($shared) {
             static::$instances[$key] = $builder;
@@ -78,7 +86,7 @@ class Services extends BaseServices
     /**
      * Récupère un exportateur de base de données
      */
-    public static function dbExporter(?BaseConnection $db = null, array $config = [], bool $shared = true): Exporter
+    public static function dbExporter(?ConnectionInterface $db = null, array $config = [], bool $shared = true): Exporter
     {
         if ($shared) {
             return static::sharedInstance('dbExporter', $db, $config);
@@ -102,7 +110,7 @@ class Services extends BaseServices
     /**
      * Récupère un importateur de base de données
      */
-    public static function dbImporter(?BaseConnection $db = null, array $config = [], bool $shared = true): Importer
+    public static function dbImporter(?ConnectionInterface $db = null, array $config = [], bool $shared = true): Importer
     {
         if ($shared) {
             return static::sharedInstance('dbImporter', $db, $config);
