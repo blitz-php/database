@@ -67,7 +67,7 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Gestionnaire de métadonnées
      */
-    protected MetadataCollector $metadata;
+    protected ?MetadataCollector $metadata = null;
 
     protected array $proxyMethods = [
         'listTables',
