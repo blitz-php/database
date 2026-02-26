@@ -11,9 +11,8 @@
 
 namespace BlitzPHP\Database\Migration\Definitions;
 
-use BlitzPHP\Database\Migration\Structure;
+use BlitzPHP\Database\Migration\Builder;
 use BlitzPHP\Utilities\String\Text;
-use BlitzPHP\Utilities\Support\Fluent;
 
 /**
  * @credit <a href="https://laravel.com">Laravel Framework - Illuminate\Database\Schema\ForeignIdDefinition</a>
@@ -21,39 +20,28 @@ use BlitzPHP\Utilities\Support\Fluent;
 class ForeignId extends Column
 {
     /**
-     * L'instance du constructeure de structure.
-     */
-    protected Structure $structure;
-
-    /**
      * Creation d'une nouvelle definition d'une colone ID etrangere.
      *
-     * @return void
+     * @param Builder $builder L'instance du constructeure de structure.
      */
-    public function __construct(Structure $structure, array $attributes = [])
+    public function __construct(protected Builder $builder, array $attributes = [])
     {
         parent::__construct($attributes);
-
-        $this->structure = $structure;
     }
 
     /**
      * Cree une contrainte de cle etrangere sur cette colonne "id" conventionellement a la table referencee.
-     *
-     * @return ForeignKey
      */
-    public function constrained(?string $table = null, string $column = 'id'): Fluent
+    public function constrained(?string $table = null, string $column = 'id', ?string $indexName = null): ForeignKey
     {
-        return $this->references($column)->on($table ?? Text::of($this->name)->beforeLast('_' . $column)->plural());
+        return $this->references($column, $indexName)->on($table ?? Text::of($this->name)->beforeLast('_' . $column)->plural());
     }
 
     /**
      * Specifie quelle colone cet ID etrangere reference danson another table.
-     *
-     * @return ForeignKey
      */
-    public function references(string $column): Fluent
+    public function references(string $column, ?string $indexName = null): ForeignKey
     {
-        return $this->structure->foreign($this->name)->references($column);
+        return $this->builder->foreign($this->name, $indexName)->references($column);
     }
 }

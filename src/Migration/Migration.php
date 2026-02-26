@@ -12,55 +12,62 @@
 namespace BlitzPHP\Database\Migration;
 
 use BlitzPHP\Database\Connection\BaseConnection;
-use InvalidArgumentException;
 
 /**
- * Migration
- *
- * Classe abstraite de gestion de migrations de base de donnees
+ * Classe de base pour les migrations de base de données
+ * 
+ * Cette classe doit être étendue par toutes les classes de migration.
+ * Elle fournit une API fluide pour définir les modifications de schéma.
  */
 abstract class Migration
 {
     /**
-     * @var list<Structure> Liste des taches
+     * Liste des builders de tables
+     *
+     * @var list<Builder>
      */
-    private array $structures = [];
+    protected array $builders = [];
 
     /**
-     * Nom du group a utiliser pour lexecuter les migrations
+     * Groupe de connexion à utiliser pour cette migration
      */
     protected ?string $group = null;
 
     /**
-     * Definition des etapes d'execution d'une migration.
+     * Constructeur
+     *
+     * @param BaseConnection $db Connexion à la base de données
      */
-    abstract public function up();
-
-    /**
-     * Definition des etapes d'annulation d'une migration.
-     */
-    abstract public function down();
-
     public function __construct(protected BaseConnection $db)
     {
     }
 
     /**
-     * Renvoi la liste des executions
-     *
-     * @return list<Structure>
-     *
-     * @internal Utilisee par le `runner`
+     * Méthode appelée lors de l'application de la migration
      */
-    final public function getStructure(): array
+    abstract public function up(): void;
+
+    /**
+     * Méthode appelée lors de l'annulation de la migration
+     */
+    abstract public function down(): void;
+
+    /**
+     * Récupère les builders de tables
+     *
+     * @return list<Builder>
+     * 
+     * @internal Utilisé par le Runner
+     */
+    final public function getBuilders(): array
     {
-        return $this->structures;
+        return $this->builders;
     }
 
     /**
-     * Renvoi le nom du groupe a utiliser pour la connexion a la base de donnees
+     * Récupère le groupe de connexion
      *
-     * @internal Utilisee par le `runner`
+     * @internal Utilisé par le Runner
      */
     final public function getGroup(): ?string
     {
@@ -68,54 +75,64 @@ abstract class Migration
     }
 
     /**
-     * Cree une nouvelle table dans la structure.
+     * Crée une nouvelle table
      */
-    final protected function create(string $table, bool|callable $ifNotExists, ?callable $callback = null): void
+    final protected function create(string $table, callable $callback, bool $ifNotExists = false): void
     {
-        if (is_callable($ifNotExists)) {
-            $callback    = $ifNotExists;
-            $ifNotExists = false;
-        } elseif ($callback === null) {
-            throw new InvalidArgumentException('Si vous passez un booléen en second argument de la méthode create, le troisième doit être un callback');
-        }
+        $builder = new Builder($table);
+        $callback($builder);
+        $builder->createTable($ifNotExists);
 
-        $structure = $this->build($table, $callback);
-        $structure->create($ifNotExists);
-
-        $this->structures[] = $structure;
+        $this->builders[] = $builder;
     }
 
     /**
-     * Modifie une table de la structure.
+     * Crée une nouvelle table si elle n'existe pas
      */
-    final protected function modify(string $table, callable $callback): void
+    final protected function createIfNotExists(string $table, callable $callback): void
     {
-        $structure = $this->build($table, $callback);
-        $structure->modify();
-
-        $this->structures[] = $structure;
+        $this->create($table, $callback, true);
     }
 
     /**
-     * Supprime une table de la structure.
+     * Modifie une table existante
+     */
+    final protected function alter(string $table, callable $callback): void
+    {
+        $builder = new Builder($table);
+        $callback($builder);
+        $builder->alterTable();
+
+        $this->builders[] = $builder;
+    }
+
+    /**
+     * Modifie une table existante
+     *
+     * @deprecated 1.0.0 use self::alter() instead
+     */
+    public function modify(string $table, callable $callback): void
+    {
+        $this->alter($table, $callback);
+    }
+
+    /**
+     * Supprime une table
      */
     final protected function drop(string $table, bool $ifExists = false): void
     {
-        $structure = $this->createStructure($table);
-        $structure->drop($ifExists);
-
-        $this->structures[] = $structure;
+        $builder = new Builder($table);
+        $builder->dropTable($ifExists);
+        
+        $this->builders[] = $builder;
     }
 
     /**
-     * Supprime une table de la structure si elle existe.
+     * Supprime une table si elle existe
      */
     final protected function dropIfExists(string $table): void
     {
-        $structure = $this->createStructure($table);
-        $structure->dropIfExists();
-
-        $this->structures[] = $structure;
+        $this->drop($table, true);
     }
 
     /**
@@ -123,25 +140,9 @@ abstract class Migration
      */
     final protected function rename(string $from, string $to): void
     {
-        $structure = $this->createStructure($from);
-        $structure->rename($to);
-
-        $this->structures[] = $structure;
-    }
-
-    /**
-     * Execute le callback avec la structure
-     */
-    private function build(string $table, callable $callback): Structure
-    {
-        return $callback($this->createStructure($table));
-    }
-
-    /**
-     * Cree et renvoi une structure
-     */
-    private function createStructure(string $table): Structure
-    {
-        return new Structure($table);
+        $builder = new Builder($from);
+        $builder->renameTable($to);
+        
+        $this->builders[] = $builder;
     }
 }

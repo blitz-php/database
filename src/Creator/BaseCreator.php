@@ -530,7 +530,7 @@ class BaseCreator
             throw new InvalidArgumentException('Un nom de table est nécessaire pour cette opération.');
         }
 
-        $table = $this->db->prefix . $table;
+        $table = $this->db->prefixTable($table);
 
         if ($this->fields === []) {
             throw new RuntimeException('Des informations sur le champ sont requises.');

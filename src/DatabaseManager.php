@@ -43,6 +43,13 @@ class DatabaseManager implements ConnectionResolverInterface
     protected array $connections = [];
 
     /**
+     * Stack de connexions actives
+     *
+     * @var list<string>
+     */
+    protected array $stack = [];
+
+    /**
      * Constructeur
      * 
      * @param ?LoggerInterface $logger Logger
@@ -83,6 +90,8 @@ class DatabaseManager implements ConnectionResolverInterface
         if ($shared) {
             $this->connections[$groupName] = $connection;
         }
+
+        $this->stack[] = $groupName;
 
         return $connection;
     }
@@ -134,16 +143,18 @@ class DatabaseManager implements ConnectionResolverInterface
     /**
      * Crée un builder pour une connexion
      */
-    public function builder(ConnectionInterface $db): BaseBuilder
+    public function builder(?ConnectionInterface $db = null): BaseBuilder
     {
-        return new BaseBuilder($db);
+        return new BaseBuilder($db ?? $this->activeConnection());
     }
 
     /**
      * Crée un creator pour une connexion
      */
-    public function creator(ConnectionInterface $db): BaseCreator
+    public function creator(?ConnectionInterface $db = null): BaseCreator
     {
+        $db = $db ?? $this->activeConnection(); 
+
         $driver = $this->normalizeDriver($db->getDriver());
         $className = "BlitzPHP\\Database\\Creator\\{$driver}";
         
@@ -172,6 +183,36 @@ class DatabaseManager implements ConnectionResolverInterface
     public function getConnections(): array
     {
         return $this->connections;
+    }
+
+    /**
+     * Retourne les noms de tous les groupes de connexion configurés
+     * 
+     * @return list<string>
+     */
+    public function getConnectionNames(): array
+    {
+        return array_keys($this->connections);
+    }
+
+    /**
+     * Récupère une connexion par son nom
+     */
+    public function getConnection(string $name): ?ConnectionInterface
+    {
+        return $this->connections[$name] ?? null;
+    }
+
+    /**
+     * Récupère la connexion active (dernière utilisée)
+     */
+    public function activeConnection(): ?ConnectionInterface
+    {
+        if ($this->stack === []) {
+            $this->connection();
+        }
+
+        return $this->connections[$this->stack[count($this->stack) - 1]] ?? null;
     }
 
     /**
