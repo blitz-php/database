@@ -48,4 +48,32 @@ use BlitzPHP\Utilities\Support\Fluent;
  */
 class Column extends Fluent
 {
+    protected array $_indexes = ['primary', 'unique', 'index', 'fulltext', 'spatialIndex'];
+
+    /**
+     * Vérifie si la colonne a des index fluides
+     */
+    public function hasFluentIndexes(): bool
+    {
+        foreach ($this->_indexes as $index) {
+            if (isset($this->attributes[$index])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Récupère tous les index fluides
+     */
+    public function getFluentIndexes(): array
+    {
+        $indexes = [];
+        foreach ($this->_indexes as $index) {
+            if (isset($this->attributes[$index])) {
+                $indexes[$index] = $this->attributes[$index];
+            }
+        }
+        return $indexes;
+    }
 }

@@ -29,7 +29,14 @@ use Stringable;
 use Throwable;
 
 /**
- * Connexion de base à la base de données (PDO uniquement)
+ * Connexion de base à la base de données
+ * 
+ * @method bool tableExists(string $name) Vérifie si une table existe
+ * @method array getColumnNames(string $table) Retourne les noms des champs d'une table
+ * @method bool columnExists(string $column, string $table) Vérifie si un champ existe dans une table
+ * @method array getColumnData(string $table) Retourne les métadonnées des champs d'une table
+ * @method array getIndexData(string $table) Retourne les métadonnées des index d'une table
+ * @method array getForeignKeyData(string $table) Retourne les métadonnées des clés étrangères d'une table
  */
 abstract class BaseConnection implements ConnectionInterface
 {
@@ -72,9 +79,9 @@ abstract class BaseConnection implements ConnectionInterface
     protected array $proxyMethods = [
         'listTables',
         'tableExists',
-        'getFieldNames',
-        'fieldExists',
-        'getFieldData',
+        'getColumnNames',
+        'columnExists',
+        'getColumnData',
         'getIndexData',
         'getForeignKeyData',
         'resetDataCache' => 'clearCache',

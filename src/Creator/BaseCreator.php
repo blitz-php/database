@@ -171,6 +171,11 @@ class BaseCreator
     protected array $mapTypes = [];
 
     /**
+     * Ancienes donnees pour les raisons de performance.
+     */
+    protected array $dataCache = [];
+
+    /**
      * Constructor.
      */
     public function __construct(BaseConnection $db)
@@ -253,8 +258,8 @@ class BaseCreator
                 // @codeCoverageIgnoreEnd
             }
 
-            if (! empty($this->db->dataCache['db_names'])) {
-                $this->db->dataCache['db_names'][] = $dbName;
+            if (! empty($this->dataCache['db_names'])) {
+                $this->dataCache['db_names'][] = $dbName;
             }
 
             return true;
@@ -308,10 +313,10 @@ class BaseCreator
             return false;
         }
 
-        if (! empty($this->db->dataCache['db_names'])) {
-            $key = array_search(strtolower($dbName), array_map('strtolower', $this->db->dataCache['db_names']), true);
+        if (! empty($this->dataCache['db_names'])) {
+            $key = array_search(strtolower($dbName), array_map('strtolower', $this->dataCache['db_names']), true);
             if ($key !== false) {
-                unset($this->db->dataCache['db_names'][$key]);
+                unset($this->dataCache['db_names'][$key]);
             }
         }
 
@@ -431,7 +436,7 @@ class BaseCreator
     public function dropKey(string $table, string $keyName, bool $prefixKeyName = true): bool
     {
         $keyName             = $this->db->escapeIdentifiers(($prefixKeyName === true ? $this->db->prefix : '') . $keyName);
-        $table               = $this->db->escapeIdentifiers($this->db->prefix . $table);
+        $table               = $this->db->prefixTable($table);
         $dropKeyAsConstraint = $this->dropKeyAsConstraint($table, $keyName);
 
         if ($dropKeyAsConstraint === true) {
@@ -488,7 +493,7 @@ class BaseCreator
     {
         $sql = sprintf(
             'ALTER TABLE %s DROP CONSTRAINT %s',
-            $this->db->escapeIdentifiers($this->db->prefix . $table),
+            $this->db->prefixTable($table),
             ($keyName === '') ? $this->db->escapeIdentifiers('pk_' . $this->db->prefix . $table) : $this->db->escapeIdentifiers($keyName),
         );
 
@@ -504,7 +509,7 @@ class BaseCreator
     {
         $sql = sprintf(
             (string) $this->dropConstraintStr,
-            $this->db->escapeIdentifiers($this->db->prefix . $table),
+            $this->db->prefixTable($table),
             $this->db->escapeIdentifiers($foreignName)
         );
 
@@ -546,8 +551,8 @@ class BaseCreator
         $sql = $this->_createTable($table, $attributes);
 
         if (($result = $this->db->query($sql)) !== false) {
-            if (isset($this->db->dataCache['table_names']) && ! in_array($table, $this->db->dataCache['table_names'], true)) {
-                $this->db->dataCache['table_names'][] = $table;
+            if (isset($this->dataCache['table_names']) && ! in_array($table, $this->dataCache['table_names'], true)) {
+                $this->dataCache['table_names'][] = $table;
             }
 
             // La plupart des bases de données ne permettent pas de créer des index à partir de l'instruction CREATE TABLE
@@ -622,11 +627,12 @@ class BaseCreator
             return false;
         }
 
-        if ($this->db->prefix !== '' && str_starts_with($tableName, $this->db->prefix)) {
-            $tableName = substr($tableName, strlen($this->db->prefix));
+        $prefix = $this->db->getPrefix();
+        if ($prefix !== '' && str_starts_with($tableName, $prefix)) {
+            $tableName = substr($tableName, strlen($prefix));
         }
 
-        if (($query = $this->_dropTable($this->db->prefix . $tableName, $ifExists, $cascade)) === true) {
+        if (($query = $this->_dropTable($prefix . $tableName, $ifExists, $cascade)) === true) {
             return true;
         }
 
@@ -636,15 +642,15 @@ class BaseCreator
 
         $this->db->enableForeignKeyChecks();
 
-        if ($query && ! empty($this->db->dataCache['table_names'])) {
+        if ($query && ! empty($this->dataCache['table_names'])) {
             $key = array_search(
-                strtolower($this->db->prefix . $tableName),
-                array_map('strtolower', $this->db->dataCache['table_names']),
+                strtolower($prefix . $tableName),
+                array_map('strtolower', $this->dataCache['table_names']),
                 true
             );
 
             if ($key !== false) {
-                unset($this->db->dataCache['table_names'][$key]);
+                unset($this->dataCache['table_names'][$key]);
             }
         }
 
@@ -694,19 +700,19 @@ class BaseCreator
 
         $result = $this->db->query(sprintf(
             $this->renameTableStr,
-            $this->db->escapeIdentifiers($this->db->prefix . $tableName),
-            $this->db->escapeIdentifiers($this->db->prefix . $newTableName)
+            $this->db->prefixTable($tableName),
+            $this->db->prefixTable($newTableName)
         ));
 
-        if ($result && ! empty($this->db->dataCache['table_names'])) {
+        if ($result && ! empty($this->dataCache['table_names'])) {
             $key = array_search(
                 strtolower($this->db->prefix . $tableName),
-                array_map('strtolower', $this->db->dataCache['table_names']),
+                array_map('strtolower', $this->dataCache['table_names']),
                 true
             );
 
             if ($key !== false) {
-                $this->db->dataCache['table_names'][$key] = $this->db->prefix . $newTableName;
+                $this->dataCache['table_names'][$key] = $this->db->prefix . $newTableName;
             }
         }
 

@@ -19,7 +19,7 @@ use RuntimeException;
  * Exécuteur de migrations
  * 
  * Cette classe orchestre la découverte, l'ordonnancement et l'exécution
- * des fichiers de migration.
+ * des fichiers de migration, avec support des classes anonymes et nommées.
  */
 class Runner
 {
@@ -49,26 +49,28 @@ class Runner
     protected string $pattern = '/\A(\d{4}[_-]?\d{2}[_-]?\d{2}[_-]?\d{6})_(\w+)\z/';
 
     /**
-     * Mode silencieux (pas de messages)
-     */
-    protected bool $silent = false;
-
-    /**
-     * Specifie si les migrations sont activees ou pas.
+     * Spécifie si les migrations sont activées ou pas.
      */
     protected bool $enabled = false;
 
     /**
-     * Messages de sortie
+     * Cache des instances de migration chargées
      *
-     * @var array<string>
+     * @var array<string, Migration>
      */
-    protected array $output = [];
+    protected array $loaded = [];
+
+    /**
+     * Callbacks pour les événements
+     *
+     * @var array<string, array<callable>>
+     */
+    protected array $listeners = [];
 
     /**
      * Constructeur
      *
-     * @param list<string>    $paths Chemins de recherche des migrations
+     * @param array<string, list<string>> $paths Chemins de recherche des migrations
      */
     public function __construct(protected DatabaseManager $dbManager, protected ?string $group, protected array $paths = [])
     {
@@ -80,53 +82,77 @@ class Runner
     }
 
     /**
-     * Active/désactive le mode silencieux
+     * Enregistre un écouteur pour un événement
      */
-    public function setSilent(bool $silent): self
+    public function on(string $event, callable $callback): self
     {
-        $this->silent = $silent;
-
+        if (!isset($this->listeners[$event])) {
+            $this->listeners[$event] = [];
+        }
+        
+        $this->listeners[$event][] = $callback;
+        
         return $this;
     }
 
     /**
-     * Récupère les messages de sortie
-     *
-     * @return array<string>
+     * Déclenche un événement
      */
-    public function getOutput(): array
+    protected function fire(string $event, array $payload = []): void
     {
-        return $this->output;
+        if (!isset($this->listeners[$event])) {
+            return;
+        }
+
+        foreach ($this->listeners[$event] as $callback) {
+            $callback($payload, $event, $this);
+        }
     }
 
     /**
      * Exécute toutes les migrations en attente
      *
      * @param string|null $group Groupe de connexion
-     * @return array<string> Messages de sortie
+     * @return int Nombre de migrations exécutées
      */
-    public function latest(?string $group = null): array
+    public function latest(?string $group = null): int
     {
-        $this->output = [];
+        if (!$this->enabled) {
+            $this->fire('process.migrations-disabled');
+            return 0;
+        }
+
         $migrations = $this->getPendingMigrations($group);
 
-        dd($migrations);
-
-        if (empty($migrations)) {
-            $this->addOutput('Aucune migration en attente');
-
-            return $this->output;
+        if ($migrations === []) {
+            $this->fire('process.empty-migrations');
+            return 0;
         }
 
+        $this->fire('process.start', [
+            'count' => count($migrations),
+            'group' => $group,
+            'start' => $start = microtime(true),
+        ]);
+        
         $batch = $this->history->getLastBatch() + 1;
+        $executed = 0;
 
-        foreach ($migrations as $file => $migration) {
-            $this->runMigration($migration, 'up', $group, $batch);
+        foreach ($migrations as $migration) {
+            $success = $this->runMigration($migration, 'up', $group, $batch);
+            if ($success) {
+                $executed++;
+            }
         }
 
-        $this->addOutput(sprintf('✔ %d migration(s) exécutée(s)', count($migrations)), 'success');
+        $this->fire('process.completed', [
+            'executed' => $executed,
+            'total'    => count($migrations),
+            'batch'    => $batch,
+            'duration' => number_format(microtime(true) - $start, 4),
+        ]);
 
-        return $this->output;
+        return $executed;
     }
 
     /**
@@ -134,45 +160,66 @@ class Runner
      *
      * @param int         $steps Nombre de lots à annuler
      * @param string|null $group Groupe de connexion
-     * @return array<string> Messages de sortie
+     * @return int Nombre de migrations annulées
      */
-    public function rollback(int $steps = 1, ?string $group = null): array
+    public function rollback(int $steps = 1, ?string $group = null): int
     {
-        $this->output = [];
-        $batches = $this->history->getBatches();
-
-        if (empty($batches)) {
-            $this->addOutput('Aucune migration à annuler');
-            
-            return $this->output;
+        if (!$this->enabled) {
+            $this->fire('process.migrations-disabled');
+            return 0;
         }
 
-        $targetBatch = count($batches) - $steps;
+        $batches = $this->history->getBatches();
+
+        if ($batches === []) {
+            $this->fire('process.empty-migrations');
+            return 0;
+        }
+
+        $this->fire('process.start', [
+            'steps'             => $steps,
+            'available_batches' => count($batches),
+            'group'             => $group,
+            'start'             => $start = microtime(true),
+        ]);
+
+        $targetBatch = $steps === 0 ? 0 : (count($batches) - $steps);
         $rolledBack = 0;
 
         for ($i = count($batches) - 1; $i >= $targetBatch; $i--) {
             $batchMigrations = $this->history->getBatch($batches[$i], 'desc');
 
             foreach ($batchMigrations as $history) {
-                $migration = $this->loadMigration($history->class, $history->namespace);
-                $migration->history = $history;
-                $this->runMigration($migration, 'down', $group);
-                $rolledBack++;
+                $migration = $this->createMigrationFromHistory($history);
+                
+                if (!$migration->path) {
+                    $this->fire('migration.skipped', ['migration' => $migration]);
+                    continue;
+                }
+
+                $success = $this->runMigration($migration, 'down', $group);
+                if ($success) {
+                    $rolledBack++;
+                }
             }
         }
 
-        $this->addOutput(sprintf('✔ %d migration(s) annulée(s)', $rolledBack), 'success');
+        $this->fire('process.completed', [
+            'rolled_back'  => $rolledBack,
+            'target_batch' => $targetBatch,
+            'duration'     => number_format(microtime(true) - $start, 4),
+        ]);
 
-        return $this->output;
+        return $rolledBack;
     }
 
     /**
      * Annule toutes les migrations
      *
      * @param string|null $group Groupe de connexion
-     * @return array<string> Messages de sortie
+     * @return int Nombre de migrations annulées
      */
-    public function reset(?string $group = null): array
+    public function reset(?string $group = null): int
     {
         return $this->rollback(PHP_INT_MAX, $group);
     }
@@ -181,14 +228,41 @@ class Runner
      * Réinitialise et réexécute toutes les migrations
      *
      * @param string|null $group Groupe de connexion
-     * @return array<string> Messages de sortie
+     * @return array{reset: int, latest: int} Nombre de migrations annulées et exécutées
      */
     public function refresh(?string $group = null): array
     {
-        $output = $this->reset($group);
-        $output = array_merge($output, $this->latest($group));
+        $reset = $this->reset($group);
+        $latest = $this->latest($group);
 
-        return $output;
+        return ['reset' => $reset, 'latest' => $latest];
+    }
+
+    /**
+     * Crée un objet migration à partir de l'historique
+     */
+    protected function createMigrationFromHistory(object $history): object
+    {
+        $migration = (object) [
+            'path'      => null,
+            'version'   => $history->version,
+            'migration' => $history->migration,
+            'namespace' => $history->namespace,
+            'history'   => $history,
+        ];
+
+        // Trouver le chemin du fichier
+        $files = $this->findMigrationFiles();
+        foreach ($files as $file) {
+            if ($file->version === $history->version && 
+                $file->migration === $history->migration && 
+                $file->namespace === $history->namespace) {
+                $migration->path = $file->path;
+                break;
+            }
+        }
+
+        return $migration;
     }
 
     /**
@@ -200,14 +274,17 @@ class Runner
     {
         $files = $this->findMigrationFiles();
         $executed = $this->history->getAll($group);
+        
+        $executedMap = [];
+        foreach ($executed as $item) {
+            $key = implode('.', [$item->namespace, $item->migration, $item->version]);
+            $executedMap[$key] = true;
+        }
 
-        $executedClasses = array_map(fn($item) => $item->class, $executed);
-
-        return array_filter(
-            $files,
-            fn($file, $class) => !in_array($class, $executedClasses),
-            ARRAY_FILTER_USE_BOTH
-        );
+        return array_filter($files, function($file) use ($executedMap) {
+            $key = implode('.', [$file->namespace, $file->migration, $file->version]);
+            return !isset($executedMap[$key]);
+        });
     }
 
     /**
@@ -219,58 +296,102 @@ class Runner
     {
         $files = [];
 
-        foreach ($this->paths as $path) {
-            $globFiles = glob($path . '/*_*.php') ?: [];
-
-            foreach ($globFiles as $file) {
-                $content = file_get_contents($file);
-                $namespace = $this->extractNamespace($content);
-                $className = $namespace . '\\' . basename($file, '.php');
-
-                if (preg_match($this->pattern, basename($file), $matches)) {
-                    $files[$file] = (object) [
+        foreach ($this->paths as $namespace => $paths) {
+            foreach ($paths as $file) {
+                $name = basename($file, '.php');
+                if (preg_match($this->pattern, $name, $matches)) {
+                    $files[] = (object) [
                         'path'      => $file,
                         'version'   => $matches[1],
-                        'name'      => $matches[2],
-                        'class'     => $className,
+                        'migration' => $matches[2],
                         'namespace' => $namespace,
                     ];
                 }
             }
         }
 
-        uasort($files, fn($a, $b) => strcmp($a->version, $b->version));
+        usort($files, fn($a, $b) => strcmp($a->version, $b->version));
 
         return $files;
     }
 
     /**
-     * Extrait le namespace d'un fichier PHP
-     */
-    protected function extractNamespace(string $content): string
-    {
-        if (preg_match('/namespace\s+([^;]+);/', $content, $matches)) {
-            return $matches[1];
-        }
-
-        return '';
-    }
-
-    /**
      * Charge une instance de migration
+     * 
+     * @param object $migration Données de la migration
+     * @param bool   $fresh     Forcer un rechargement frais
      * 
      * @throws RuntimeException
      */
-    protected function loadMigration(string $class, string $namespace): Migration
+    protected function loadMigration(object $migration, bool $fresh = false): Migration
     {
-        if (!class_exists($class)) {
-            throw new RuntimeException(sprintf(
-                'Classe de migration introuvable : %s',
-                $class
-            ));
+        $cacheKey = $migration->path . ':' . ($fresh ? 'fresh' : 'cached');
+
+        // Retourner l'instance en cache si disponible et pas de rechargement frais
+        if (!$fresh && isset($this->loaded[$cacheKey])) {
+            return clone $this->loaded[$cacheKey];
         }
 
-        return new $class($this->db);
+        // Détecter le type de migration
+        $content = file_get_contents($migration->path);
+        if ($content === false) {
+            throw new RuntimeException("Impossible de lire le fichier : {$migration->path}");
+        }
+
+        $isAnonymous = str_contains($content, 'return new class extends Migration');
+
+        if ($isAnonymous) {
+            // Mode anonyme : le fichier retourne directement l'instance
+            $instance = require $migration->path;
+            
+            if (!$instance instanceof Migration) {
+                throw new RuntimeException(
+                    "Le fichier {$migration->path} doit retourner une instance de Migration"
+                );
+            }
+        } else {
+            // Mode classique : chercher la classe déclarée
+            require_once $migration->path;
+            
+            $className = $this->extractClassName($content, $migration->namespace);
+            
+            if (!$className || !class_exists($className)) {
+                throw new RuntimeException(
+                    "Impossible de trouver la classe de migration dans {$migration->path}"
+                );
+            }
+            
+            $instance = new $className();
+        }
+
+        $instance = $instance->initialize($this->dbManager, $this->db);
+        
+        // Mettre en cache pour les appels suivants
+        if (!$fresh) {
+            $this->loaded[$migration->path . ':cached'] = $instance;
+        }
+
+        return $instance;
+    }
+
+    /**
+     * Extrait le nom de classe du contenu PHP
+     */
+    protected function extractClassName(string $content, string $namespace): ?string
+    {
+        // Chercher "class NomDeClasse extends Migration"
+        if (preg_match('/class\s+([a-zA-Z0-9_]+)\s+extends\s+Migration/', $content, $matches)) {
+            $className = $matches[1];
+            
+            // Si le namespace est vide ou déjà présent
+            if (empty($namespace) || str_starts_with($className, $namespace)) {
+                return $className;
+            }
+            
+            return $namespace . '\\' . $className;
+        }
+
+        return null;
     }
 
     /**
@@ -280,65 +401,121 @@ class Runner
      * @param string      $direction Direction (up|down)
      * @param string|null $group     Groupe
      * @param int|null    $batch     Lot (pour up)
+     * @return bool Succès ou échec
      */
-    protected function runMigration(object $migration, string $direction, ?string $group, ?int $batch = null): void
+    protected function runMigration(object $migration, string $direction, ?string $group, ?int $batch = null): bool
     {
-        require_once $migration->path;
+        $this->fire('migration.before', [
+            'migration' => $migration,
+            'direction' => $direction,
+            'group'     => $group,
+            'batch'     => $batch,
+        ]);
 
-        $instance = $this->loadMigration($migration->class, $migration->namespace);
+        try {
+            // Pour le rollback, on force un rechargement frais
+            $fresh = ($direction === 'down');
+            $instance = $this->loadMigration($migration, $fresh);
 
-        // Vérifier le groupe
-        if ($group && $instance->getGroup() && $instance->getGroup() !== $group) {
-            $this->addOutput(sprintf(
-                '⏭️  Migration %s_%s ignorée (groupe différent)',
-                $migration->version,
-                $migration->name
-            ), 'comment');
-            return;
+            // Vérifier si la migration doit être exécutée
+            if ($direction === 'up' && !$instance->shouldRun()) {
+                $this->fire('migration.ignored', ['migration' => $migration]);
+                
+                // On marque comme réussie pour ne pas bloquer les suivantes
+                return true;
+            }
+
+            // Exécuter la migration
+            $start = microtime(true);
+            $instance->{$direction}();
+
+            // On doit créer un transformer pour chaque connexion utilisée
+            $transformers = [];
+            
+            foreach ($instance->getBuilders() as $builder) {
+                $conn = $builder->getConnection();
+                $connKey = spl_object_hash($conn);
+                
+                if (!isset($transformers[$connKey])) {
+                    $transformers[$connKey] = new Transformer($this->dbManager->creator($conn));
+                }
+                
+                $transformers[$connKey]->process($builder);
+            }
+
+            // Mettre à jour l'historique
+            if ($direction === 'up' && $batch) {
+                $this->history->add(
+                    $migration->version,
+                    $migration->migration,
+                    $migration->namespace,
+                    $group ?? 'default',
+                    $batch
+                );
+            } elseif ($direction === 'down') {
+                $this->removeFromHistory($migration, $group);
+            }
+
+            $this->fire('migration.done', [
+                'migration' => $migration,
+                'duration'  => number_format(microtime(true) - $start, 3),
+            ]);
+
+            return true;
+        } catch (\Throwable $e) {
+            $this->fire('migration.error', [
+                'migration' => $migration,
+                'direction' => $direction,
+                'error' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            return false;
         }
-
-        $this->addOutput(sprintf(
-            '%s : %s_%s',
-            $direction === 'up' ? '⬆️  Exécution' : '⬇️  Annulation',
-            $migration->version,
-            $migration->name
-        ), 'info');
-
-        // Exécuter la migration
-        $instance->{$direction}();
-
-        // Appliquer les changements
-        $executor = new Executor($this->dbManager->creator($this->db));
-        foreach ($instance->getBuilders() as $builder) {
-            $executor->execute($builder);
-        }
-
-        // Mettre à jour l'historique
-        if ($direction === 'up' && $batch) {
-            $this->history->add(
-                $migration->version,
-                $migration->class,
-                $migration->namespace,
-                $instance->getGroup() ?? $group ?? 'default',
-                $batch
-            );
-        } elseif ($direction === 'down' && isset($migration->history)) {
-            $this->history->remove($migration->history->id);
-        }
-
-        $this->addOutput(sprintf('   ✅ Terminé', 'success'));
     }
 
     /**
-     * Ajoute un message à la sortie
+     * Supprime une entrée de l'historique
      */
-    protected function addOutput(string $message, string $type = 'info'): void
+    protected function removeFromHistory(object $migration, ?string $group): void
     {
-        $this->output[] = $message;
-
-        if (!$this->silent) {
-            // Ici, vous pouvez appeler votre système de console
-            // Par exemple : $this->console->$type($message)
+        $history = $this->history->getAll($group);
+        
+        foreach ($history as $entry) {
+            if ($entry->migration === $migration->migration && 
+                $entry->version === $migration->version && 
+                $entry->namespace === $migration->namespace) {
+                
+                $this->history->remove($entry->id);
+                
+                break;
+            }
         }
+    }
+
+    /**
+     * Récupère l'historique des migrations
+     */
+    public function getHistory(?string $group = null): array
+    {
+        return $this->history->getAll($group);
+    }
+
+    /**
+     * Récupère le dernier numéro de lot
+     */
+    public function getLastBatch(): int
+    {
+        return $this->history->getLastBatch();
+    }
+
+    /**
+     * Vide le cache des instances chargées
+     */
+    public function clearCache(): self
+    {
+        $this->loaded = [];
+
+        return $this;
     }
 }

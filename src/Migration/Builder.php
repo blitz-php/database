@@ -11,6 +11,7 @@
 
 namespace BlitzPHP\Database\Migration;
 
+use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Migration\Definitions\Column;
 use BlitzPHP\Database\Migration\Definitions\ForeignId;
 use BlitzPHP\Database\Migration\Definitions\ForeignKey;
@@ -56,6 +57,11 @@ class Builder
      * @var array<ForeignKey>
      */
     protected array $foreignKeys = [];
+
+    /**
+     * Connexion utilisée pour ce builder
+     */
+    protected BaseConnection $db;
 
     /**
      * Éléments à supprimer
@@ -117,6 +123,28 @@ class Builder
     {
     }
 
+    /**
+     * Spécifie la connexion utilisée pour ce builder
+     * 
+     * @internal
+     */
+    public function setConnection(BaseConnection $db): self
+    {
+        $this->db = $db;
+     
+        return $this;
+    }
+
+    /**
+     * Récupère l'instance de la connexion utilisée par ce builder
+     * 
+     * @internal
+     */
+    public function getConnection(): BaseConnection
+    {
+        return $this->db;
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Actions
@@ -125,6 +153,8 @@ class Builder
 
     /**
      * Indique que la table doit être créée
+     * 
+     * @internal
      */
     public function createTable(bool $ifNotExists = false): void
     {
@@ -133,6 +163,8 @@ class Builder
 
     /**
      * Indique que la table doit être modifiée
+     * 
+     * @internal
      */
     public function alterTable(): void
     {
@@ -141,6 +173,8 @@ class Builder
 
     /**
      * Indique que la table doit être supprimée
+     * 
+     * @internal
      */
     public function dropTable(bool $ifExists = false): void
     {
@@ -149,6 +183,8 @@ class Builder
 
     /**
      * Indique que la table doit être renommée
+     * 
+     * @internal
      */
     public function renameTable(string $to): void
     {
@@ -1189,8 +1225,12 @@ class Builder
 
     /**
      * Crée un nom d'index par défaut
+     * 
+     * Exemple : users_email_unique pour un index unique sur la colonne email de la table users
+     * 
+     * @internal
      */
-    protected function createIndexName(string $type, array $columns): string
+    public function createIndexName(string $type, array $columns): string
     {
         $index = strtolower($this->table . '_' . implode('_', $columns) . '_' . $type);
         

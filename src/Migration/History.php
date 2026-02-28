@@ -27,6 +27,11 @@ class History
      */
     protected BaseConnection $db;
 
+    /** 
+     * Indique si la table d'historique a été vérifiée/créée
+     */
+    private bool $tableChecked = false;
+
     /**
      * Constructeur
      *
@@ -44,20 +49,23 @@ class History
      */
     protected function ensureTable(): void
     {
-        if ($this->db->tableExists($this->table)) {
+        if ($this->tableChecked || $this->db->tableExists($this->table)) {
             return;
         }
 
         $builder = new Builder($this->table);
-        $builder->increments('id');
+        $builder->id();
+        $builder->string('migration');
         $builder->string('version');
-        $builder->string('class');
         $builder->string('namespace');
         $builder->string('group');
-        $builder->integer('batch');
+        $builder->unsignedInteger('batch');
         $builder->integer('time');
+        $builder->createTable(true);
+        
+        (new Transformer($this->dbManager->creator($this->db)))->process($builder);
 
-        (new Executor($this->dbManager->creator($this->db)))->execute($builder);
+        $this->tableChecked = true;
     }
 
     /**
@@ -117,16 +125,16 @@ class History
      * Ajoute une entrée dans l'historique
      *
      * @param string $version   Version de la migration
-     * @param string $class     Classe de migration
+     * @param string $migration Nom de la migration
      * @param string $namespace Namespace
      * @param string $group     Groupe de connexion
      * @param int    $batch     Numéro de lot
      */
-    public function add(string $version, string $class, string $namespace, string $group, int $batch): void
+    public function add(string $version, string $migration, string $namespace, string $group, int $batch): void
     {
         $this->db->table($this->table)->insert([
             'version'   => $version,
-            'class'     => $class,
+            'migration' => $migration,
             'namespace' => $namespace,
             'group'     => $group,
             'batch'     => $batch,
