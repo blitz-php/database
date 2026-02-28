@@ -11,11 +11,12 @@
 
 namespace BlitzPHP\Database\Commands\Migration;
 
+use Ahc\Cli\Output\Color;
 use BlitzPHP\Database\Commands\DatabaseCommand;
-use BlitzPHP\Database\Commands\Helper;
+use BlitzPHP\Database\Migration\Runner;
 
 /**
- * Exécute toutes les migrations dans l'ordre inverse, jusqu'à ce qu'elles aient toutes été désappliquées.
+ * Annule les dernières migrations.
  */
 class Rollback extends DatabaseCommand
 {
@@ -27,14 +28,18 @@ class Rollback extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    protected string $description = 'Recherche et annule toutes les migrations précédement exécutees.';
+    protected string $description = 'Annule les dernières migrations.';
 
     /**
      * {@inheritDoc}
      */
     protected array $options = [
-        '-b, --batch' => "Spécifiez un lot à restaurer\u{a0}; par exemple. \"3\" pour revenir au lot #3 ou \"-2\" pour revenir en arrière deux fois",
-        '-f, --force' => 'Forcer la commande - cette option vous permet de contourner la question de confirmation lors de l\'exécution de cette commande dans un environnement de production',
+        '-g, --group'         => 'Groupe de base de données à utiliser',
+        '-b, --batch'         => 'Numéro de lot cible (ex: 3 pour revenir au lot #3, -2 pour revenir de 2 lots)',
+        '--all'               => 'Annuler toutes les migrations',
+        '--show-stats'        => 'Afficher les statistiques de l\'opération',
+        '--continue-on-error' => 'Ne pas stopper le processus si une annulation échoue',
+        '-f, --force'         => 'Forcer l\'exécution en production',
     ];
 
     /**
@@ -42,46 +47,110 @@ class Rollback extends DatabaseCommand
      */
     public function handle()
     {
-        if (on_prod()) {
-            // @codeCoverageIgnoreStart
-            $force = $this->option('force');
-
-            if (! $force && ! $this->confirm(lang('Migrations.rollBackConfirm'))) {
-                return;
+        if (on_prod() && !$this->option('force')) {
+            if (!$this->confirm('Êtes-vous sûr de vouloir annuler des migrations en production ?')) {
+                return EXIT_SUCCESS;
             }
-            // @codeCoverageIgnoreEnd
         }
 
-        $runner = Helper::runner(null);
+        $this->eol()->info('Recherche des migrations à annuler...');
 
-        $batch = $this->option('batch') ?? ($runner->getLastBatch() - 1);
+        $group = $this->option('group', 'default');
+        $batch = $this->option('all') ? 0 : $this->option('batch', 1);
 
-        if (is_string($batch)) {
-            if (! ctype_digit($batch)) {
-                $this->fail('Numéro de lot invalide: ' . $batch, true);
+        if (is_string($batch) && !preg_match('/^-?\d+$/', $batch)) {
+            $this->error('Le numéro de lot doit être un entier.');
+            return EXIT_ERROR;
+        }
+        $batch = (int) $batch;
 
-                return EXIT_ERROR;
+        $runner = $this->runner('ALL', $group);
+        
+        $rolledBack = 0;
+        $errorCount = 0;
+
+        $runner->on('process.empty-migrations', function() {
+            $this->warning('Aucune migration à annuler');
+        })
+        ->on('migration.error', function($payload) use(&$errorCount) {
+            ['migration' => $migration, 'exception' => $e] = $payload;
+
+            $this->justify(
+                $this->getMigrationName($migration), 
+                $this->color->error('Échec')
+            );
+            
+            if (!$this->option('continue-on-error')) {
+                throw $e;
             }
+            
+            $errorCount++;
+        })
+        ->on('migration.skipped', function($payload) {
+            ['migration' => $migration] = $payload;
 
-            $batch = (int) $batch;
+            $this->justify(
+                $this->getMigrationName($migration), 
+                $this->color->warn('Fichier introuvable')
+            );
+        })
+        ->on('migration.done', function($payload) use(&$rolledBack) {
+            ['migration' => $migration, 'duration' => $duration] = $payload;
+            
+            $this->justify(
+                $this->getMigrationName($migration), 
+                $this->color->comment($duration . ' ms') . ' ' . $this->color->ok('Annulé')
+            );
+            
+            $rolledBack++;
+        });
+
+        $runner->rollback($batch, $group);
+
+        if ($rolledBack > 0) {
+            $this->newLine()->success("{$rolledBack} migration(s) annulée(s) avec succès.");
+            
+            if ($this->option('show-stats')) {
+                $this->displayStats($runner, $rolledBack, $errorCount, $batch);
+            }
         }
-
-        $this->colorize(lang('Migrations.rollingBack') . ' ' . $batch, 'yellow');
-
-        $runner->setFiles(Helper::getMigrationFiles(true));
-
-        if (! $runner->regress($batch)) {
-            $this->error(lang('Migrations.generalFault')); // @codeCoverageIgnore
-        }
-
-        $messages = $runner->getMessages();
-
-        foreach ($messages as $message) {
-            $this->colorize($message['message'], $message['color']);
-        }
-
-        $this->newLine()->success('Fin de l\'annulation des migrations.');
 
         return EXIT_SUCCESS;
+    }
+
+    /**
+     * Formate le nom de la migration pour l'affichage
+     */
+    private function getMigrationName(object $migration): string
+    {
+        return sprintf(
+            '[%s] %s_%s (batch #%d)',
+            $migration->namespace ?? $migration->history->namespace,
+            $migration->version ?? $migration->history->version,
+            $migration->migration ?? $migration->history->migration,
+            $migration->history->batch ?? '?'
+        );
+    }
+
+    /**
+     * Affiche les statistiques
+     */
+    private function displayStats(Runner $runner, int $rolledBack, int $errorCount, int $targetBatch): void
+    {
+        $options = ['sep' => '-', 'second' => ['fg' => Color::GREEN]];
+        $data = [
+            'Migrations annulées' => $rolledBack,
+            'Migrations échouées' => $errorCount,
+            'Lot cible'           => $targetBatch,
+            'Groupe de connexion' => $this->option('group', 'default'),
+        ];
+        
+        $this->eol()->border(char: '*');
+        
+        foreach ($data as $k => $v) {
+            $this->justify($k, (string) $v, $options);
+        } 
+        
+        $this->border(char: '*');
     }
 }

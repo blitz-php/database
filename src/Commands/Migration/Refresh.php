@@ -14,7 +14,7 @@ namespace BlitzPHP\Database\Commands\Migration;
 use BlitzPHP\Database\Commands\DatabaseCommand;
 
 /**
- * Execute toutes les nouvelles migrations.
+ * Réinitialise et réexécute toutes les migrations.
  */
 class Refresh extends DatabaseCommand
 {
@@ -26,16 +26,17 @@ class Refresh extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    protected string $description = 'Effectue une restauration suivie d\'une migration pour actualiser l\'état actuel de la base de données.';
+    protected string $description = 'Annule toutes les migrations puis les réexécute.';
 
     /**
      * {@inheritDoc}
      */
     protected array $options = [
         '-n, --namespace' => 'Défini le namespace de la migration',
-        '-g, --group'     => 'Défini le groupe de la base de données',
         '--all'           => 'Défini pour tous les namespaces, ignore l\'option (-n)',
-        '-f, --force'     => 'Forcer la commande - cette option vous permet de contourner la question de confirmation lors de l\'exécution de cette commande dans un environnement de production',
+        '-g, --group'     => 'Groupe de base de données à utiliser',
+        '-f, --force'     => 'Forcer l\'exécution en production',
+        '--seed'          => 'Exécuter les seeders après le refresh',
     ];
 
     /**
@@ -43,23 +44,52 @@ class Refresh extends DatabaseCommand
      */
     public function handle()
     {
-        $params = array_merge($this->parameters(), ['batch' => 0]);
-
-        if (on_prod()) {
-            // @codeCoverageIgnoreStart
-            $force = $this->option('force');
-
-            if (! $force && ! $this->confirm(lang('Migrations.refreshConfirm'))) {
-                return;
+        if (on_prod() && !$this->option('force')) {
+            if (! $this->confirm('Êtes-vous sûr de vouloir réinitialiser toutes les migrations en production ?')) {
+                return EXIT_SUCCESS;
             }
-
-            $params['force'] = null;
-            // @codeCoverageIgnoreEnd
         }
 
-        $this->call('migrate:rollback', [], $params);
-        $this->newLine();
-        $this->call('migrate', [], $params);
+        $this->eol()->info('Réinitialisation et réexécution des migrations...');
+        
+        $group = $this->option('group', 'default');
+        $seed  = $this->option('seed') === true;
+
+        $this->newLine()->comment('Étape 1/2: Annulation de toutes les migrations');
+        
+        $rollbackResult = $this->call('migrate:rollback', options: [
+            '--group' => $group,
+            '--all'   => true,
+            '--force' => true,
+        ]);
+
+        if ($rollbackResult !== EXIT_SUCCESS) {
+            $this->error('Échec de l\'annulation des migrations.');
+
+            return $rollbackResult;
+        }
+
+        $this->newLine()->comment('Étape 2/2: Réexécution des migrations');
+        
+        $migrateResult = $this->call('migrate', options: [
+            '--group' => $group,
+        ]);
+
+        if ($migrateResult !== EXIT_SUCCESS) {
+            $this->error('Échec de l\'exécution des migrations.');
+            
+            return $migrateResult;
+        }
+
+        if ($seed) {
+            $this->newLine()->info('Exécution des seeders...');
+            $this->call('db:seed', options: [
+                '--group' => $group,
+            ]);
+        }
+
+        $this->newLine()->success('Refresh terminé avec succès !');
+
 
         return EXIT_SUCCESS;
     }

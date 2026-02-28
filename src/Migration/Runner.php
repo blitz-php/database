@@ -292,7 +292,7 @@ class Runner
      *
      * @return array<object>
      */
-    protected function findMigrationFiles(): array
+    public function findMigrationFiles(): array
     {
         $files = [];
 
