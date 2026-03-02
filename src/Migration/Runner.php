@@ -388,7 +388,7 @@ class Runner
                 return $className;
             }
             
-            return $namespace . '\\' . $className;
+            return $namespace . '\\Database\\Migrations\\' . $className;
         }
 
         return null;
