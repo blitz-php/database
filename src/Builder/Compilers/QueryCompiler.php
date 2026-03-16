@@ -627,7 +627,7 @@ abstract class QueryCompiler
     /**
      * Compile la clause INSERT INTO
      */
-    abstract protected function compileInsertion(string $table, string $columns, string $values, bool $ignore, ?string $returning = null): string;
+    abstract public function compileInsertion(string $table, string $columns, string $values, bool $ignore, ?string $returning = null): string;
 
     /**
      * Compile la clause REPLACE

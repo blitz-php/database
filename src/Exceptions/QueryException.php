@@ -20,15 +20,17 @@ class QueryException extends PDOException
     /**
      * Create a new query exception instance.
      *
-     * @param string $connectionName The database connection name.
-     * @param string $sql            The SQL for the query.
-     * @param array  $bindings       The bindings for the query.
+     * @param  string  $connectionName Le nom de la connexion à la base de données.
+     * @param  string  $sql Le SQL de la requête.
+     * @param  array  $bindings Les bindings pour la requête.
+     * @param  null|'read'|'write'  $readWriteType Le type de lecture/écriture PDO pour la requête exécutée.
+     * @param  array  $connectionDetails Les détails de connexion pour la requête (hôte, port, base de données, etc.).
      */
-    public function __construct(public string $connectionName, protected string $sql, protected array $bindings, Throwable $previous)
+    public function __construct(public string $connectionName, protected string $sql, protected array $bindings, Throwable $previous, protected array $connectionDetails = [], public ?string $readWriteType = null)
     {
         parent::__construct('', 0, $previous);
 
-        $this->code    = $previous->getCode();
+        $this->code = $previous->getCode();
         $this->message = $this->formatMessage($connectionName, $sql, $bindings, $previous);
 
         if ($previous instanceof PDOException) {
@@ -37,15 +39,46 @@ class QueryException extends PDOException
     }
 
     /**
-     * Format the SQL error message.
+     * Formate le message d'erreur SQL.
      */
     protected function formatMessage(string $connectionName, string $sql, array $bindings, Throwable $previous): string
     {
-        return $previous->getMessage() . ' (Connection: ' . $connectionName . ', SQL: ' . Text::replaceArray('?', $bindings, $sql) . ')';
+        $details = $this->formatConnectionDetails();
+
+        return $previous->getMessage().' (Connection: '.$connectionName.$details.', SQL: '. Text::replaceArray('?', $bindings, $sql).')';
     }
 
     /**
-     * Get the connection name for the query.
+     * Formate les détails de connexion pour le message d'erreur.
+     */
+    protected function formatConnectionDetails(): string
+    {
+        if (empty($this->connectionDetails)) {
+            return '';
+        }
+
+        $driver = $this->connectionDetails['driver'] ?? '';
+
+        $segments = [];
+
+        if ($driver !== 'sqlite') {
+            if (! empty($this->connectionDetails['unix_socket'])) {
+                $segments[] = 'Socket: '.$this->connectionDetails['unix_socket'];
+            } else {
+                $host = $this->connectionDetails['host'] ?? '';
+
+                $segments[] = 'Host: '.(is_array($host) ? implode(', ', $host) : $host);
+                $segments[] = 'Port: '.($this->connectionDetails['port'] ?? '');
+            }
+        }
+
+        $segments[] = 'Database: '.($this->connectionDetails['database'] ?? '');
+
+        return ', '.implode(', ', $segments);
+    }
+
+    /**
+     * Obtient le nom de la connexion pour la requête.
      */
     public function getConnectionName(): string
     {
@@ -53,7 +86,7 @@ class QueryException extends PDOException
     }
 
     /**
-     * Get the SQL for the query.
+     * Obtient le SQL pour la requête.
      */
     public function getSql(): string
     {
@@ -61,10 +94,33 @@ class QueryException extends PDOException
     }
 
     /**
-     * Get the bindings for the query.
+     * Obtient la représentation SQL brute de la requête avec les bindings intégrés.
+     */
+    public function getRawSql(): string
+    {
+        $sql      = $this->getSql();
+        $bindings = $this->getBindings();
+
+        foreach ($bindings as $value) {
+            $sql = preg_replace('/\?/', $value, $sql, 1);
+        }
+
+        return $sql;
+    }
+
+    /**
+     * Obtient les bindings pour la requête.
      */
     public function getBindings(): array
     {
         return $this->bindings;
+    }
+
+    /**
+     * Obtient des informations sur la connexion telles que l'hôte, le port, la base de données, etc.
+     */
+    public function getConnectionDetails(): array
+    {
+        return $this->connectionDetails;
     }
 }

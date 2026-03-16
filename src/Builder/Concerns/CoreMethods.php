@@ -14,10 +14,13 @@ namespace BlitzPHP\Database\Builder\Concerns;
 use BlitzPHP\Database\Builder\JoinClause;
 use BlitzPHP\Database\Query\Expression;
 use BlitzPHP\Contracts\Database\BuilderInterface;
+use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Utils;
+use BlitzPHP\Wolke\Collection;
 use Closure;
 use DateTimeInterface;
 use InvalidArgumentException;
+use RuntimeException;
 
 /**
  * @mixin \BlitzPHP\Database\Builder\BaseBuilder
@@ -527,6 +530,24 @@ trait CoreMethods
             'not' => $not
         ]);
     }
+    
+    /**
+     * Add another query builder as a nested where to the query builder.
+     */
+    public function addNestedWhereQuery(BaseBuilder $query, string $boolean = 'and'): static
+    {
+        if (count($query->wheres)) {
+            $this->wheres[] = [
+                'type' => 'nested',
+                'query' => $query,
+                'boolean' => $boolean
+            ];
+
+            $this->bindings->addMany($query->bindings->getValues());
+        }
+
+        return $this;
+    }
 
     /**
      * Ajoute une clause HAVING
@@ -950,6 +971,8 @@ trait CoreMethods
 
     /**
      * Ajoute une jointure avec une sous-requête
+     * 
+     * @param (Closure(JoinClause): void) $callback
      */
     public function joinSub(Closure|BuilderInterface $query, string $as, Closure $callback, string $type = 'INNER'): self
     {
@@ -1186,6 +1209,31 @@ trait CoreMethods
     }
 
     /**
+     * Get an array with all orders with a given column removed.
+     */
+    protected function removeExistingOrdersFor(string $column): array
+    {
+        $column = $this->buildColumnName($column);
+
+        return (new Collection($this->orders))
+            ->reject(fn ($order) => isset($order['column']) && $order['column'] === $column)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Throw an exception if the query doesn't have an orderBy clause.
+     *
+     * @throws RuntimeException
+     */
+    protected function enforceOrderBy(): void
+    {
+        if ($this->orders === []) {
+            throw new RuntimeException('You must specify an orderBy clause when using this function.');
+        }
+    }
+
+    /**
      * Ajoute une clause GROUP BY
      * 
      * Supporte les signatures :
@@ -1265,15 +1313,7 @@ trait CoreMethods
         $query = $this->newQuery();
         $callback($query);
 
-        if (count($query->wheres)) {
-            $this->wheres[] = [
-                'type' => 'nested',
-                'query' => $query,
-                'boolean' => $boolean
-            ];
-        }
-
-        return $this;
+        return $this->addNestedWhereQuery($query, $boolean);
     }
 
     /**

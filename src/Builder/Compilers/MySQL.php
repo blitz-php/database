@@ -38,7 +38,7 @@ class MySQL extends QueryCompiler
     /**
      * {@inheritDoc}
      */
-    protected function compileInsertion(string $table, string $columns, string $values, bool $ignore, ?string $returning = null): string
+    public function compileInsertion(string $table, string $columns, string $values, bool $ignore, ?string $returning = null): string
     {
         $ignored  = $ignore ? ' IGNORE' : '';
         $returned = $returning ? " RETURNING {$returning}" : '';

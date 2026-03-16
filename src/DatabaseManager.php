@@ -85,7 +85,7 @@ class DatabaseManager implements ConnectionResolverInterface
             return $this->connections[$groupName];
         }
 
-        $connection = $this->createConnection($config);
+        $connection = $this->createConnection($config + ['name' => $groupName]);
 
         if ($shared) {
             $this->connections[$groupName] = $connection;

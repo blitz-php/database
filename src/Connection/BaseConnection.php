@@ -18,10 +18,13 @@ use BlitzPHP\Contracts\Database\ResultInterface;
 use BlitzPHP\Contracts\Event\EventManagerInterface;
 use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Exceptions\DatabaseException;
+use BlitzPHP\Database\Exceptions\QueryException;
 use BlitzPHP\Database\Query\Expression;
 use BlitzPHP\Database\Query\Result;
 use BlitzPHP\Database\Utils;
+use BlitzPHP\Utilities\Iterable\Arr;
 use Closure;
+use DateTimeInterface;
 use PDO;
 use PDOException;
 use Psr\Log\LoggerInterface;
@@ -72,6 +75,13 @@ abstract class BaseConnection implements ConnectionInterface
     protected array $aliasedTables = [];
 
     /**
+     * Tous les callbacks qui doivent être invoqués avant l'exécution d'une requête.
+     *
+     * @var (Closure(string, array, static): mixed)[]
+     */
+    protected array $beforeExecutingCallbacks = [];
+
+    /**
      * Gestionnaire de métadonnées
      */
     protected ?MetadataCollector $metadata = null;
@@ -91,16 +101,19 @@ abstract class BaseConnection implements ConnectionInterface
      * Drapeau determinant si les transactions sont activées
      */
     protected bool $transEnabled = true;
+
     /**
      * Niveau de profondeur des transactions
      */
     protected int $transDepth = 0;
+    
     /**
      * Drapeau du statut des transaction
      *
      * Utilise avec les transactions pour determiner si un rollback est en cours.
      */
     protected bool $transStatus = true;
+    
     /**
      * Points de sauvegarde des transactions (pour les transaction imbriquees)
      */
@@ -238,36 +251,154 @@ abstract class BaseConnection implements ConnectionInterface
     {
         $this->pdo = null;
     }
+    
+    /**
+     * Obtient le nom de la connexion à la base de données.
+     */
+    public function getName(): string
+    {
+        return $this->getConfig('name') ?? 'default';
+    }
 
     /**
-     * {@inheritDoc}
+     * Obtient le nom du driver PDO.
      */
-    public function query(string $sql, array $bindings = []): ResultInterface
+    public function getDriverName(): string
     {
+        return $this->getConfig('driver');
+    }
+
+    /**
+     * Obtient un nom lisible pour le driver de connexion donné.
+     */
+    public function getDriverTitle(): string
+    {
+        return $this->getDriverName();
+    }
+
+    /**
+     * Obtient une option à partir des options de configuration.
+     */
+    public function getConfig(?string $option = null): mixed
+    {
+        return Arr::get($this->config, $option);
+    }
+
+    /**
+     * Obtient les informations de connexion de base sous forme de tableau pour le débogage.
+     */
+    protected function getConnectionDetails(): array
+    {
+        return [
+            'driver'      => $this->getDriverName(),
+            'name'        => $this->getName(),
+            'host'        => $this->config['hostname'] ?? null,
+            'port'        => $this->config['port'] ?? null,
+            'database'    => $this->config['database'] ?? null,
+            'unix_socket' => $this->config['unix_socket'] ?? null,
+        ];
+    }
+
+    /**
+     * Enregistre un hook à exécuter juste avant l'exécution d'une requête.
+     *
+     * @param (Closure(string, array, static): mixed) $callback
+     */
+    public function beforeExecuting(Closure $callback): static
+    {
+        $this->beforeExecutingCallbacks[] = $callback;
+
+        return $this;
+    }
+
+    /**
+     * Prépare les bindings de requête pour l'exécution.
+     */
+    public function prepareBindings(array $bindings): array
+    {
+        foreach ($bindings as $key => $value) {
+            if ($value instanceof DateTimeInterface) {
+                $bindings[$key] = $value->format('Y-m-d H:i:s');
+            } elseif (is_bool($value)) {
+                $bindings[$key] = (int) $value;
+            }
+        }
+
+        return $bindings;
+    }
+    
+    /**
+     * Exécute une instruction SQL et journalise son contexte d'exécution.
+     * 
+     * @param Closure(string, array): mixed $callback
+     */
+    protected function run(string $query, array $bindings, Closure $callback)
+    {
+        foreach ($this->beforeExecutingCallbacks as $beforeExecutingCallback) {
+            $beforeExecutingCallback($query, $bindings, $this);
+        }
+
         $this->initialize();
-        
+
         $start = microtime(true);
-        
+
         try {
-            $statement = $this->pdo->prepare($sql);
-            $statement->execute($bindings);
+            $result = $callback($query, $bindings);
+            $this->logQuery($query, $bindings, microtime(true) - $start);
             
-            $this->logQuery($sql, $bindings, microtime(true) - $start);
-            
-            return $this->result = new Result($this, $statement);            
+            return $result;
         } catch (PDOException $e) {
-            $this->logQuery($sql, $bindings, microtime(true) - $start, $e);
+            $this->logQuery($query, $bindings, microtime(true) - $start, $e);
             
             if ($this->transDepth > 0) {
                 $this->transStatus = false;
             }
             
-            throw new DatabaseException(
-                "Erreur d'exécution de la requête : " . $e->getMessage(),
-                0,
-                $e
+            throw new QueryException(
+                $this->getName(),
+                $query,
+                $this->prepareBindings($bindings),
+                $e,
+                $this->getConnectionDetails()
             );
         }
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    public function query(string $sql, array $bindings = []): ResultInterface
+    {
+        return $this->run($sql, $bindings, function($query, $bindings) use ($sql) {
+            $statement = $this->pdo->prepare($query);
+            $success = $statement->execute($this->prepareBindings($bindings));
+            
+            return $this->result = new Result($this, $statement, $success);
+        });
+    }
+
+    /**
+     * Exécute une instruction SQL et retourne le résultat booléen.
+     */
+    public function statement(string $query, array $bindings = []): bool
+    {
+        return $this->run($query, $bindings, function ($query, $bindings) {
+            $statement = $this->pdo->prepare($query);
+            return $statement->execute($this->prepareBindings($bindings));
+        });
+    }
+
+    /**
+     * Exécute une instruction SQL et obtient le nombre de lignes affectées.
+     */
+    public function affectingStatement(string $query, array $bindings = []): int
+    {
+        return $this->run($query, $bindings, function ($query, $bindings) {
+            $statement = $this->pdo->prepare($query);
+            $statement->execute($this->prepareBindings($bindings));
+
+            return $statement->rowCount();
+        });
     }
 
     /**
@@ -286,17 +417,19 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * {@inheritDoc}
      */
-    public function simpleQuery(string $sql)
+    public function simpleQuery(string $query)
     {
         $this->initialize();
         
         try {
-            return $this->pdo->query($sql);
+            return $this->pdo->query($query);
         } catch (PDOException $e) {
-            throw new DatabaseException(
-                "Erreur d'exécution de la requête simple : " . $e->getMessage(),
-                0,
-                $e
+            throw new QueryException(
+                $this->getName(),
+                $query,
+                [],
+                $e,
+                $this->getConnectionDetails()
             );
         }
     }
@@ -418,6 +551,11 @@ abstract class BaseConnection implements ConnectionInterface
     public function transStatus(): bool
     {
         return $this->transStatus;
+    }
+
+    public function transactionLevel(): int
+    {
+        return $this->transDepth;
     }
 
     /**
