@@ -553,15 +553,11 @@ class BaseBuilder implements BuilderInterface
 
         $callback = function() use ($ignore, $chunks, $table, $columnList, $placeholders, &$totalAffected, &$allSql) {
             foreach ($chunks as $chunk) {
-                $values   = [];
+                $values = array_fill(0, count($chunk), $placeholders);
                 $bindings = [];
                 
                 foreach ($chunk as $row) {
-                    $row      = (array) $row;
-                    $values[] = $placeholders;
-                    foreach ($row as $value) {
-                        $bindings[] = $value;
-                    }
+                    array_push($bindings, ...array_values((array) $row));
                 }
                 
                 $sql = $this->compiler->compileInsertion($table, $columnList, implode(', ', $values), $ignore);

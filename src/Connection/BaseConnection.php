@@ -125,6 +125,11 @@ abstract class BaseConnection implements ConnectionInterface
     protected string $escapeChar = '"';
 
     /**
+     * Cache des colones et tables échapées
+     */
+    protected array $escapeCache = [];
+
+    /**
      * Requête SQL pour désactiver les contraintes
      */
     protected string $disableForeignKeyChecks = '';
@@ -723,6 +728,15 @@ abstract class BaseConnection implements ConnectionInterface
             return array_map([$this, 'escapeIdentifiers'], $item);
         }
 
+        if (!isset($this->escapeCache[$item])) {
+            $this->escapeCache[$item] = $this->doEscapeIdentifiers($item);
+        }
+            
+        return $this->escapeCache[$item];
+    }
+
+    protected function doEscapeIdentifiers(string $item): string
+    {
         if ($this->isReserved($item) || Utils::isSqlFunction($item)) {
             return $item;
         }
