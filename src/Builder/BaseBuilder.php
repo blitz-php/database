@@ -783,7 +783,10 @@ class BaseBuilder implements BuilderInterface
         $callback();
 
         if ($this->testMode) {
-            return $this->sql();
+            $sql = $this->toRawSql();
+            $this->reset();
+
+            return $sql;
         }
 
         if ($this->pending) {
