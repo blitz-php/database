@@ -12,6 +12,7 @@
 namespace BlitzPHP\Database\Builder\Compilers;
 
 use BlitzPHP\Database\Builder\BaseBuilder;
+use BlitzPHP\Database\Builder\JoinClause;
 
 class Postgre extends QueryCompiler
 {
@@ -61,11 +62,15 @@ class Postgre extends QueryCompiler
      */
     public function compileUpdate(BaseBuilder $builder): string
     {
-        $sql = parent::compileUpdate($builder);
+        if ($builder->joins === []) {
+            $sql = $this->compileUpdateStandard($builder);
+            
+            return "{$sql} RETURNING *";
+        }
 
-        return "{$sql} RETURNING *";
+        return $this->compileUpdateWithFrom($builder);
     }
-
+    
     /**
      * {@inheritDoc}
      */
@@ -189,5 +194,55 @@ class Postgre extends QueryCompiler
         $placeholders = implode(', ', array_fill(0, count($values), '?'));
         
         return "{$column} {$operator} {$type} ({$placeholders})";
+    }
+
+    /**
+     * Compilation PostgreSQL avec FROM
+     */
+    protected function compileUpdateWithFrom(BaseBuilder $builder): string
+    {
+        $table = $this->db->makeTableName($builder->getTable());
+        
+        $sets = [];
+        foreach ($builder->values as $column => $value) {
+            $column = $this->db->escapeIdentifiers($column);
+            $sets[] = "{$column} = " . $this->wrapValue($value);
+        }
+
+        $sql = ["UPDATE {$table}"];
+        $sql[] = "SET " . implode(', ', $sets);
+
+        // Construction de la clause FROM
+        $fromTables = [];
+        $joinConditions = [];
+
+        foreach ($builder->joins as $join) {
+            if ($join instanceof JoinClause) {
+                $fromTables[] = $join->getTable();
+                
+                // Convertir les conditions ON en conditions WHERE
+                foreach ($join->getConditions() as $condition) {
+                    if ($condition['type'] === 'basic') {
+                        $joinConditions[] = $condition['first'] . ' ' . 
+                                           $condition['operator'] . ' ' . 
+                                           $condition['second'];
+                    }
+                }
+            }
+        }
+
+        if ($fromTables !== []) {
+            $sql[] = "FROM " . implode(', ', $fromTables);
+        }
+
+        // Fusionner les conditions WHERE originales avec les conditions de jointure
+        $allConditions = array_merge($joinConditions, $builder->wheres);
+        
+        if ($allConditions !== []) {
+            $sql[] = 'WHERE';
+            $sql[] = $this->compileWheres($allConditions);
+        }
+
+        return implode(' ', array_filter($sql));
     }
 }
