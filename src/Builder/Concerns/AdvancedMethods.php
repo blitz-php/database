@@ -12,6 +12,7 @@
 namespace BlitzPHP\Database\Builder\Concerns;
 
 use BlitzPHP\Contracts\Database\BuilderInterface;
+use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Utilities\DateTime\Date;
 use Closure;
 use DateTimeInterface;
@@ -407,15 +408,13 @@ trait AdvancedMethods
      */
     public function whereJsonContains(string $column, $value, string $boolean = 'and', bool $not = false): static
     {
-        $operator = $not ? 'JSON_NOT_CONTAINS' : 'JSON_CONTAINS';
-        
         $this->wheres[] = [
             'type' => 'json',
             'column' => $column,
             'value' => $value,
             'boolean' => $boolean,
             'not' => $not,
-            'operator' => $operator
+            'operator' => 'JSON_CONTAINS',
         ];
 
         $this->bindings->add($value);

@@ -75,7 +75,7 @@ trait DataMethods
             $builder = $builder->selectRaw('COUNT(' . $column . ') AS count_value');
         }
 
-        return $this->testMode ? $builder->sql() : (int) ($builder->value('count_value') ?? 0);
+        return $this->testMode ? $builder->toSql() : (int) ($builder->value('count_value') ?? 0);
     }
 
     /**

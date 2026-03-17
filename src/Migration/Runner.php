@@ -72,10 +72,8 @@ class Runner
      *
      * @param array<string, list<string>> $paths Chemins de recherche des migrations
      */
-    public function __construct(protected DatabaseManager $dbManager, protected ?string $group, protected array $paths = [])
+    public function __construct(protected DatabaseManager $dbManager, protected ?string $group, protected array $paths = [], array $config = [])
     {
-        $config = config('migrations');
-
         $this->enabled = $config['enabled'] ?? false;
         $this->db      = $this->dbManager->connect($group);
         $this->history = new History($dbManager, $config['table'] ?? 'migrations');

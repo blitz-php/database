@@ -59,7 +59,8 @@ abstract class BaseConnection implements ConnectionInterface
      * @var array{
      *  dsn?: string,
      *  hostname: string, port: int, username?: string, password?: string, 
-     *  database?: string, charset?: string, collation?: string, strict_on?: boolean
+     *  database?: string, charset?: string, collation?: string, strict_on?: boolean,
+     *  debug?: bool
      * }
      */
     protected array $config = [];
@@ -466,7 +467,8 @@ abstract class BaseConnection implements ConnectionInterface
         
         if ($this->transDepth === 0) {
             $this->transStatus = !$testMode;
-
+            $this->transDepth = 1;
+            
             return $this->pdo->beginTransaction();
         }
         
@@ -1032,7 +1034,7 @@ abstract class BaseConnection implements ConnectionInterface
      */
     public function disableForeignKeyChecks()
     {
-        return $this->query($this->disableForeignKeyChecks);
+        return $this->statement($this->disableForeignKeyChecks);
     }
 
     /**
@@ -1040,6 +1042,6 @@ abstract class BaseConnection implements ConnectionInterface
      */
     public function enableForeignKeyChecks()
     {
-        return $this->query($this->enableForeignKeyChecks);
+        return $this->statement($this->enableForeignKeyChecks);
     }
 }

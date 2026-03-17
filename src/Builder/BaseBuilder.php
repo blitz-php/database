@@ -954,10 +954,12 @@ class BaseBuilder implements BuilderInterface
      * Incremente un champ numerique par la valeur specifiee.
      * 
      * @param array<string, mixed> $extra
+     * 
+     * @return int<0, max>|static|string
      *
      * @throws DatabaseException
      */
-    public function increment(string $column, float|int $value = 1, array $extra = []): int
+    public function increment(string $column, float|int $value = 1, array $extra = [])
     {
         return $this->incrementEach([$column => $value], $extra);
     }
@@ -968,7 +970,7 @@ class BaseBuilder implements BuilderInterface
      * @param array<string, float|int|numeric-string> $columns
      * @param array<string, mixed> $extra
      * 
-     * @return int<0, max>
+     * @return int<0, max>|static|string
      *
      * @throws InvalidArgumentException
      */
@@ -991,10 +993,12 @@ class BaseBuilder implements BuilderInterface
      * Decremente un champ numerique par la valeur specifiee.
      * 
      * @param array<string, mixed> $extra
+     * 
+     * @return int<0, max>|static|string
      *
      * @throws DatabaseException
      */
-    public function decrement(string $column, float|int $value = 1, array $extra = []): int
+    public function decrement(string $column, float|int $value = 1, array $extra = [])
     {
         return $this->decrementEach([$column => $value], $extra);
     }
@@ -1005,7 +1009,7 @@ class BaseBuilder implements BuilderInterface
      * @param array<string, float|int|numeric-string> $columns
      * @param array<string, mixed> $extra
      * 
-     * @return int<0, max>
+     * @return int<0, max>|static|string
      *
      * @throws InvalidArgumentException
      */

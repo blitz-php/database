@@ -58,7 +58,7 @@ class Result implements ResultInterface
     }
 
     /**
-     * Renvoie "true" si la requête correspondante s'est bien passée et "false" au cas contraire
+     * {@inheritDoc}
      */
     public function successful(): bool 
     {
