@@ -16,7 +16,7 @@ use BlitzPHP\Database\Query\Expression;
 use BlitzPHP\Contracts\Database\BuilderInterface;
 use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Utils;
-use BlitzPHP\Wolke\Collection;
+use BlitzPHP\Utilities\Iterable\Collection;
 use Closure;
 use DateTimeInterface;
 use InvalidArgumentException;

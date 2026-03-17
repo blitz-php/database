@@ -216,7 +216,7 @@ class Utils
             return (float) $value;
         }
         if (preg_match('/^(true|false)$/i', $value)) {
-            return (bool) $value;
+            return $value === 'true';
         }
         if (preg_match('/^["\'](.*)["\']$/', $value, $m)) {
             return $m[1];

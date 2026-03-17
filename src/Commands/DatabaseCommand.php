@@ -70,6 +70,7 @@ abstract class DatabaseCommand extends Command
             $this->container->get(DatabaseManager::class), 
             $group, 
             $files,
+            config('migrations'),
         );
     }
 }

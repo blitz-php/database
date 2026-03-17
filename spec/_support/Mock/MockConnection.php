@@ -2,7 +2,9 @@
 namespace BlitzPHP\Database\Spec\Mock;
 
 use BlitzPHP\Contracts\Database\ResultInterface;
+use BlitzPHP\Contracts\Event\EventManagerInterface;
 use BlitzPHP\Database\Connection\SQLite;
+use Psr\Log\LoggerInterface;
 
 class MockConnection extends SQLite
 {
@@ -17,6 +19,11 @@ class MockConnection extends SQLite
      * {@inheritDoc}
      */
     public $lastQuery;
+
+    public function __construct(array $config, ?LoggerInterface $logger = null, ?EventManagerInterface $event = null)
+    {
+        return parent::__construct($config + ['driver' => 'mysql'], $logger, $event);
+    }
 
     public function shouldReturn(string $method, $return): self
     {
@@ -55,7 +62,7 @@ class MockConnection extends SQLite
     {
         $this->initialize();
 
-        return 'mysql';
+        return $this->config['driver'] ?? 'mysql';
     }
 
     /**
@@ -111,13 +118,5 @@ class MockConnection extends SQLite
     public function insertID(?string $table = null)
     {
         return 1;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected function _escapeString(string $str): string
-    {
-        return "'" . parent::_escapeString($str) . "'";
     }
 }

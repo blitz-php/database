@@ -45,7 +45,7 @@ describe("Database / Query Builder : Suppression", function() {
         
     it(": Suppression avec limite", function() {
         $builder = $this->builder->testMode()->from('jobs')->where('id', 1)->limit(10);
-        expect($builder->bindings->getValues())->toBe([1]);
+        expect($builder->getBindings())->toBe([1]);
         expect($builder->delete())->toBe('DELETE FROM jobs WHERE id = 1 LIMIT 10'); 
     });
 });
