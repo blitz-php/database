@@ -12,18 +12,28 @@
 namespace BlitzPHP\Database\Builder\Concerns;
 
 use BadMethodCallException;
+use BlitzPHP\Contracts\Database\ConnectionInterface;
+use BlitzPHP\Traits\Macroable;
 
 /**
  * Gère les appels aux méthodes alias via un système de proxy
+ * 
+ * @method ConnectionInterface getConnection()
+ * @method self latest(\Closure|\BlitzPHP\Database\Builder\BaseBuilder|\BlitzPHP\Database\Query\Expression|string $column = 'created_at') Ajoute une clause "order by" pour un timestamp à la requête.
+ * @method self oldest(\Closure|\BlitzPHP\Database\Builder\BaseBuilder|\BlitzPHP\Database\Query\Expression|string $column = 'created_at') Ajoute une clause "order by" pour un timestamp à la requête.
  * 
  * @mixin \BlitzPHP\Database\Builder\BaseBuilder
  */
 trait ProxyMethods
 {
+    use Macroable { __call as macroCall; }
+
     /**
      * Mapping des méthodes alias vers leurs méthodes cibles
      */
-    protected array $methodAliases = [        
+    protected array $methodAliases = [   
+        'getConnection'     => 'db',
+
         // Récupération de résultats
         'one'               => 'first',
         
@@ -35,6 +45,9 @@ trait ProxyMethods
         'order'             => 'orderBy',
         'group'             => 'groupBy',
         'addSelect'         => 'select',
+        'selectSub'         => 'selectSubquery',
+        'skip'              => 'offset',
+        'take'              => 'limit',
         
         // Conditions WHERE
         'notWhere'          => 'whereNot',
@@ -75,9 +88,17 @@ trait ProxyMethods
 
     /**
      * Gère les appels aux méthodes alias
+     * 
+     * @return mixed
+     * 
+     * @throws BadMethodCallException
      */
-    public function __call(string $method, array $parameters = []): mixed
+    public function __call(string $method, array $parameters)
     {
+        if (static::hasMacro($method)) {
+            return $this->macroCall($method, $parameters);
+        }
+
         if (isset($this->methodAliases[$method])) {
             $targetMethod = $this->methodAliases[$method];
             
@@ -86,7 +107,7 @@ trait ProxyMethods
             return $this->{$targetMethod}(...$parameters);
         }
 
-        throw new BadMethodCallException(sprintf('Call to undefined method %s::%s()', static::class, $method));
+        static::throwBadMethodCallException($method);
     }
 
     /**

@@ -38,7 +38,7 @@ class Postgre extends QueryCompiler
     /**
      * {@inheritDoc}
      */
-    protected function compileInsertion(string $table, string $columns, string $values, bool $ignore, ?string $returning = '*'): string
+    public function compileInsertion(string $table, string $columns, string $values, bool $ignore, ?string $returning = '*'): string
     {
         $ignored  = $ignore ? ' ON CONFLICT DO NOTHING' : '';
         $returned = $returning ? " RETURNING {$returning}" : '';

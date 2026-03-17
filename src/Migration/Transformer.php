@@ -11,318 +11,341 @@
 
 namespace BlitzPHP\Database\Migration;
 
-use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Creator\BaseCreator;
-use BlitzPHP\Database\Database;
 use BlitzPHP\Database\Exceptions\MigrationException;
 use BlitzPHP\Database\Migration\Definitions\Column;
-use BlitzPHP\Database\RawSql;
-use BlitzPHP\Utilities\Helpers;
-use BlitzPHP\Utilities\Support\Fluent;
+use BlitzPHP\Database\Migration\Definitions\ForeignKey;
+use BlitzPHP\Database\Migration\Definitions\Index;
+use BlitzPHP\Database\Query\Expression;
 
 /**
  * Transforme les objets de structure en elements compatible avec le Creator
  */
 class Transformer
 {
-    private BaseCreator $creator;
-
-    public function __construct(ConnectionInterface $db)
+    public function __construct(private BaseCreator $creator)
     {
-        $this->creator = Database::creator($db);
     }
 
     /**
      * Demarrage de la manipulation de la base de donnees
      */
-    public function process(Structure $structure)
+    public function process(Builder $builder)
     {
-        $commands = $this->getCommands($structure);
+        $table  = $builder->getTable();
+        $action = $builder->getAction();
 
-        $commandsName = array_map(static fn ($command) => $command->name, $commands);
+        $this->addFluentIndexes($builder);
 
-        if (in_array('create', $commandsName, true)) {
-            $this->createTable($structure, $commands);
-        } elseif (in_array('modify', $commandsName, true)) {
-            $this->modifyTable($structure, $commands);
-        } elseif (in_array('rename', $commandsName, true)) {
-            $command = array_filter($commands, static fn ($command) => $command->name === 'rename');
-
-            $this->renameTable($structure->getTable(), $command[0]->to);
-        } elseif (in_array('drop', $commandsName, true)) {
-            $this->dropTable($structure->getTable());
-        } elseif (in_array('dropIfExists', $commandsName, true)) {
-            $this->dropTable($structure->getTable(), true);
-        }
+        match ($action) {
+            'create'            => $this->createTable($builder),
+            'createIfNotExists' => $this->createTable($builder, true),
+            'alter'             => $this->alterTable($builder),
+            'drop'              => $this->creator->dropTable($table, false),
+            'dropIfExists'      => $this->creator->dropTable($table, true),
+            'rename'            => $this->creator->renameTable($table, $builder->getRenames()['to']),
+            default             => null,
+        };
     }
 
     /**
-     * Creation d'une nouvelle table
+     * Crée une nouvelle table
      */
-    public function createTable(Structure $structure, array $commands = []): void
+    protected function createTable(Builder $builder, bool $ifNotExists = false): void
     {
-        $ifNotExists = array_filter($commands, fn ($command) => $command->name === 'create' && $this->is($command, 'ifNotExists'));
+        $primaryKeyColumns = [];
+        $autoIncrementColumns = [];
+        $explicitPrimaryColumns = [];
 
-        foreach ($this->getColumns($structure, true) as $column) {
-            $this->creator->addField([$column->name => $this->makeColumn($column)]);
-            $this->processKeys($column);
+        foreach ($builder->getColumns() as $column) {
+            $this->creator->addField([
+                $column->name => $this->makeColumn($column)
+            ]);
+         
+            if ($column->autoIncrement ?? false) {
+                $autoIncrementColumns[] = $column->name;
+            }
+
+            if ($column->primary ?? false) {
+                $explicitPrimaryColumns[] = $column->name;
+            }
         }
 
-        foreach ($commands as $command) {
-            $this->processCommand($command);
+        // Détermination de la clé primaire
+        if ($explicitPrimaryColumns !== []) {
+            // L'utilisateur a explicitement demandé une clé primaire
+            $primaryKeyColumns = $explicitPrimaryColumns;
+        } elseif (count($autoIncrementColumns) === 1) {
+            // Une seule colonne auto_increment => c'est la clé primaire
+            $primaryKeyColumns = $autoIncrementColumns;
+        } elseif (count($autoIncrementColumns) > 1) {
+            // Plusieurs auto_increment (cas rare) - on prévient
+            trigger_error(
+                "Plusieurs colonnes auto_increment détectées. Utilisez primary() pour spécifier la clé primaire.",
+                E_USER_WARNING
+            );
+        }
+
+        if ($primaryKeyColumns !== []) {
+            $this->creator->addPrimaryKey(
+                $primaryKeyColumns, 
+                $builder->createIndexName('primary', $primaryKeyColumns)
+            );
+        }
+        
+        foreach ($builder->getIndexes() as $index) {
+            $this->addIndex($index);
+        }
+
+        foreach ($builder->getForeignKeys() as $foreignKey) {
+            $this->addForeignKey($foreignKey);
         }
 
         $attributes = [];
 
-        if ($structure->engine !== '') {
-            $attributes['ENGINE'] = $structure->engine;
+        if ('' !== $engine = $builder->getEngine()) {
+            $attributes['ENGINE'] = $engine;
         }
-        if ($structure->charset !== '') {
-            $attributes['DEFAULT CHARACTER SET'] = $structure->charset;
+        if ('' !== $charset = $builder->getCharset()) {
+            $attributes['DEFAULT CHARACTER SET'] = $charset;
         }
-        if ($structure->collation !== '') {
-            $attributes['COLLATE'] = $structure->collation;
+        if ('' !== $collation = $builder->getCollation()) {
+            $attributes['COLLATE'] = $collation;
         }
 
-        $this->creator->createTable($structure->getTable(), $ifNotExists !== [], $attributes);
+        $this->creator->createTable($builder->getTable(), $ifNotExists, $attributes);
     }
 
     /**
-     * Modification d'une table
+     * Modifie une table existante
      */
-    public function modifyTable(Structure $structure, array $commands = []): void
+    protected function alterTable(Builder $builder): void
     {
-        $table = $structure->getTable();
+        $table = $builder->getTable();
 
-        foreach ($this->getColumns($structure, true) as $column) {
+        // Colonnes ajoutées
+        foreach ($builder->getAddedColumns() as $column) {
             $this->creator->addColumn($table, [$column->name => $this->makeColumn($column)]);
-            $this->processKeys($column);
             $this->creator->processIndexes($table);
         }
 
-        foreach ($this->getColumns($structure, false) as $column) {
+        // Colonnes modifiées
+        foreach ($builder->getChangedColumns() as $column) {
             $this->creator->modifyColumn($table, [$column->name => $this->makeColumn($column)]);
-            $this->processKeys($column);
             $this->creator->processIndexes($table);
         }
 
-        foreach ($commands as $command) {
-            if ($command->name === 'dropColumn') {
-                $this->creator->dropColumn($table, $command->columns);
-            } elseif ($command->name === 'renameColumn') {
-                $this->creator->renameColumn($table, $command->from, $command->to);
-            } elseif ($command->name === 'dropIndex') {
-                $this->creator->dropKey($table, $command->columns);
-            } elseif ($command->name === 'dropUnique') {
-                $this->creator->dropKey($table, $command->index);
-            } elseif ($command->name === 'dropForeign') {
-                $this->creator->dropForeignKey($table, $command->index);
-            } elseif ($command->name === 'dropPrimary') {
-                $this->creator->dropPrimaryKey($table, $command->index);
+        // Colonnes supprimées
+        foreach ($builder->getDrops() as $type => $items) {
+            $this->processDrops($table, $type, $items);
+        }
+
+        // Nouveaux index
+        foreach ($builder->getIndexes() as $index) {
+            $this->addIndex($index);
+            $this->creator->processIndexes($table);
+        }
+
+        // Nouvelles clés étrangères
+        foreach ($builder->getForeignKeys() as $foreignKey) {
+            $this->addForeignKey($foreignKey);
+            $this->creator->processIndexes($table);
+        }
+    }
+
+    
+
+    /**
+     * Convertit les index fluides des colonnes en commandes explicites
+     */
+    protected function addFluentIndexes(Builder $builder): void
+    {
+        $existingIndexes = [];
+        foreach ($builder->getIndexes() as $index) {
+            $key = $index->type . ':' . implode(',', $index->columns);
+            $existingIndexes[$key] = true;
+        }
+        
+        foreach ($builder->getColumns() as $column) {
+            // Ignorer les colonnes qui n'ont pas d'index
+            if (!$column->hasFluentIndexes()) {
+                continue;
             }
 
-            if ($this->processCommand($command)) {
-                $this->creator->processIndexes($table);
+            foreach ($column->getFluentIndexes() as $indexType => $value) {
+                // Gestion spéciale pour les index vectoriels (si supportés)
+                $indexMethod = $indexType === 'index' && $column->type === 'vector'
+                    ? 'vectorIndex'
+                    : $indexType;
+
+                // Créer une clé unique pour cet index potentiel
+                $indexKey = $indexType . ':' . $column->name;
+
+                // Vérifier si un index similaire existe déjà
+                if (isset($existingIndexes[$indexKey])) {
+                    // Ignorer car déjà ajouté explicitement
+                    continue;
+                }
+
+                // Cas 1: $value === true (index avec nom auto-généré)
+                if ($value === true) {
+                    // Éviter la duplication de clé primaire pour auto-increment (MySQL)
+                    if ($indexType === 'primary' && $column->autoIncrement && $this->creator->getConnection()->getDriver() === 'mysql') {
+                        continue;
+                    }
+
+                    $builder->{$indexMethod}($column->name);
+                    $existingIndexes[$indexKey] = true;
+                }
+                
+                // Cas 2: $value === false (suppression d'index)
+                elseif ($value === false && $column->change) {
+                    $dropMethod = 'drop' . ucfirst($indexMethod);
+                    $builder->{$dropMethod}([$column->name]);
+                }
+                
+                // Cas 3: $value est une chaîne (nom d'index explicite)
+                elseif (is_string($value)) {
+                    $builder->{$indexMethod}($column->name, $value);
+                    $existingIndexes[$indexKey] = true;
+                }
+            }
+
+            // Nettoyer les attributs d'index pour éviter les doublons
+            foreach (array_keys($column->getFluentIndexes()) as $indexType) {
+                unset($column[$indexType]);
             }
         }
     }
 
     /**
-     * Suppression d'une table
+     * Ajoute un index
      */
-    public function dropTable(string $table, bool $ifExists = true): void
+    protected function addIndex(Index $index): void
     {
-        $this->creator->dropTable($table, $ifExists);
+        $type    = $index->type;
+        $columns = $index->columns;
+        $name    = $index->name ?? '';
+
+        match ($type) {
+            'primary' => $this->creator->addPrimaryKey($columns, $name),
+            'unique'  => $this->creator->addUniqueKey($columns, $name),
+            'index'   => $this->creator->addKey($columns, false, false, $name),
+            default   => null,
+        };
     }
 
     /**
-     * Renommage d'une table
+     * Ajoute une clé étrangère
      */
-    public function renameTable(string $table, string $to): void
+    protected function addForeignKey(ForeignKey $fk): void
     {
-        $this->creator->renameTable($table, $to);
+        $onDelete = match (true) {
+            ($fk->cascadeOnDelete ?? null)  === true => 'cascade',
+            ($fk->restrictOnDelete ?? null) === true => 'restrict',
+            ($fk->nullOnDelete ?? null)     === true => 'set null',
+            ($fk->noActionOnDelete ?? null) === true => 'no action',
+                                            default  => $fk->onDelete ?? ''
+        };      
+        $onUpdate = match (true) {
+            ($fk->cascadeOnUpdate ?? null)  === true => 'cascade',
+            ($fk->restrictOnUpdate ?? null) === true => 'restrict',
+            ($fk->nullOnUpdate ?? null)     === true => 'set null',
+            ($fk->noActionOnUpdate ?? null) === true => 'no action',
+                                            default  => $fk->onUpdate ?? ''
+        };
+        
+        $this->creator->addForeignKey(
+            $fk->columns,
+            $fk->on,
+            $fk->references ?? $fk->columns,
+            $onUpdate,
+            $onDelete,
+            $fk->name ?? ''
+        );
     }
 
     /**
-     * Traite les clés d'une colonne donnée.
-     *
-     * Cette fonction vérifie si la colonne est une clé primaire, une clé unique ou un index,
-     * et ajoute la clé appropriée au créateur.
+     * Traite les suppressions
      */
-    private function processKeys(object $column): void
+    protected function processDrops(string $table, string $type, mixed $items): void
     {
-        if ($this->is($column, 'primary')) {
-            $this->creator->addPrimaryKey($column->name);
-        } elseif ($this->is($column, 'unique')) {
-            $this->creator->addUniqueKey($column->name);
-        } elseif ($this->is($column, 'index')) {
-            $this->creator->addKey($column->name);
-        }
-    }
+        $items = (array) $items;
 
-    /**
-     * Traiter une commande de modification de table.
-     *
-     * Cette fonction traite différents types de commandes de modification d'une table de base de données, notamment l'ajout de clés primaires, de clés uniques, d'index et de clés étrangères,
-     * y compris l'ajout de clés primaires, de clés uniques, d'index et de clés étrangères.
-     *
-     * @param object $command Objet de commande contenant les détails de la modification à effectuer.
-     *                        Propriétés attendues :
-     *                        - name: string (Le type de commande : 'primary', 'unique', 'index', ou 'foreign')
-     *                        - columns: string|array (colonne(s) affectée(s) par la commande)
-     *                        - index: string|null (le nom de l'index, le cas échéant)
-     *                        Pour les commandes de clés étrangères :
-     *                        - on: string (La table référencée)
-     *                        - references: string (La colonne référencée)
-     *                        - cascadeOnDelete, restrictOnDelete, nullOnDelete, noActionOnDelete: bool
-     *                        - cascadeOnUpdate, restrictOnUpdate, nullOnUpdate, noActionOnUpdate: bool
-     *                        - onDelete, onUpdate: string (actions `ON DELETE` et `ON UPDATE` personnalisées)
-     *
-     * @return bool Retourne true si une commande a été traitée, false sinon.
-     */
-    private function processCommand($command): bool
-    {
-        $process = false;
-
-        if ($command->name === 'primary') {
-            $this->creator->addPrimaryKey($command->columns, $command->index);
-            $process = true;
-        } elseif ($command->name === 'unique') {
-            $this->creator->addUniqueKey($command->columns, $command->index);
-            $process = true;
-        } elseif ($command->name === 'index') {
-            $this->creator->addKey($command->columns, false, false, $command->index);
-            $process = true;
-        } elseif ($command->name === 'foreign') {
-            $onDelete = match (true) {
-                ($command->cascadeOnDelete ?? null) === true  => 'cascade',
-                ($command->restrictOnDelete ?? null) === true => 'restrict',
-                ($command->nullOnDelete ?? null) === true     => 'set null',
-                ($command->noActionOnDelete ?? null) === true => 'no action',
-                default                                       => $command->onDelete ?? ''
+        foreach ($items as $item) {
+            match ($type) {
+                'columns' => $this->creator->dropColumn($table, $item),
+                'primary' => $this->creator->dropPrimaryKey($table, $item),
+                'unique', 'index' => $this->creator->dropKey($table, $item),
+                'foreign' => $this->creator->dropForeignKey($table, $item),
+                default   => null,
             };
-            $onUpdate = match (true) {
-                ($command->cascadeOnUpdate ?? null) === true  => 'cascade',
-                ($command->restrictOnUpdate ?? null) === true => 'restrict',
-                ($command->nullOnUpdate ?? null) === true     => 'set null',
-                ($command->noActionOnUpdate ?? null) === true => 'no action',
-                default                                       => $command->onUpdate ?? ''
-            };
-            $this->creator->addForeignKey(
-                $command->columns ?? '',
-                $command->on ?? '',
-                $command->references ?? '',
-                $onUpdate,
-                $onDelete,
-                $command->index ?? ''
-            );
-            $process = true;
         }
-
-        return $process;
-    }
-
-    /**
-     * Recupere les colonnes a prendre en compte.
-     */
-    private function getColumns(Structure $structure, ?bool $added = null): array
-    {
-        $columns = Helpers::collect($structure->getColumns($added))->map(static fn (Column $column) => $column->getAttributes())->all();
-
-        return array_map(static fn ($column) => (object) $column, $columns);
-    }
-
-    /**
-     * Recupere les commandes a executer.
-     */
-    private function getCommands(Structure $structure): array
-    {
-        $commands = Helpers::collect($structure->getCommands())->map(static fn (Fluent $command) => $command->getAttributes())->all();
-
-        return array_map(static fn ($command) => (object) $command, $commands);
     }
 
     /**
      * Fabrique un tableau contenant les definition d'un champs
      */
-    private function makeColumn(object $column): array
+    private function makeColumn(Column $column): array
     {
         if (empty($column->name) || empty($column->type)) {
             throw new MigrationException('Nom ou type du champ non defini');
         }
 
-        $definition = [];
+        $attributes = [];
+        $type       = $this->creator->typeOf($column->type);
 
-        $definition['type'] = $this->creator->typeOf($column->type);
-
-        if (is_array($definition['type'])) {
-            if (isset($definition['type'][1])) {
-                $definition['constraint'] = $definition['type'][1];
-            }
-            $definition['type'] = $definition['type'][0];
-        }
-        if (str_contains($definition['type'], '|')) {
-            $parts              = explode('|', $definition['type']);
-            $definition['type'] = $parts[(int) $this->is($column, 'primary')];
-        }
-        if (str_contains($definition['type'], '{precision}')) {
-            $definition['type'] = str_replace('{precision}', $column->precision, $definition['type']);
-        }
-
-        if (property_exists($column, 'nullable')) {
-            $definition['null'] = $column->nullable;
-        }
-        if ($this->is($column, 'unsigned')) {
-            $definition['unsigned'] = true;
-        }
-        if ($this->is($column, 'useCurrent')) {
-            $definition['default'] = new RawSql('CURRENT_TIMESTAMP');
-        } elseif (property_exists($column, 'default')) {
-            $definition['default'] = $column->type === 'boolean' ? (int) $column->default : $column->default;
-        }
-        if ($this->isInteger($column) && $this->is($column, 'autoIncrement')) {
-            $definition['auto_increment'] = true;
-        }
-        if (! empty($column->comment)) {
-            $definition['comment'] = addslashes($column->comment);
-        }
-        if (! empty($column->collation)) {
-            $definition['collate'] = '"' . htmlspecialchars($column->collation) . '"';
-        }
-        if (! empty($column->after)) {
-            $definition['after'] = $column->after;
-        } elseif ($this->is($column, 'first')) {
-            $definition['first'] = true;
+        if (is_array($type)) {
+            $attributes['type']       = $type[0];
+            $attributes['constraint'] = $type[1] ?? null;
+        } else if (str_contains($type, '|')) {
+            $parts              = explode('|', $type);
+            $attributes['type'] = $parts[$column->primary === true ? 1 : 0];
+        } elseif (str_contains($type, '{precision}')) {
+            $attributes['type'] = str_replace('{precision}', $column->precision, $type);
+        } else {
+            $attributes['type'] = $type;
         }
 
         if (isset($column->length)) {
-            $definition['constraint'] = $column->length;
+            $attributes['constraint'] = $column->length;
         } elseif (isset($column->allowed)) {
-            $definition['constraint'] = (array) $column->allowed;
+            $attributes['constraint'] = (array) $column->allowed;
         } elseif (isset($column->total) || isset($column->places)) {
-            $definition['constraint'] = ($column->total ?? 8) . ', ' . ($column->places ?? 2);
+            $attributes['constraint'] = ($column->total ?? 8) . ', ' . ($column->places ?? 2);
         } elseif (isset($column->precision)) {
-            $definition['constraint'] = $column->precision;
+            $attributes['constraint'] = $column->precision;
         }
 
-        return $definition;
-    }
+        if (isset($column->nullable)) {
+            $attributes['null'] = $column->nullable;
+        }
+        if ($column->unsigned === true) {
+            $attributes['unsigned'] = true;
+        }
 
-    /**
-     * Verifie si le champ a une certaine propriete particuliere
-     *
-     * Par exemple, on  peut tester si un champ doit etre null en mettant is('nullable')
-     */
-    private function is(object $column, string $property, mixed $match = true): bool
-    {
-        return property_exists($column, $property) && $column->{$property} === $match;
-    }
+        if ($column->useCurrent === true) {
+            $attributes['default'] = new Expression('CURRENT_TIMESTAMP');
+        }  elseif (isset($column->default)) {
+            $attributes['default'] = $column->type === 'boolean' ? (int) $column->default : $column->default;
+        }
 
-    /**
-     * Verifie si le champ est de type integer.
-     */
-    private function isInteger(object $column): bool
-    {
-        return in_array($column->type, ['integer', 'int', 'bigInteger', 'mediumInteger', 'smallInteger', 'tinyInteger'], true);
+        if ($column->autoIncrement === true) {
+            $attributes['auto_increment'] = true;
+        }
+        if (! empty($column->comment)) {
+            $attributes['comment'] = addslashes($column->comment);
+        }
+        if (! empty($column->collation)) {
+            $attributes['collate'] = '"' . htmlspecialchars($column->collation) . '"';
+        }
+
+        if (! empty($column->after)) {
+            $attributes['after'] = $column->after;
+        } elseif ($column->first === true) {
+            $attributes['first'] = true;
+        }
+
+        return $attributes;
     }
 }

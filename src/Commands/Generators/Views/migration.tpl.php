@@ -1,57 +1,70 @@
 <@php
 
+<?php if (!$anonymous): ?>
 namespace {namespace};
 
+<?php endif; ?>
 use BlitzPHP\Database\Migration\Migration;
-<?php if (! empty($table) && ! empty($action)): ?>
-use BlitzPHP\Database\Migration\Structure;
-<?php endif; ?>
+use BlitzPHP\Database\Migration\Builder;
 
+<?php if ($anonymous): ?>
+return new class extends Migration
+<?php else: ?>
 class {class} extends Migration
+<?php endif; ?>
 {
-<?php if ($group): ?>
-    protected ?string $group = '<?= $group ?>';
-<?php endif; ?>
-
-    public function up()
-    {
-<?php if (empty($table) || empty($action)): ?>
-        //
+	/**
+     * Exécute la migration.
+     */
+	public function up(): void
+	{
+<?php if ($action === 'create' && $session): ?>
+		$this->create('<?= $table ?>', function(Builder $table) {
+			$table->string('id', 128);
+			$table->ipAddress();
+			$table->timestamp('timestamp');
+			$table->binary('data');
+			$table->index('timestamp');
+<?php if ($matchIP): ?>			
+			$table->primary(['id', 'ip_address']);
 <?php else: ?>
-        $this-><?= $action ?>('<?= $table ?>', function(Structure $table) {
-<?php if ($action === 'create') : ?>
-    <?php if ($session): ?>
-            $table->string('id', 128);
-            $table->ipAddress();
-            $table->timestamp('timestamp');
-            $table->binary('data');
-    <?php if ($matchIP): ?>
-            $table->primary(['id', 'ip_address']);
-    <?php else: ?>
-            $table->primary('id');
-    <?php endif; ?>
-            $table->index('timestamp');
-    <?php else: ?>
-            $table->id();
-            $table->timestamps();
-    <?php endif; ?>
-<?php else: ?>
-            //
+			$table->primary('id');
 <?php endif; ?>
-        });
+		});
+<?php elseif ($action === 'create' && !empty($table)): ?>
+		$this->create('<?= $table ?>', function(Builder $table) {
+	    	$table->id();
+	    	$table->timestamps();
+		});
+<?php elseif ($action === 'drop' && !empty($table)): ?>
+		$this->dropIfExists('<?= $table ?>');
+<?php elseif ($action === 'alter' && !empty($table)): ?>
+		$this->alter('<?= $table ?>', function(Builder $table) {
+	    	// 
+		});
+<?php else: ?>
+		//
 <?php endif; ?>
     }
 
-    public function down()
+	/**
+     * Annulle la migration.
+     */
+	public function down(): void
     {
-<?php if (empty($table) || empty($action)): ?>
-        //
-<?php elseif ($action === 'create') : ?>
-        $this->dropIfExists('<?= $table ?>');
+<?php if ($action === 'create' && !empty($table)): ?>
+		$this->dropIfExists('<?= $table ?>');
+<?php elseif ($action === 'drop' && !empty($table)): ?>
+		$this->create('<?= $table ?>', function(Builder $table) {
+	    	$table->id();
+	    	$table->timestamps();
+		});
+<?php elseif ($action === 'alter' && !empty($table)): ?>
+		$this->alter('<?= $table ?>', function(Builder $table) {
+	    	// 
+		});
 <?php else: ?>
-        $this->modify('<?= $table ?>', function(Structure $table) {
-            //
-        });
+		//
 <?php endif; ?>
     }
-}
+}<?= $anonymous ? ';' : '' ?>

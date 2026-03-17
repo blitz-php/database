@@ -30,7 +30,14 @@ class JoinClause
     /**
      * Opérateurs supportés
      */
-    protected array $operators = ['=', '<', '>', '<=', '>=', '<>', '!=', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN'];
+    protected array $operators = [
+        '=', '<', '>', '<=', '>=', '<>', '!=', 
+        'LIKE', 'NOT LIKE', 'ILIKE', 'NOT ILIKE',
+        'IN', 'NOT IN', 'EXISTS', 'NOT EXISTS',
+        'BETWEEN', 'NOT BETWEEN',
+        'REGEXP', 'NOT REGEXP', // MySQL
+        '~', '!~', '~*', '!~*', // PostgreSQL
+    ];
 
     /**
      * @param string $type  Type de jointure

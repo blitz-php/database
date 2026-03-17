@@ -57,7 +57,7 @@ class MetadataCollector
      */
     public function listTables(bool $constrainByPrefix = false): array
     {
-        if ($this->cache['table'] !== []) {
+        if ($this->cache['tables'] !== []) {
             return $this->filterTables($this->cache['tables'], $constrainByPrefix);
         }
 

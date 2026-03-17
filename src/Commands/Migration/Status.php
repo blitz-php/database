@@ -11,11 +11,11 @@
 
 namespace BlitzPHP\Database\Commands\Migration;
 
+use Ahc\Cli\Output\Color;
 use BlitzPHP\Database\Commands\DatabaseCommand;
-use BlitzPHP\Database\Commands\Helper;
 
 /**
- * Execute toutes les nouvelles migrations.
+ * Affiche le statut des migrations.
  */
 class Status extends DatabaseCommand
 {
@@ -27,27 +27,13 @@ class Status extends DatabaseCommand
     /**
      * {@inheritDoc}
      */
-    protected string $description = 'Affiche une liste de toutes les migrations et indique si elles ont été exécutées ou non.';
+    protected string $description = 'Affiche le statut de toutes les migrations.';
 
     /**
      * {@inheritDoc}
      */
     protected array $options = [
-        '-g, --group' => 'Défini le groupe de la base de données',
-    ];
-
-    /**
-     * Namespaces à ignorer quand on regarde les migrations.
-     *
-     * @var list<string>
-     */
-    protected array $ignoredNamespaces = [
-        'BlitzPHP',
-        'Config',
-        'Kint',
-        'Laminas\ZendFrameworkBridge',
-        'Laminas\Escaper',
-        'Psr\Log',
+        '-g, --group' => 'Groupe de base de données à utiliser',
     ];
 
     /**
@@ -55,76 +41,71 @@ class Status extends DatabaseCommand
      */
     public function handle()
     {
+        $this->eol()->info('Récupération du statut des migrations...');
+
         $group = $this->option('group', 'default');
-
-        $runner = Helper::runner($group);
-
-        // Collection des statuts de migrations
-        $status = [];
-
-        foreach (Helper::getMigrationFiles(true) as $namespace => $files) {
-            if (! on_test()) {
-                // Rendre Tests\\Support détectable pour les tests
-                $this->ignoredNamespaces[] = 'Tests\Support'; // @codeCoverageIgnore
-            }
-
-            if (in_array($namespace, $this->ignoredNamespaces, true)) {
-                continue;
-            }
-
-            if (APP_NAMESPACE !== 'App' && $namespace === 'App') {
-                continue; // @codeCoverageIgnore
-            }
-
-            $migrations = $runner->findNamespaceMigrations($namespace, $files);
-
-            if (empty($migrations)) {
-                continue;
-            }
-
-            $history = $runner->getHistory($group);
-            ksort($migrations);
-
-            foreach ($migrations as $uid => $migration) {
-                $migrations[$uid]->name = mb_substr($migration->name, mb_strpos($migration->name, $uid . '_'));
-
-                $date  = '---';
-                $group = '---';
-                $batch = '---';
-
-                foreach ($history as $row) {
-                    // @codeCoverageIgnoreStart
-                    if ($runner->getObjectUid($row) !== $migration->uid) {
-                        continue;
-                    }
-
-                    $date  = date('Y-m-d H:i:s', $row->time);
-                    $group = $row->group;
-                    $batch = $row->batch;
-                    // @codeCoverageIgnoreEnd
-                }
-
-                $status[] = [
-                    'namespace' => $namespace,
-                    'version'   => $migration->version,
-                    'nom'       => $migration->name,
-                    'groupe'    => $group,
-                    'migré le'  => $date,
-                    'batch'     => $batch,
-                ];
-            }
+        $runner = $this->runner('ALL', $group);
+        
+        $history = $runner->getHistory($group);
+        $files = $runner->findMigrationFiles();
+        
+        if (empty($files)) {
+            $this->warning('Aucun fichier de migration trouvé.');
+            return EXIT_SUCCESS;
+        }
+        
+        $executedMap = [];
+        foreach ($history as $item) {
+            $key = $item->migration . '_' . $item->version;
+            $executedMap[$key] = $item;
         }
 
-        if (! $status) {
-            // @codeCoverageIgnoreStart
-            $this->error(lang('Migrations.noneFound'))->newLine();
+        $tbody = [];
 
-            return;
-            // @codeCoverageIgnoreEnd
+        foreach ($files as $file) {
+            $key = $file->migration . '_' . $file->version;
+            $executed = isset($executedMap[$key]);
+            
+            $date = $executed ? date('Y-m-d H:i', $executedMap[$key]->time) : '---';
+            $batch = $executed ? $executedMap[$key]->batch : '---';
+            $status = $executed 
+                ? $this->color->ok('EXÉCUTÉE')
+                : $this->color->warn('EN ATTENTE');
+            
+            $tbody[] = [
+                $this->getMigrationName($file),
+                $date,
+                $batch,
+                $status,
+            ];
         }
 
-        $this->table($status, ['head' => 'boldYellow']);
+        $this->table(['MIGRATION', 'EXÉCUTÉE', 'LOT', 'STATUT'], $tbody);
+
+        // Statistiques
+        $total = count($files);
+        $executedCount = count($history);
+        $pendingCount = $total - $executedCount;
+
+        $this->newLine()->info('RÉSUMÉ');
+        $this->justify('Total migrations', (string) $total);
+        $this->justify('Exécutées', (string) $executedCount, ['second' => ['fg' => Color::GREEN]]);
+        $this->justify('En attente', (string) $pendingCount, ['second' => $pendingCount > 0 ? ['fg' => Color::YELLOW] : []]);
+        $this->justify('Dernier lot', (string) $runner->getLastBatch());
 
         return EXIT_SUCCESS;
+    }
+
+    /**
+     * Formate le nom de la migration pour l'affichage
+     */
+    private function getMigrationName(object $migration): string
+    {
+        return sprintf(
+            '[%s] %s_%s',
+            $migration->namespace,
+            $migration->version,
+            $migration->migration
+        );
     }
 }

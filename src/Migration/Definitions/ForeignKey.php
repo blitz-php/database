@@ -14,61 +14,69 @@ namespace BlitzPHP\Database\Migration\Definitions;
 use BlitzPHP\Utilities\Support\Fluent;
 
 /**
- * @method $this references(array|string $columns) Specifie la/les colone(s)                                                                de reference
- * @method $this deferrable(bool $value = true) Specifie que l'index unique est deferrable (PostgreSQL)
- * @method $this on(string $table)                                                                                                          Specifie la table de reference
- * @method $this onDelete(string $action)                                                                                                   Ajoute une action ON DELETE
- * @method $this onUpdate(string $action)                                                                                                   Ajoute une action ON UPDATE
- * @method $this initiallyImmediate(bool $value = true) Specifie si verifie la contrainte d'indexe unique immediatement ou pas (PostgreSQL)
- *
+ * @method $this deferrable(bool $value = true) Définit la clé étrangère comme différable (PostgreSQL)
+ * @method $this initiallyImmediate(bool $value = true) Définit le moment par défaut pour vérifier la contrainte (PostgreSQL)
+ * @method $this on(string $table) Spécifie la table référencée
+ * @method $this onDelete(string $action) Ajoute une action ON DELETE
+ * @method $this onUpdate(string $action) Ajoute une action ON UPDATE
+ * @method $this references(string|array $columns) Spécifie la ou les colonnes référencées
+ * 
  * @credit <a href="https://laravel.com">Laravel Framework - Illuminate\Database\Schema\ForeignKeyDefinition</a>
  */
 class ForeignKey extends Fluent
 {
     /**
-     * Indique que les updates doivent etre en cascade.
+     * Indique que les mises à jour doivent être en cascade.
      */
-    public function cascadeOnUpdate(): self
+    public function cascadeOnUpdate(): static
     {
         return $this->onUpdate('cascade');
     }
 
     /**
-     * Indique que les updates doivent etre restreint.
+     * Indique que les mises à jour doivent être restreintes.
      */
-    public function restrictOnUpdate(): self
+    public function restrictOnUpdate(): static
     {
         return $this->onUpdate('restrict');
     }
 
     /**
-     * Indique que les deletes doivent etre en cascade.
+     * Indique que les mises à jour doivent être sans action.
      */
-    public function cascadeOnDelete(): self
+    public function noActionOnUpdate(): static
+    {
+        return $this->onUpdate('no action');
+    }
+
+    /**
+     * Indique que les suppressions doivent être en cascade.
+     */
+    public function cascadeOnDelete(): static
     {
         return $this->onDelete('cascade');
     }
 
     /**
-     * Indique que les deletes doivent etre restreint.
+     * Indique que les suppressions doivent être restreintes.
      */
-    public function restrictOnDelete(): self
+    public function restrictOnDelete(): static
     {
         return $this->onDelete('restrict');
     }
 
     /**
-     * Indique que les deletes doivent mettre la valeur de la cle etrangere a null.
+     * Indique que les suppressions doivent définir la valeur de la clé étrangère à null.
      */
-    public function nullOnDelete(): self
+    public function nullOnDelete(): static
     {
         return $this->onDelete('set null');
     }
 
     /**
-     * Indique que les deletes doivent avoir "no action".
+     * Indique que les suppressions doivent être sans action.
      */
-    public function noActionOnDelete()
+    public function noActionOnDelete(): static
     {
         return $this->onDelete('no action');
     }

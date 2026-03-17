@@ -5,6 +5,7 @@ namespace BlitzPHP\Database\Query;
 use BadMethodCallException;
 use BlitzPHP\Contracts\Database\ResultInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
+use BlitzPHP\Database\Utils;
 use InvalidArgumentException;
 use PDO;
 use PDOStatement;
@@ -43,7 +44,7 @@ class Result implements ResultInterface
         'lastId' => 'insertID',
     ];
 
-    public function __construct(protected BaseConnection $db, protected PDOStatement $statement)
+    public function __construct(protected BaseConnection $db, protected PDOStatement $statement, protected bool $success = true)
     {
         $db->triggerEvent($this, 'db:result');
     }
@@ -54,6 +55,22 @@ class Result implements ResultInterface
     public function sql(): string
     {
         return $this->statement->queryString;
+    }
+
+    /**
+     * Renvoie "true" si la requête correspondante s'est bien passée et "false" au cas contraire
+     */
+    public function successful(): bool 
+    {
+        return $this->success;
+    }
+
+    /**
+     * Détermine si la requête est une requête qui écrit des données en BD
+     */
+    public function isWritableQuery(): bool 
+    {
+        return Utils::isWritableSql($this->sql());
     }
 
     /**
@@ -91,9 +108,7 @@ class Result implements ResultInterface
      */
     public function next(int|string $type = PDO::FETCH_OBJ): mixed
     {
-        $records = $this->get($type);
-
-        if (empty($records)) {
+        if ([] === $records = $this->get($type)) {
             return null;
         }
 
@@ -105,9 +120,7 @@ class Result implements ResultInterface
      */
     public function previous(int|string $type = PDO::FETCH_OBJ): mixed
     {
-        $records = $this->get($type);
-
-        if (empty($records)) {
+        if ([] === $records = $this->get($type)) {
             return null;
         }
 
@@ -206,6 +219,10 @@ class Result implements ResultInterface
 
     public function result(int $mode = PDO::FETCH_OBJ, ?string $className = null): array
     {
+        if ($this->isWritableQuery()) {
+            return [];
+        }
+
         if ($mode === PDO::FETCH_CLASS) {
             $this->statement->setFetchMode($mode, $className);
         } else {
@@ -251,16 +268,24 @@ class Result implements ResultInterface
      */
     protected function fetchAssoc()
     {
+        if ($this->isWritableQuery()) {
+            return null;
+        }
+
         return $this->statement->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
      * Returns the result set as an object.
      *
-     * @return object
+     * @return ?object
      */
     protected function fetchObject(string $className = 'stdClass')
     {
+        if ($this->isWritableQuery()) {
+            return null;
+        }
+        
         $this->statement->setFetchMode(PDO::FETCH_CLASS, $className);
 
         return $this->statement->fetch();
@@ -284,7 +309,7 @@ class Result implements ResultInterface
      */
     public function affectedRows(): int
     {
-        return $this->statement->rowCount();
+        return $this->success ? $this->statement->rowCount() : 0;
     }
 
     /**
@@ -314,6 +339,7 @@ class Result implements ResultInterface
         if (isset($this->proxy[$name])) {
             return $this->{$this->proxy[$name]}(...$arguments);
         }
+
         throw new BadMethodCallException("Méthode {$name} non trouvée");
     }
 }

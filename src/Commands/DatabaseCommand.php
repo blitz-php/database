@@ -11,16 +11,15 @@
 
 namespace BlitzPHP\Database\Commands;
 
+use BlitzPHP\Autoloader\Autoloader;
 use BlitzPHP\Cli\Console\Command;
-use BlitzPHP\Cli\Console\Console;
+use BlitzPHP\Contracts\Autoloader\LocatorInterface;
+use BlitzPHP\Contracts\Container\ContainerInterface;
 use BlitzPHP\Contracts\Database\ConnectionResolverInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
-use Psr\Log\LoggerInterface;
-use RuntimeException;
+use BlitzPHP\Database\DatabaseManager;
+use BlitzPHP\Database\Migration\Runner;
 
-/**
- * @property BaseConnection $db
- */
 abstract class DatabaseCommand extends Command
 {
     /**
@@ -28,41 +27,49 @@ abstract class DatabaseCommand extends Command
      */
     protected string $group = 'Base de données';
 
-    /**
-     * {@inheritDoc}
+    protected ConnectionResolverInterface $resolver;
+
+    public function __construct(protected ContainerInterface $container)
+    {
+        $this->resolver = $container->get(ConnectionResolverInterface::class);
+    }
+
+    protected function db(array|string|null $group = null, bool $shared = true): BaseConnection
+    {
+        return $this->resolver->connect($group, $shared);
+    }
+
+     /**
+     * Recupere les informations a utiliser pour la connexion a la base de données
+     *
+     * @return array [group, configuration]
      */
-    protected string $service = 'Service de gestion de base de données';
-
-    private ?BaseConnection $_db = null;
-
-    public function __construct(protected ConnectionResolverInterface $resolver)
+    public function connectionInfo(array|string|null $group = null): array
     {
+        return $this->resolver->connectionInfo($group);
     }
 
-    public function __get($name)
+    /**
+     * Recupere une instance de l'executeur de migration
+     */
+    public function runner(string $namespace, ?string $group = null): Runner
     {
-        if (method_exists($this, $name)) {
-            return call_user_func([$this, $name]);
+        $namespaces = match($namespace) {
+            'ALL'   => array_keys($this->container->get(Autoloader::class)->getNamespace()),
+            default => [$namespace],
+        };
+
+        $locator = $this->container->get(LocatorInterface::class);
+        $files = [];
+
+        foreach ($namespaces as $namespace) {
+            $files[$namespace] = $locator->listNamespaceFiles($namespace, '/Database/Migrations/');
         }
-
-        return parent::__get($name);
-    }
-
-    public function __set($name, $value)
-    {
-        if (property_exists($this, $name = '_' . $name)) {
-            $this->{$name} = $value;
-        } else {
-            throw new RuntimeException();
-        }
-    }
-
-    protected function db(): BaseConnection
-    {
-        if (null === $this->_db) {
-            $this->_db = $this->resolver->connection();
-        }
-
-        return $this->_db;
+    
+        return new Runner(
+            $this->container->get(DatabaseManager::class), 
+            $group, 
+            $files,
+        );
     }
 }

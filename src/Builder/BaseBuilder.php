@@ -14,23 +14,26 @@ namespace BlitzPHP\Database\Builder;
 use BadMethodCallException;
 use BlitzPHP\Contracts\Database\BuilderInterface;
 use BlitzPHP\Contracts\Database\ConnectionInterface;
+use BlitzPHP\Contracts\Database\ResultInterface;
 use BlitzPHP\Database\Builder\Compilers\MySQL as MySQLCompiler;
 use BlitzPHP\Database\Builder\Compilers\Postgre as PostgreCompiler;
 use BlitzPHP\Database\Builder\Compilers\QueryCompiler;
 use BlitzPHP\Database\Builder\Compilers\SQLite as SQLiteCompiler;
 use BlitzPHP\Database\Builder\Concerns\AdvancedMethods;
+use BlitzPHP\Database\Builder\Concerns\BuildsQueries;
 use BlitzPHP\Database\Builder\Concerns\CoreMethods;
 use BlitzPHP\Database\Builder\Concerns\DataMethods;
 use BlitzPHP\Database\Builder\Concerns\ProxyMethods;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\Exceptions\DatabaseException;
-use BlitzPHP\Database\Query;
 use BlitzPHP\Database\Query\Expression;
-use BlitzPHP\Database\Result\BaseResult;
+use BlitzPHP\Database\Query\Result;
 use BlitzPHP\Database\Utils;
-use BlitzPHP\Traits\Conditionable;
+use BlitzPHP\Traits\Support\ForwardsCalls;
 use BlitzPHP\Utilities\Iterable\Arr;
+use BlitzPHP\Utilities\Iterable\Collection;
 use Closure;
+use InvalidArgumentException;
 use PDO;
 use RuntimeException;
 
@@ -40,16 +43,23 @@ use RuntimeException;
  */
 class BaseBuilder implements BuilderInterface
 {
-    use Conditionable;
     use AdvancedMethods;
+    use BuildsQueries;
     use CoreMethods;
     use DataMethods;
+    use ForwardsCalls;
     use ProxyMethods;
 
     /**
      * État du mode de test du générateur.
      */
     protected bool $testMode = false;
+
+    /**
+     * Defini si la requête est en attente ou pas
+     * Si la requête est en attente, on ne l'exécutera pas
+     */
+    protected bool $pending = false;
 
     /**
      * La table principale de la requête
@@ -147,6 +157,20 @@ class BaseBuilder implements BuilderInterface
     protected array $updateColumns = [];
 
     /**
+     * Les callbacks qui doivent être invoqués avant l'exécution de la requête.
+     *
+     * @var list<Closure($this): void>
+     */
+    protected array $beforeQueryCallbacks = [];
+
+    /**
+     * Les callbacks qui doivent être invoqués après la récupération des données de la base de données.
+     *
+     * @var list<Closure(mixed): mixed>
+     */
+    protected array $afterQueryCallbacks = [];
+
+    /**
      * @var QueryCompiler
      */
     protected QueryCompiler $compiler;
@@ -216,6 +240,18 @@ class BaseBuilder implements BuilderInterface
 
         return $this;
     }
+
+    /**
+     * Définit un statut de l'état d'attente de la requête.
+     */
+    public function pending(bool $state = true): self
+    {
+        $this->pending = $state;
+
+        return $this;
+    }
+
+
 
     /**
      * Recupere le nom de la table principale.
@@ -402,10 +438,10 @@ class BaseBuilder implements BuilderInterface
      */
     public function limit(int $limit, ?int $offset = null): self
     {
-        $this->limit = $limit;
+        $this->limit = max(0, $limit);
         
         if ($offset !== null) {
-            $this->offset = $offset;
+            $this->offset = max(0, $offset);
         }
 
         return $this;
@@ -416,10 +452,10 @@ class BaseBuilder implements BuilderInterface
      */
     public function offset(int $offset, ?int $limit = null): self
     {
-        $this->offset = $offset;
+        $this->offset = max(0, $offset);
         
         if ($limit !== null) {
-            $this->limit = $limit;
+            $this->limit = max(0, $limit);
         }
 
         return $this;
@@ -442,11 +478,11 @@ class BaseBuilder implements BuilderInterface
      */
     public function set($key, $value = ''): self
     {
-        $key = $this->objectToArray($key);
-
-        if (!is_array($key)) {
+        if (is_string($key)) {
             $key = [$key => $value];
         }
+        
+        $key = $this->objectToArray($key);
 
         foreach ($key as $k => $v) {
             if ($v instanceof Expression) {
@@ -463,129 +499,125 @@ class BaseBuilder implements BuilderInterface
     /**
      * Exécute une requête d'insertion
      *
-     * @return BaseResult|self|string
+     * @return bool|static|string
      */
-    public function insert(array|object $data = [], bool $execute = true)
+    public function insert(array|object $data = [])
     {
-        $this->crud = 'insert';
+        return $this->run('successfulable', function() use($data) {
+            $this->crud = 'insert';
 
-        $data = $this->objectToArray($data);
+            $this->set($data);
 
-        if (empty($data) && $this->values === []) {
-            if (true === $execute) {
+            if ($this->values === [] && !$this->pending) {
                 throw new DatabaseException('You must give entries to insert.');
             }
-
-            return $this;
-        }
-
-        if ($data !== []) {
-            $this->set($data);
-        }
-
-        if ($this->testMode) {
-            return $this->sql();
-        }
-
-        if (true === $execute) {
-            return $this->execute();
-        }
-
-        return $this;
+        });
     }
 
     /**
      * Insertion avec IGNORE
      *
-     * @return BaseResult|self|string
+     * @return bool|static|string
      */
-    public function insertIgnore(array|object $data, $execute = true)
+    public function insertIgnore(array|object $data = [])
     {
-        return $this->ignore(true)->insert($data, $execute);
+        return $this->ignore(true)->insert($data);
     }
 
     /**
      * Insertion multiple
      *
      * @param list<array|object> $data Tableau a deux dimensions contenant les valeurs a inserer
+     * @param int $chunkSize Taille optimale des chunks
      *
-     * @return BaseResult|string
+     * @return int|string
      */
-    public function bulkInsert(array $data, bool $ignore = false)
+    public function bulkInsert(array $data, bool $ignore = false, int $chunkSize = 100)
     {
+        if ($data === []) {
+            return 0;
+        }
+
         if (2 !== Arr::maxDimensions($data)) {
             throw new BadMethodCallException('Bad usage of ' . static::class . '::' . __METHOD__ . ' method');
         }
 
-        $originalValues = $this->values;
-        $originalBindings = clone $this->bindings;
-        
-        $allSql = [];
+        $columns      = array_keys((array) reset($data));
+        $placeholders = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
+        $columnList   = implode(', ', array_map([$this->db, 'escapeIdentifiers'], $columns));
+        $table        = $this->db->escapeIdentifiers($this->getTable());
+      
+        $totalAffected = 0;
+        $chunks        = array_chunk($data, $chunkSize);
+        $allSql        = [];
 
-        foreach ($data as $item) {
-            $this->values = [];
-            $this->bindings = new BindingCollection();
+        $callback = function() use ($ignore, $chunks, $table, $columnList, $placeholders, &$totalAffected, &$allSql) {
+            foreach ($chunks as $chunk) {
+                $values = array_fill(0, count($chunk), $placeholders);
+                $bindings = [];
+                
+                foreach ($chunk as $row) {
+                    array_push($bindings, ...array_values((array) $row));
+                }
+                
+                $sql = $this->compiler->compileInsertion($table, $columnList, implode(', ', $values), $ignore);
             
-            $this->ignore($ignore)->insert($item, false);
-            $allSql[] = $this->compiler->compileInsert($this);
-        }
-
-        $this->values = $originalValues;
-        $this->bindings = $originalBindings;
+                if ($this->testMode) {
+                    $allSql[] = $sql;
+                } else {
+                    $totalAffected += $this->db->affectingStatement($sql, $bindings);
+                }
+            }
+            
+            return [$allSql, $totalAffected];
+        };
         
-        $sql = implode('; ', $allSql);
+        [$allSql, $totalAffected] = $this->db->transaction($callback);
 
-        if ($this->testMode) {
-            return $sql;
-        }
-
-        return $this->query($sql, $this->bindings->getValues());
+        return $this->testMode ? implode('; ', $allSql) : $totalAffected;
     }
 
     /**
      * Insertion multiple avec IGNORE
      *
      * @param list<array|object> $data Tableau a deux dimensions contenant les valeurs a inserer
+     * @param int $chunkSize Taille optimale des chunks
      *
-     * @return BaseResult|string
+     * @return int|string
      */
-    public function bulkInsertIgnore(array $data)
+    public function bulkInsertIgnore(array $data, int $chunkSize = 100)
     {
-        return $this->bulkInsert($data, true);
+        return $this->bulkInsert($data, true, $chunkSize);
     }
 
     /**
      * UPSERT (INSERT ... ON DUPLICATE KEY UPDATE)
      * 
-     * @return int|string
+     * @return int|static|string
      */
     public function upsert(array $values, array $uniqueBy, ?array $update = null)
     {
-        $this->crud = 'upsert';
+        return $this->run('affectable', function() use($values, $uniqueBy, $update) {
+            $this->crud = 'upsert';
         
-        // Support des insertions multiples
-        if (isset($values[0]) && is_array($values[0])) {
-            $this->values = $values;
-        } else {
-            $this->values = [$values];
-        }
-        
-        $this->uniqueBy = $uniqueBy;
-        $this->updateColumns = $update ?? array_keys($values[0] ?? $values);
-
-        if ($this->testMode) {
-            return $this->compiler->compileUpsert($this);
-        }
-
-        $result = $this->execute();
-
-        return $result instanceof BaseResult ? $result->affectedRows() : 0;
+            // Support des insertions multiples
+            if (isset($values[0]) && is_array($values[0])) {
+                $this->values = $values;
+            } else {
+                $this->values = [$values];
+            }
+            
+            $this->uniqueBy = $uniqueBy;
+            $this->updateColumns = $update ?? array_keys($values[0] ?? $values);
+        });
     }
 
     /**
      * INSERT OR IGNORE
+     * 
+     * @return int|static|string
      */
-    public function insertOrIgnore(array $values): int
+    public function insertOrIgnore(array $values)
     {
         return $this->ignore(true)->upsert($values, [], []);
     }
@@ -593,77 +625,41 @@ class BaseBuilder implements BuilderInterface
     /**
      * Exécute une requête de mise à jour.
      *
-     * @param array|object|string $data    Tableau ou objet de clés et de valeurs, ou chaîne littérale
-     * @param bool                $execute Spécifié si nous voulons exécuter directement la requête
+     * @param array|object $data Tableau ou objet de clés et de valeurs
      *
-     * @return BaseResult|bool|self|string
+     * @return int|static|string
      */
-    public function update(array|object|string $data = [], bool $execute = true)
+    public function update(array|object $data = [])
     {
-        $this->crud = 'update';
+        return $this->run('affectable', function() use($data) {
+            $this->crud = 'update';
 
-        if (! is_string($data)) {
-            $data = $this->objectToArray($data);
-        }
-
-        if (empty($data) && $this->values === []) {
-            if (true === $execute) {
-                throw new DatabaseException('You must give entries to update.');
-            }
-
-            return $this;
-        }
-
-        if (! empty($data)) {
             $this->set($data);
-        }
 
-         if ($this->testMode) {
-            return $this->compiler->compileUpdate($this);
-        }
-
-        if ($execute) {
-            return $this->execute();
-        }
-
-        return $this;
+            if ($this->values === [] && !$this->pending) {
+                throw new DatabaseException('You must give entries to insert.');
+            }
+        });
     }
 
     /**
      * Exécute une requête de remplacement.
      *
      * @param array|object $data    Tableau ou objet de clés et de valeurs à remplacer
-     * @param bool         $execute Spécifié si nous voulons exécuter directement la requête
      *
-     * @return BaseResult|self|string
+     * @return int|static|string
      */
-    public function replace(array|object $data = [], bool $execute = true)
+    public function replace(array|object $data = [])
     {
-        $this->crud = 'replace';
+        return $this->run('affectable', function() use($data) {
+            $this->crud = 'replace';
 
-        $data = $this->objectToArray($data);
-
-        if (empty($data) && $this->values === []) {
-            if (true === $execute) {
-                throw new DatabaseException('You must give entries to replace.');
-            }
-
-            return $this;
-        }
-
-        if (! empty($data)) {
             $this->set($data);
-        }
 
-        if ($this->testMode) {
-            return $this->compiler->compileReplace($this);
-        }
-
-        if ($execute) {
-            return $this->execute();
-        }
-
-        return $this;
+            if ($this->values === [] && !$this->pending) {
+                throw new DatabaseException('You must give entries to insert.');
+            }
+        });
     }
 
     /**
@@ -677,7 +673,7 @@ class BaseBuilder implements BuilderInterface
             return $this->insert(array_merge($attributes, $values)) !== false;
         }
 
-        return $this->where($attributes)->update($values) !== false;
+        return $this->where($attributes)->update($values) > 0;
     }
 
     /**
@@ -714,34 +710,22 @@ class BaseBuilder implements BuilderInterface
      * Exécute une requête de suppression.
      *
      * @param array $where   Conditions de suppression
-     * @param bool  $execute Spécifié si nous voulons exécuter directement la requête
      *
-     * @return BaseResult|self|string
+     * @return int|self|string
      */
-    public function delete(?array $where = null, ?int $limit = null, bool $execute = true)
+    public function delete(?array $where = null, ?int $limit = null)
     {
-        $this->crud = 'delete';
+        return $this->run('affectable', function() use($where, $limit) {
+            $this->crud = 'delete';
 
-        if ($where !== null && $where !== []) {
-            $this->where($where);
-        }
+            if ($where !== null && $where !== []) {
+                $this->where($where);
+            }
 
-        if ($limit !== null) {
-            $this->limit($limit);
-        }
-
-        if ($this->testMode) {
-            $sql = $this->compiler->compileDelete($this);
-            $this->reset();
-
-            return $sql;
-        }
-
-        if ($execute) {
-            return $this->execute();
-        }
-
-        return $this;
+            if ($limit !== null) {
+                $this->limit($limit);
+            }
+        });
     }
 
     /**
@@ -750,28 +734,28 @@ class BaseBuilder implements BuilderInterface
      * Si la base de donnee ne supporte pas la commande truncate(),
      * cette fonction va executer "DELETE FROM table"
      *
-     * @return bool|string TRUE on success, FALSE on failure, string on testMode
+     * @return bool|static|string TRUE on success, FALSE on failure, string on testMode
      */
     public function truncate(?string $table = null)
     {
-        $this->crud = 'truncate';
+        return $this->run('successfulable', function() use($table) {
+            $this->crud = 'truncate';
 
-        if ($table !== null && $table !== '') {
-            $this->table($table);
-        }
-
-        if ($this->testMode) {
-            return $this->compiler->compileTruncate($this);
-        }
-
-        return $this->execute();
+            if ($table !== null && $table !== '') {
+                $this->table($table);
+            }
+        });
     }
     
     /**
      * Exécute la requête construite
+     * 
+     * @return Result
      */
-    public function execute()
+    public function execute(): ResultInterface
     {
+        $this->applyBeforeQueryCallbacks();
+        
         $result = $this->query($this->toSql(), $this->bindings->getValues());
 
         $this->reset();
@@ -782,11 +766,40 @@ class BaseBuilder implements BuilderInterface
     /**
      * Exécute une requête SQL directe
      *
-     * @return BaseResult|bool|Query BaseResult quand la requete est de type "lecture", bool quand la requete est de type "ecriture", Query quand on a une requete preparee
+     * @return Result
      */
-    public function query(string $sql, array $params = [])
+    public function query(string $sql, array $params = []): ResultInterface
     {
         return $this->db->query($sql, $params);
+    }
+
+    /**
+     * @param 'affectable'|'successfulable' $as
+     * 
+     * @return ($as is 'affectable' ? int|static|string : bool|static|string)
+     */
+    protected function run(string $as, Closure $callback)
+    {
+        $callback();
+
+        if ($this->testMode) {
+            $sql = $this->toRawSql();
+            $this->reset();
+
+            return $sql;
+        }
+
+        if ($this->pending) {
+            return $this;
+        }
+
+        $result = $this->execute();
+
+        if ($result instanceof Result) {
+            return $as === 'affectable' ? $result->affectedRows() : $result->successful();
+        }
+
+        return $result;
     }
 
     /**
@@ -795,6 +808,18 @@ class BaseBuilder implements BuilderInterface
     public function result(int|string $type = PDO::FETCH_OBJ): array
     {
         return $this->execute()->get($type);
+    }
+
+    /**
+     * Récupère les résultats de la requete dans une collection
+     * 
+     * @param int|string $type
+     * 
+     * @return Collection<int, TValue>
+     */
+    public function collect(int|string $type = PDO::FETCH_OBJ): Collection
+    {
+        return new Collection($this->result($type));
     }
 
     /**
@@ -820,11 +845,12 @@ class BaseBuilder implements BuilderInterface
      */
     public function value(array|string $name)
     {
-        $row = $this->first(PDO::FETCH_OBJ);
-
+        $names = (array) $name;
         $values = [];
 
-        foreach ((array) $name as $v) {
+        $row = $this->select($names)->first(PDO::FETCH_OBJ);
+
+        foreach ($names as $v) {
             if (is_string($v)) {
                 $values[] = $row->{$v} ?? null;
             }
@@ -840,22 +866,23 @@ class BaseBuilder implements BuilderInterface
      */
     public function values(array|string $name): array
     {
-        $rows = $this->all(PDO::FETCH_OBJ);
+        $names = (array) $name;
+        $columns = [];
 
-        $fields = [];
+        $rows = $this->select($names)->all(PDO::FETCH_OBJ);
 
         foreach ($rows as $row) {
             $values = [];
 
-            foreach ((array) $name as $v) {
+            foreach ($names as $v) {
                 if (is_string($v)) {
                     $values[$v] = $row->{$v} ?? null;
                 }
             }
-            $fields[] = is_string($name) ? ($values[$name] ?? null) : $values;
+            $columns[] = is_string($name) ? ($values[$name] ?? null) : $values;
         }
 
-        return $fields;
+        return $columns;
     }
 
     /**
@@ -872,100 +899,6 @@ class BaseBuilder implements BuilderInterface
     public function doesntExist(): bool
     {
         return !$this->exists();
-    }
-
-    /**
-     * Pagination simple
-     */
-    public function forPage(int $page, int $perPage = 15): self
-    {
-        return $this->offset(($page - 1) * $perPage)->limit($perPage);
-    }
-
-    /**
-     * Pagination avec cursor (pour les grandes tables)
-     */
-    public function forPageBeforeId(int $perPage = 15, ?int $lastId = null, string $column = 'id'): self
-    {
-        $this->orderBy($column, 'ASC');
-
-        if ($lastId !== null) {
-            $this->where($column, '>', $lastId);
-        }
-
-        return $this->limit($perPage);
-    }
-
-    /**
-     * Traitement par lots
-     */
-    public function chunk(int $count, Closure $callback): bool
-    {
-        $page = 1;
-
-        do {
-            $results = $this->clone()->forPage($page, $count)->all();
-            $countResults = count($results);
-
-            if ($countResults == 0) {
-                break;
-            }
-
-            if ($callback($results, $page) === false) {
-                return false;
-            }
-
-            $page++;
-        } while ($countResults == $count);
-
-        return true;
-    }
-
-    /**
-     * Traitement par lots basé sur l'ID
-     */
-    public function chunkById(int $count, Closure $callback, string $column = 'id'): bool
-    {
-        $lastId = null;
-
-        do {
-            $clone = $this->clone()
-                ->orderBy($column, 'ASC')
-                ->limit($count);
-
-            if ($lastId !== null) {
-                $clone->where($column, '>', $lastId);
-            }
-
-            $results = $clone->all();
-
-            if (count($results) == 0) {
-                break;
-            }
-
-            if ($callback($results) === false) {
-                return false;
-            }
-
-            $last = end($results);
-            $lastId = is_object($last) ? $last->{$column} : $last[$column];
-        } while (count($results) == $count);
-
-        return true;
-    }
-
-    /**
-     * Applique une fonction à chaque résultat
-     */
-    public function each(Closure $callback, int $chunk = 100): bool
-    {
-        return $this->chunk($chunk, function($results) use ($callback) {
-            foreach ($results as $result) {
-                if ($callback($result) === false) {
-                    return false;
-                }
-            }
-        });
     }
 
     /**
@@ -1018,26 +951,134 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Incremente un champ numerique par la valeur specifiee.
+     * 
+     * @param array<string, mixed> $extra
      *
      * @throws DatabaseException
      */
-    public function increment(string $column, float|int $value = 1): bool
+    public function increment(string $column, float|int $value = 1, array $extra = []): int
     {
-        $expression = new Expression($this->db->escapeIdentifiers($column) . " + {$value}");
-        
-        return $this->update([$column => $expression], true);
+        return $this->incrementEach([$column => $value], $extra);
+    }
+
+    /**
+     * Incrémente les valeurs des colonnes spécifiées par les montants donnés.
+     *
+     * @param array<string, float|int|numeric-string> $columns
+     * @param array<string, mixed> $extra
+     * 
+     * @return int<0, max>
+     *
+     * @throws InvalidArgumentException
+     */
+    public function incrementEach(array $columns, array $extra = [])
+    {
+        foreach ($columns as $column => $amount) {
+            if (! is_numeric($amount)) {
+                throw new InvalidArgumentException("Non-numeric value passed as increment amount for column: '$column'.");
+            } elseif (! is_string($column)) {
+                throw new InvalidArgumentException('Non-associative array passed to incrementEach method.');
+            }
+
+            $columns[$column] = new Expression($this->db->escapeIdentifiers($column) . " + {$amount}");
+        }
+
+        return $this->update(array_merge($columns, $extra));
     }
 
     /**
      * Decremente un champ numerique par la valeur specifiee.
+     * 
+     * @param array<string, mixed> $extra
      *
      * @throws DatabaseException
      */
-    public function decrement(string $column, float|int $value = 1): bool
+    public function decrement(string $column, float|int $value = 1, array $extra = []): int
     {
-        $expression = new Expression($this->db->escapeIdentifiers($column) . " - {$value}");
+        return $this->decrementEach([$column => $value], $extra);
+    }
 
-        return $this->update([$column => $expression], true);
+    /**
+     * Décrémente les valeurs des colonnes spécifiées par les montants donnés.
+     *
+     * @param array<string, float|int|numeric-string> $columns
+     * @param array<string, mixed> $extra
+     * 
+     * @return int<0, max>
+     *
+     * @throws InvalidArgumentException
+     */
+    public function decrementEach(array $columns, array $extra = [])
+    {
+        foreach ($columns as $column => $amount) {
+            if (! is_numeric($amount)) {
+                throw new InvalidArgumentException("Non-numeric value passed as decrement amount for column: '$column'.");
+            } elseif (! is_string($column)) {
+                throw new InvalidArgumentException('Non-associative array passed to decrementEach method.');
+            }
+
+            $columns[$column] = new Expression($this->db->escapeIdentifiers($column) . " - {$amount}");
+        }
+
+        return $this->update(array_merge($columns, $extra));
+    }
+
+    /**
+     * Enregistre une closure à invoquer avant l'exécution de la requête.
+     * 
+     * @param Closure($this): void $callback
+     */
+    public function beforeQuery(callable $callback): static
+    {
+        $this->beforeQueryCallbacks[] = $callback;
+
+        return $this;
+    }
+    
+    /**
+     * Invoque les callbacks de modification "avant requête".
+     */
+    public function applyBeforeQueryCallbacks(): void
+    {
+        foreach ($this->beforeQueryCallbacks as $callback) {
+            $callback($this);
+        }
+
+        $this->beforeQueryCallbacks = [];
+    }
+
+    /**
+     * Enregistre une closure à invoquer après l'exécution de la requête.
+     * 
+     * @param Closure(mixed): mixed $callback
+     */
+    public function afterQuery(Closure $callback): static
+    {
+        $this->afterQueryCallbacks[] = $callback;
+
+        return $this;
+    }
+
+    /**
+     * Invoque les callbacks de modification "après requête".
+     */
+    public function applyAfterQueryCallbacks(mixed $result): mixed
+    {
+        foreach ($this->afterQueryCallbacks as $afterQueryCallback) {
+            $result = $afterQueryCallback($result) ?: $result;
+        }
+
+        return $result;
+    }
+
+    /**
+     * 
+     */
+    public function explain(): array
+    {
+        $sql = 'EXPLAIN ' . $this->toSql();
+    
+        return $this->query($sql, $this->bindings->getValues())->resultArray();
     }
 
     /**
@@ -1062,13 +1103,18 @@ class BaseBuilder implements BuilderInterface
         return $sql;
     }
 
+    public function getBindings(): array
+    {
+        return $this->db->prepareBindings($this->bindings->getValues());
+    }
+
     /**
      * Récupère le SQL avec les bindings échappés
      */
     public function toRawSql(): string
     {
-        $sql = $this->toSql();
-        $bindings = $this->bindings->getValues();
+        $sql      = $this->toSql();
+        $bindings = $this->getBindings();
 
         foreach ($bindings as $value) {
             $sql = preg_replace('/\?/', $this->db->quote($value), $sql, 1);

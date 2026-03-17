@@ -12,136 +12,262 @@
 namespace BlitzPHP\Database\Migration;
 
 use BlitzPHP\Database\Connection\BaseConnection;
-use InvalidArgumentException;
+use BlitzPHP\Database\DatabaseManager;
 
 /**
- * Migration
- *
- * Classe abstraite de gestion de migrations de base de donnees
+ * Classe de base pour les migrations de base de données
  */
 abstract class Migration
 {
     /**
-     * @var list<Structure> Liste des taches
+     * Liste des builders de tables
+     *
+     * @var list<Builder>
      */
-    private array $structures = [];
+    protected array $builders = [];
 
     /**
-     * Nom du group a utiliser pour lexecuter les migrations
+     * Connexion par défaut
      */
-    protected ?string $group = null;
+    protected BaseConnection $db;
 
     /**
-     * Definition des etapes d'execution d'une migration.
+     * Gestionnaire de base de données
      */
-    abstract public function up();
+    protected DatabaseManager $dbManager;
 
     /**
-     * Definition des etapes d'annulation d'une migration.
+     * Connexions alternatives pour cette migration
+     *
+     * @var array<string, BaseConnection>
      */
-    abstract public function down();
+    protected array $connections = [];
 
-    public function __construct(protected BaseConnection $db)
+    /**
+     * Méthode appelée lors de l'application de la migration
+     */
+    abstract public function up(): void;
+
+    /**
+     * Méthode appelée lors de l'annulation de la migration
+     */
+    abstract public function down(): void;
+
+    /**
+     * Détermine si cette migration doit être exécutée
+     * 
+     * Peut être surchargée pour des conditions complexes
+     */
+    public function shouldRun(): bool
     {
+        return true;
     }
 
     /**
-     * Renvoi la liste des executions
-     *
-     * @return list<Structure>
-     *
-     * @internal Utilisee par le `runner`
+     * Initialise les éléments nécessaire pour le fonctionnement de la migration
+     * 
+     * @internal Utilisé par le Runner pour injecter la connexion et le gestionnaire de bd
      */
-    final public function getStructure(): array
+    public function initialize(DatabaseManager $dbManager, BaseConnection $db): self
     {
-        return $this->structures;
+        $this->db                     = $db;
+        $this->dbManager              = $dbManager;
+        $this->connections['default'] = $db;
+
+        return $this;
     }
 
     /**
-     * Renvoi le nom du groupe a utiliser pour la connexion a la base de donnees
+     * Récupère les builders de tables
      *
-     * @internal Utilisee par le `runner`
+     * @return list<Builder>
+     * 
+     * @internal Utilisé par le Runner
      */
-    final public function getGroup(): ?string
+    public function getBuilders(): array
     {
-        return $this->group;
+        return $this->builders;
     }
 
     /**
-     * Cree une nouvelle table dans la structure.
+     * Récupère les connexions utilisées par cette migration
+     *
+     * @return array<string, BaseConnection>
+     * 
+     * @internal Utilisé par le ConnectionProxy
      */
-    final protected function create(string $table, bool|callable $ifNotExists, ?callable $callback = null): void
+    public function getConnections(): array
     {
-        if (is_callable($ifNotExists)) {
-            $callback    = $ifNotExists;
-            $ifNotExists = false;
-        } elseif ($callback === null) {
-            throw new InvalidArgumentException('Si vous passez un booléen en second argument de la méthode create, le troisième doit être un callback');
+        return $this->connections;
+    }
+
+    /**
+     * Crée une nouvelle table sur une connexion spécifique
+     * 
+     * @internal Utilisé par le ConnectionProxy
+     */
+    public function createOnConnection(string $connection, string $table, callable $callback, bool $ifNotExists = false): void
+    {
+        $builder = $this->makeBuilderFor($connection, $table);
+        $callback($builder);
+        $builder->createTable($ifNotExists);
+
+        $this->builders[] = $builder;
+    }
+
+    /**
+     * Modifie une table existante sur une connexion spécifique
+     * 
+     * @internal Utilisé par le ConnectionProxy
+     */
+    public function alterOnConnection(string $connection, string $table, callable $callback): void
+    {
+        $builder = $this->makeBuilderFor($connection, $table);
+        $callback($builder);
+        $builder->alterTable();
+
+        $this->builders[] = $builder;
+    }
+
+    /**
+     * Supprime une table existante sur une connexion spécifique
+     * 
+     * @internal Utilisé par le ConnectionProxy
+     */
+    public function dropOnConnection(string $connection, string $table, bool $ifExists): void
+    {
+        $builder = $this->makeBuilderFor($connection, $table);
+        $builder->dropTable($ifExists);
+        
+        $this->builders[] = $builder;
+    }
+
+    /**
+     * renomme une table existante sur une connexion spécifique
+     * 
+     * @internal Utilisé par le ConnectionProxy
+     */
+    public function renameOnConnection(string $connection, string $from, string $to): void
+    {
+        $builder = $this->makeBuilderFor($connection, $from);
+        $builder->renameTable($to);
+        
+        $this->builders[] = $builder;
+    }
+
+    /**
+     * Vérifie si une table existe sur une connexion spécifique
+     * 
+     * @internal Utilisé par le ConnectionProxy
+     */
+    public function hasTableOnConnection(string $connection, string $table): bool 
+    {
+        return ($this->connections[$connection] ?? $this->db)->tableExists($table);
+    }
+
+    /**
+     * Vérifie si un champ existe dans une table sur une connexion spécifique
+     * 
+     * @internal Utilisé par le ConnectionProxy
+     */
+    public function hasColumnOnConnection(string $connection, string $table, string $column): bool 
+    {
+        return ($this->connections[$connection] ?? $this->db)->columnExists($column, $table);
+    }
+
+    /**
+     * Sélectionne une connexion alternative pour la suite des opérations
+     */
+    protected function connection(string $name): ConnectionProxy
+    {
+        if (!isset($this->connections[$name])) {
+            // Résoudre la connexion via le DatabaseManager
+            $this->connections[$name] = $this->db->dbManager()->connect($name);
         }
 
-        $structure = $this->build($table, $callback);
-        $structure->create($ifNotExists);
-
-        $this->structures[] = $structure;
+        return new ConnectionProxy($this->connections[$name], $this);
     }
 
     /**
-     * Modifie une table de la structure.
+     * Crée une nouvelle table sur la connexion courante
      */
-    final protected function modify(string $table, callable $callback): void
+    protected function create(string $table, callable $callback, bool $ifNotExists = false): void
     {
-        $structure = $this->build($table, $callback);
-        $structure->modify();
-
-        $this->structures[] = $structure;
+        $this->createOnConnection('default', $table, $callback, $ifNotExists);
     }
 
     /**
-     * Supprime une table de la structure.
+     * Crée une nouvelle table si elle n'existe pas
      */
-    final protected function drop(string $table, bool $ifExists = false): void
+    protected function createIfNotExists(string $table, callable $callback): void
     {
-        $structure = $this->createStructure($table);
-        $structure->drop($ifExists);
-
-        $this->structures[] = $structure;
+        $this->create($table, $callback, true);
     }
 
     /**
-     * Supprime une table de la structure si elle existe.
+     * Modifie une table existante sur la connexion courante
      */
-    final protected function dropIfExists(string $table): void
+    protected function alter(string $table, callable $callback): void
     {
-        $structure = $this->createStructure($table);
-        $structure->dropIfExists();
+        $this->alterOnConnection('default', $table, $callback);
+    }
 
-        $this->structures[] = $structure;
+    /**
+     * Alias de alter() pour compatibilité
+     */
+    public function modify(string $table, callable $callback): void
+    {
+        $this->alter($table, $callback);
+    }
+
+    /**
+     * Supprime une table
+     */
+    protected function drop(string $table, bool $ifExists = false): void
+    {
+        $this->dropOnConnection('default', $table, $ifExists);
+    }
+
+    /**
+     * Supprime une table si elle existe
+     */
+    protected function dropIfExists(string $table): void
+    {
+        $this->drop($table, true);
     }
 
     /**
      * Renomme une table
      */
-    final protected function rename(string $from, string $to): void
+    protected function rename(string $from, string $to): void
     {
-        $structure = $this->createStructure($from);
-        $structure->rename($to);
-
-        $this->structures[] = $structure;
+        $this->renameOnConnection('default', $from, $to);
     }
 
     /**
-     * Execute le callback avec la structure
+     * Vérifie si une table existe
      */
-    private function build(string $table, callable $callback): Structure
+    protected function hasTable(string $name): bool 
     {
-        return $callback($this->createStructure($table));
+        return $this->hasTableOnConnection('default', $name);
     }
 
     /**
-     * Cree et renvoi une structure
+     * Vérifie si un champ existe dans une table
      */
-    private function createStructure(string $table): Structure
+    protected function hasColumn(string $table, string $column): bool 
     {
-        return new Structure($table);
+        return $this->hasColumnOnConnection('default', $table, $column);
+    }
+
+    /**
+     * Crée un builder pour une connexion et une table spécifiques
+     */
+    private function makeBuilderFor(string $connection, string $table): Builder
+    {        
+        $builder = new Builder($table);
+        $builder->setConnection($this->connections[$connection] ?? $this->db);
+
+        return $builder;
     }
 }

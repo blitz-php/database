@@ -32,11 +32,11 @@ class DatabaseListener implements EventListenerInterface
 
     private function addInfoToAboutCommand()
     {
-        if (! class_exists(\BlitzPHP\Cli\Commands\Utilities\About::class)) {
+        if (! class_exists(\BlitzPHP\Cli\Commands\Config\About::class)) {
             return;
         }
 
-        \BlitzPHP\Cli\Commands\Utilities\About::add('Gestionnaires', static fn (ConnectionResolverInterface $connectionResolver) => array_filter([
+        \BlitzPHP\Cli\Commands\Config\About::add('Gestionnaires', static fn (ConnectionResolverInterface $connectionResolver) => array_filter([
             'Base de données' => static function () use ($connectionResolver) {
                 [$group, $config] = $connectionResolver->connectionInfo();
 

@@ -34,7 +34,7 @@ class SQLite extends QueryCompiler
     /**
      * {@inheritDoc}
      */
-    protected function compileInsertion(string $table, string $columns, string $values, bool $ignore, ?string $returning = null): string
+    public function compileInsertion(string $table, string $columns, string $values, bool $ignore, ?string $returning = null): string
     {
         $ignored  = $ignore ? ' OR IGNORE' : '';
         $returned = $returning ? " RETURNING {$returning}" : '';
