@@ -213,7 +213,7 @@ trait CoreMethods
             'not' => $not,
         ]);
 
-        $this->bindings->addMany($query->bindings->getValues());
+        $this->bindings->merge($query->bindings);
 
         return $this;
     }
@@ -543,7 +543,7 @@ trait CoreMethods
                 'boolean' => $boolean
             ];
 
-            $this->bindings->addMany($query->bindings->getValues());
+            $this->bindings->merge($query->bindings);
         }
 
         return $this;
@@ -681,7 +681,7 @@ trait CoreMethods
             'not' => $not
         ]);
 
-        $this->bindings->addMany($query->bindings->getValues());
+        $this->bindings->merge($query->bindings);
 
         return $this;
     }
@@ -1383,10 +1383,18 @@ trait CoreMethods
             }
         }
 
+        // Ajouter les bindings dans le contexte approprié
+        $context = match($property) {
+            'wheres'  => 'where',
+            'havings' => 'having',
+            'orders'  => 'order',
+            default   => 'where'
+        };
+        
         if (isset($condition['values'])) {
-            $this->bindings->addMany($condition['values']);
-        } else if (isset($condition['value'])) {
-            $this->bindings->add($condition['value']);
+            $this->bindings->addMany($condition['values'], $context);
+        } else if (isset($condition['value']) && !$condition['value'] instanceof Expression) {
+            $this->bindings->add($condition['value'], $context);
         }
 
         $this->{$property}[] = $condition;

@@ -564,13 +564,18 @@ trait AdvancedMethods
     /**
      * Crée une requête pour UNION
      */
-    protected function createUnionQuery(Closure|BuilderInterface $query): BuilderInterface
+    protected function createUnionQuery(Closure|BaseBuilder $query): BaseBuilder
     {
         if ($query instanceof Closure) {
             $builder = $this->newQuery();
             $query($builder);
+            
+            $this->bindings->merge($builder->bindings);
+            
             return $builder;
         }
+
+        $this->bindings->merge($query->bindings);
 
         return $query;
     }

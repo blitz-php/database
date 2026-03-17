@@ -307,6 +307,7 @@ class BaseBuilder implements BuilderInterface
         
         $this->reset();
         $this->tables = [$table];
+        $this->bindings->merge($from->bindings);
 
         return $this;
     }
@@ -489,7 +490,7 @@ class BaseBuilder implements BuilderInterface
                 $this->values[$k] = $v;
             } else {
                 $this->values[$k] = $v;
-                $this->bindings->add($v);
+                $this->bindings->add($v, 'values');
             }
         }
 
@@ -756,11 +757,11 @@ class BaseBuilder implements BuilderInterface
     {
         $this->applyBeforeQueryCallbacks();
         
-        $result = $this->query($this->toSql(), $this->bindings->getValues());
-
-        $this->reset();
-
-        return $result;
+        try {
+            return $this->query($this->toSql(), $this->getBindings());
+        } finally {
+            $this->reset();
+        }
     }
 
     /**
@@ -1078,7 +1079,7 @@ class BaseBuilder implements BuilderInterface
     {
         $sql = 'EXPLAIN ' . $this->toSql();
     
-        return $this->query($sql, $this->bindings->getValues())->resultArray();
+        return $this->query($sql, $this->getBindings())->resultArray();
     }
 
     /**
@@ -1103,9 +1104,32 @@ class BaseBuilder implements BuilderInterface
         return $sql;
     }
 
+    /**
+     * Nettoyage des bindings
+     */
+    public function cleanBindings(array $bindings): array
+    {
+        return $this->bindings->clean($bindings);
+    }
+
+    /**
+     * Récupère les bindings utilisés
+     */
     public function getBindings(): array
     {
-        return $this->db->prepareBindings($this->bindings->getValues());
+        $types = match($this->crud) {
+            'select'                => ['where', 'having', 'order', 'union'],
+            'insert', 'replace'     => ['values'],
+            'upsert'                => ['values', 'uniqueBy'], // Si on a des bindings pour les conflits
+            'update'                => ['values', 'where', 'join'],
+            'delete'                => ['where', 'join'],
+            'truncate'              => null, // Pas de bindings pour TRUNCATE
+            default                 => [], // Fallback à tous
+        };
+
+        return $types === null 
+            ? [] 
+            : $this->db->prepareBindings($this->bindings->getOrdered($types));
     }
 
     /**
