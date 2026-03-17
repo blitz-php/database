@@ -1109,11 +1109,11 @@ class BaseBuilder implements BuilderInterface
     }
 
     /**
-     * Nettoyage des bindings
+     * Vide les bindings d'un context
      */
-    public function cleanBindings(array $bindings): array
+    public function clearBindings(?string $context = null): void
     {
-        return $this->bindings->clean($bindings);
+        $this->bindings->clear($context);
     }
 
     /**
