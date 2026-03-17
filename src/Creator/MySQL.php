@@ -151,11 +151,11 @@ class MySQL extends BaseCreator
         }
 
         if (! empty($this->db->charset) && ! strpos($sql, 'CHARACTER SET') && ! strpos($sql, 'CHARSET')) {
-            $sql .= ' DEFAULT CHARACTER SET = ' . $this->db->escapeString($this->db->charset);
+            $sql .= ' DEFAULT CHARACTER SET = ' . $this->db->escapeString($this->charset);
         }
 
         if (! empty($this->db->collation) && ! strpos($sql, 'COLLATE')) {
-            $sql .= ' COLLATE = ' . $this->db->escapeString($this->db->collation);
+            $sql .= ' COLLATE = ' . $this->db->escapeString($this->collation);
         }
 
         return $sql;
@@ -269,10 +269,10 @@ class MySQL extends BaseCreator
         $sql = sprintf(
             $this->dropIndexStr,
             $this->db->escapeIdentifiers($keyName),
-            $this->db->escapeIdentifiers($this->db->prefix . $table),
+            $this->db->prefixTable($table),
         );
 
-        return $this->db->query($sql);
+        return $this->db->statement($sql);
     }
 
     /**
@@ -282,9 +282,9 @@ class MySQL extends BaseCreator
     {
         $sql = sprintf(
             'ALTER TABLE %s DROP PRIMARY KEY',
-            $this->db->escapeIdentifiers($this->db->prefix . $table)
+            $this->db->prefixTable($table)
         );
 
-        return $this->db->query($sql);
+        return $this->db->statement($sql);
     }
 }

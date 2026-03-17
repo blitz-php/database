@@ -18,6 +18,39 @@ class MySQL extends QueryCompiler
     /**
      * {@inheritDoc}
      */
+    public function compileUpdate(BaseBuilder $builder): string
+    {
+        $table = $this->db->makeTableName($builder->getTable());
+        
+        $sql = ["UPDATE {$table}"];
+
+        if ([] !== $builder->joins) {
+            $sql[] = $this->compileJoins($builder->joins);
+        }
+
+        $sets = [];
+        foreach ($builder->values as $column => $value) {
+            $column = $this->db->escapeIdentifiers($column);
+            $sets[] = "{$column} = " . $this->wrapValue($value);
+        }
+
+        $sql[] = "SET " . implode(', ', $sets);
+
+        if ([] !== $builder->wheres) {
+            $sql[] = 'WHERE';
+            $sql[] = $this->compileWheres($builder->wheres);
+        }
+
+        if ('' !== $limit = $this->compileLimit($builder->limit, null)) {
+            $sql[] = $limit;
+        }
+
+        return implode(' ', array_filter($sql));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     protected function compileDistinct(bool|string $distinct): string
     {
         if ($distinct) {

@@ -11,9 +11,6 @@
 
 namespace BlitzPHP\Database\Creator;
 
-use BlitzPHP\Database\Connection\BaseConnection;
-use BlitzPHP\Database\Connection\Postgre as ConnectionPostgre;
-
 /**
  * Createur Postgre
  *
@@ -55,13 +52,6 @@ class Postgre extends BaseCreator
      * {@inheritDoc}
      */
     protected string $null = 'NULL';
-
-    /**
-     * {@inheritDoc}
-     *
-     * @var ConnectionPostgre
-     */
-    protected BaseConnection $db;
 
     /**
      * {@inheritDoc}
@@ -250,13 +240,15 @@ class Postgre extends BaseCreator
      */
     protected function _dropKeyAsConstraint(string $table, string $constraintName): string
     {
+        $schema = $this->db->getConfig('schema');
+
         return "SELECT con.conname
                FROM pg_catalog.pg_constraint con
                 INNER JOIN pg_catalog.pg_class rel
                            ON rel.oid = con.conrelid
                 INNER JOIN pg_catalog.pg_namespace nsp
                            ON nsp.oid = connamespace
-               WHERE nsp.nspname = '{$this->db->schema}'
+               WHERE nsp.nspname = '{$schema}'
                      AND rel.relname = '" . trim($table, '"') . "'
                      AND con.conname = '" . trim($constraintName, '"') . "'";
     }

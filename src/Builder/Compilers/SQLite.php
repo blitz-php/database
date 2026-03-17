@@ -12,9 +12,25 @@
 namespace BlitzPHP\Database\Builder\Compilers;
 
 use BlitzPHP\Database\Builder\BaseBuilder;
+use BlitzPHP\Database\Exceptions\DatabaseException;
 
 class SQLite extends QueryCompiler
 {
+    /**
+     * {@inheritDoc}
+     */
+    public function compileUpdate(BaseBuilder $builder): string
+    {
+        if ($builder->joins !== []) {
+            throw new DatabaseException(
+                "SQLite ne supporte pas les jointures dans les requêtes UPDATE. " .
+                "Utilisez des sous-requêtes à la place."
+            );
+        }
+
+        return $this->compileUpdateStandard($builder);
+    }
+    
     /**
      * {@inheritDoc}
      */

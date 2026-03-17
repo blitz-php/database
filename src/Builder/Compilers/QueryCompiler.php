@@ -14,6 +14,7 @@ namespace BlitzPHP\Database\Builder\Compilers;
 use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Builder\JoinClause;
 use BlitzPHP\Database\Connection\BaseConnection;
+use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Database\Query\Expression;
 use BlitzPHP\Database\Utils;
 use InvalidArgumentException;
@@ -78,13 +79,13 @@ abstract class QueryCompiler
             $sql[] = $this->compileHavings($builder->havings);
         }
 
+        if ([] !== $builder->unions) {
+            $sql[] = $this->compileUnions($builder->unions);
+        }
+
         if ([] !== $builder->orders) {
             $sql[] = 'ORDER BY';
             $sql[] = $this->compileOrders($builder->orders);
-        }
-
-        if ([] !== $builder->unions) {
-            $sql[] = $this->compileUnions($builder->unions);
         }
 
         if ('' !== $limit = $this->compileLimit($builder->limit, $builder->offset)) {
@@ -144,19 +145,32 @@ abstract class QueryCompiler
      */
     public function compileUpdate(BaseBuilder $builder): string
     {
-        $table = $this->db->escapeIdentifiers($builder->getTable());
+        return $this->compileUpdateStandard($builder);
+    }
+
+    /**
+     * Compilation standard sans jointure
+     */
+    protected function compileUpdateStandard(BaseBuilder $builder): string
+    {
+        $table = $this->db->makeTableName($builder->getTable());
+        
+        $sql = ["UPDATE {$table}"];
         
         $sets = [];
         foreach ($builder->values as $column => $value) {
             $column = $this->db->escapeIdentifiers($column);
             $sets[] = "{$column} = " . $this->wrapValue($value);
         }
-
-        $sql = ["UPDATE {$table} SET " . implode(', ', $sets)];
-
+        
         if ([] !== $builder->joins) {
-            $sql[] = $this->compileJoins($builder->joins);
+            // Si des jointures sont présentes mais non supportées, on lève une exception.
+            throw new DatabaseException(
+                "Les jointures dans UPDATE ne sont pas supportées par " . $this->db->getDriver()
+            );
         }
+
+        $sql[] = "SET " . implode(', ', $sets);
 
         if ([] !== $builder->wheres) {
             $sql[] = 'WHERE';
