@@ -13,10 +13,9 @@ namespace BlitzPHP\Database\Creator;
 
 use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
+use BlitzPHP\Database\Exceptions\CreatorException;
 use BlitzPHP\Database\Exceptions\DatabaseException;
-use BlitzPHP\Database\Query;
-use BlitzPHP\Database\RawSql;
-use BlitzPHP\Database\Result\BaseResult;
+use BlitzPHP\Database\Query\Expression;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
@@ -29,11 +28,6 @@ use UnexpectedValueException;
  */
 class BaseCreator
 {
-    /**
-     * La connexion a la base de donnees
-     */
-    protected BaseConnection $db;
-
     /**
      * Liste des champs sous la forme `[name => attributes]`.
      *
@@ -64,11 +58,6 @@ class BaseCreator
      * Liste des cles etrangeres.
      */
     protected array $foreignKeys = [];
-
-    /**
-     * Character set utilisee.
-     */
-    protected string $charset = '';
 
     /**
      * requete CREATE DATABASE.
@@ -176,11 +165,45 @@ class BaseCreator
     protected array $dataCache = [];
 
     /**
-     * Constructor.
+     * Drapeau de debugage. 
+     * Doit on afficher les erreurs ?
      */
-    public function __construct(BaseConnection $db)
+    protected bool $debug = false;
+
+    /**
+     * Character set
+     */
+    protected string $charset = '';
+
+    /**
+     * Collation
+     */
+    protected string $collation = '';
+
+    /**
+     * Prefix des tables
+     */
+    protected string $prefix = '';
+
+    /**
+     * Pilote de la base de donnees
+     */
+    protected string $driver = '';
+
+    /**
+     * Constructeur.
+     * 
+     * @param BaseConnection $db La connexion a la base de donnees
+     */
+    public function __construct(protected BaseConnection $db)
     {
-        $this->db = $db;
+        $config = $this->db->getConfig();
+
+        $this->debug     = $config['debug'] ?? false;
+        $this->charset   = $config['charset'] ?? '';
+        $this->collation = $config['collation'] ?? '';
+        $this->prefix    = $db->getPrefix();
+        $this->driver    = $db->getDriver();
     }
 
     /**
@@ -220,7 +243,7 @@ class BaseCreator
      *
      * @param bool $ifNotExists Specifie si on doit ajouter la condition IF NOT EXISTS
      *
-     * @throws DatabaseException
+     * @throws CreatorException
      */
     public function createDatabase(string $dbName, bool $ifNotExists = false): bool
     {
@@ -233,94 +256,94 @@ class BaseCreator
         }
 
         if ($this->createDatabaseStr === false) {
-            if ($this->db->debug) {
-                throw new DatabaseException('Cette fonctionnalité n\'est pas disponible pour la base de données que vous utilisez.');
+            if ($this->debug) {
+                throw CreatorException::unsupportedFeature('CREATE DATABASE');
             }
 
-            return false; // @codeCoverageIgnore
+            return false;
         }
 
         try {
-            if (! $this->db->query(
-                sprintf(
-                    $ifNotExists ? $this->createDatabaseIfStr : $this->createDatabaseStr,
-                    $this->db->escapeIdentifier($dbName),
-                    $this->db->charset,
-                    $this->db->collation
-                )
-            )) {
-                // @codeCoverageIgnoreStart
-                if ($this->db->debug) {
-                    throw new DatabaseException('Impossible de créer la base de données spécifiée.');
-                }
+            $result = $this->db->statement(sprintf(
+                $ifNotExists ? $this->createDatabaseIfStr : $this->createDatabaseStr,
+                $this->db->escapeIdentifier($dbName),
+                $this->charset,
+                $this->collation
+            ));
 
-                return false;
-                // @codeCoverageIgnoreEnd
+            if (! $result && $this->debug) {
+                throw CreatorException::unableToCreateDatabase($dbName);
             }
 
             if (! empty($this->dataCache['db_names'])) {
                 $this->dataCache['db_names'][] = $dbName;
             }
 
-            return true;
+            return $result;
         } catch (Throwable $e) {
-            if ($this->db->debug) {
-                throw new DatabaseException('Impossible de créer la base de données spécifiée.', 0, $e);
+            if ($this->debug) {
+                throw CreatorException::unableToCreateDatabase($dbName, $e);
             }
 
-            return false; // @codeCoverageIgnore
+            return false;
         }
     }
 
     /**
      * Determine si une base de donnees existe
      *
-     * @throws DatabaseException
+     * @throws CreatorException
      */
     private function databaseExists(string $dbName): bool
     {
         if ($this->checkDatabaseExistStr === null) {
-            if ($this->db->debug) {
-                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
+            if ($this->debug) {
+                throw CreatorException::unsupportedFeature('DATABASE EXISTS');
             }
 
             return false;
         }
 
-        return $this->db->query($this->checkDatabaseExistStr, $dbName)->first() !== null;
+        return $this->db->query($this->checkDatabaseExistStr, [$dbName])->first() !== null;
     }
 
     /**
      * Supprime la base de donnees
      *
-     * @throws DatabaseException
+     * @throws CreatorException
      */
     public function dropDatabase(string $dbName): bool
     {
         if ($this->dropDatabaseStr === false) {
-            if ($this->db->debug) {
-                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
+            if ($this->debug) {
+                throw CreatorException::unsupportedFeature('DROP DATABASE');
             }
 
             return false;
         }
 
-        if (! $this->db->query(sprintf($this->dropDatabaseStr, $this->db->escapeIdentifier($dbName)))) {
-            if ($this->db->debug) {
-                throw new DatabaseException('Impossible de supprimer la base de données spécifiée.');
+        try {
+            $result = $this->db->statement(sprintf($this->dropDatabaseStr, $this->db->escapeIdentifier($dbName)));
+
+            if (! $result && $this->debug) {
+                throw CreatorException::unableToDropDatabase($dbName);
+            }
+    
+            if (! empty($this->dataCache['db_names'])) {
+                $key = array_search(strtolower($dbName), array_map('strtolower', $this->dataCache['db_names']), true);
+                if ($key !== false) {
+                    unset($this->dataCache['db_names'][$key]);
+                }
+            }
+    
+            return $result;
+        } catch (Throwable $e) {
+            if ($this->debug) {
+                throw CreatorException::unableToDropDatabase($dbName, $e);
             }
 
             return false;
         }
-
-        if (! empty($this->dataCache['db_names'])) {
-            $key = array_search(strtolower($dbName), array_map('strtolower', $this->dataCache['db_names']), true);
-            if ($key !== false) {
-                unset($this->dataCache['db_names'][$key]);
-            }
-        }
-
-        return true;
     }
 
     /**
@@ -408,8 +431,6 @@ class BaseCreator
      *
      * @param list<string>|string $fieldName
      * @param list<string>|string $tableField
-     *
-     * @throws DatabaseException
      */
     public function addForeignKey(array|string $fieldName = '', string $tableName = '', array|string $tableField = '', string $onUpdate = '', string $onDelete = '', string $fkName = ''): static
     {
@@ -431,37 +452,29 @@ class BaseCreator
     /**
      * Supprime une cle.
      *
-     * @throws DatabaseException
+     * @throws CreatorException
      */
     public function dropKey(string $table, string $keyName, bool $prefixKeyName = true): bool
     {
-        $keyName             = $this->db->escapeIdentifiers(($prefixKeyName === true ? $this->db->prefix : '') . $keyName);
+        $keyName             = $this->db->escapeIdentifiers(($prefixKeyName === true ? $this->prefix : '') . $keyName);
         $table               = $this->db->prefixTable($table);
         $dropKeyAsConstraint = $this->dropKeyAsConstraint($table, $keyName);
 
         if ($dropKeyAsConstraint === true) {
-            $sql = sprintf(
-                $this->dropConstraintStr,
-                $table,
-                $keyName,
-            );
+            $sql = sprintf($this->dropConstraintStr, $table, $keyName);
         } else {
-            $sql = sprintf(
-                $this->dropIndexStr,
-                $keyName,
-                $table,
-            );
+            $sql = sprintf($this->dropIndexStr, $keyName, $table);
         }
 
         if ($sql === '') {
-            if ($this->db->debug) {
-                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
+            if ($this->debug) {
+                throw CreatorException::unsupportedFeature('DROP KEY');
             }
 
             return false;
         }
 
-        return $this->db->query($sql);
+        return $this->db->statement($sql);
     }
 
     /**
@@ -475,7 +488,7 @@ class BaseCreator
             return false;
         }
 
-        return $this->db->query($sql)->resultArray() !== [];
+        return $this->db->statement($sql);
     }
 
     /**
@@ -494,18 +507,16 @@ class BaseCreator
         $sql = sprintf(
             'ALTER TABLE %s DROP CONSTRAINT %s',
             $this->db->prefixTable($table),
-            ($keyName === '') ? $this->db->escapeIdentifiers('pk_' . $this->db->prefix . $table) : $this->db->escapeIdentifiers($keyName),
+            ($keyName === '') ? $this->db->escapeIdentifiers('pk_' . $this->prefix . $table) : $this->db->escapeIdentifiers($keyName),
         );
 
-        return $this->db->query($sql);
+        return $this->db->statement($sql);
     }
 
     /**
-     * @return BaseResult|bool|false|mixed|Query
-     *
-     * @throws DatabaseException
+     * @throws CreatorException
      */
-    public function dropForeignKey(string $table, string $foreignName)
+    public function dropForeignKey(string $table, string $foreignName): bool
     {
         $sql = sprintf(
             (string) $this->dropConstraintStr,
@@ -514,22 +525,21 @@ class BaseCreator
         );
 
         if ($sql === '') {
-            if ($this->db->debug) {
-                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
+            if ($this->debug) {
+                throw CreatorException::unsupportedFeature('DROP FOREIGN KEY');
             }
 
             return false;
         }
 
-        return $this->db->query($sql);
+        return $this->db->statement($sql);
     }
 
     /**
-     * @return mixed
-     *
-     * @throws DatabaseException
+     * @throws InvalidArgumentException
+     * @throws CreatorException
      */
-    public function createTable(string $table, bool $ifNotExists = false, array $attributes = [])
+    public function createTable(string $table, bool $ifNotExists = false, array $attributes = []): bool
     {
         if ($table === '') {
             throw new InvalidArgumentException('Un nom de table est nécessaire pour cette opération.');
@@ -542,7 +552,7 @@ class BaseCreator
         }
 
         // Si la table existe pas la peine d'aller plus loin
-        if ($ifNotExists === true && $this->db->tableExists($table, false)) {
+        if ($ifNotExists === true && $this->db->tableExists($table)) {
             $this->reset();
 
             return true;
@@ -550,7 +560,7 @@ class BaseCreator
 
         $sql = $this->_createTable($table, $attributes);
 
-        if (($result = $this->db->query($sql)) !== false) {
+        if (true === $result = $this->db->statement($sql)) {
             if (isset($this->dataCache['table_names']) && ! in_array($table, $this->dataCache['table_names'], true)) {
                 $this->dataCache['table_names'][] = $table;
             }
@@ -558,7 +568,7 @@ class BaseCreator
             // La plupart des bases de données ne permettent pas de créer des index à partir de l'instruction CREATE TABLE
             if (! empty($this->keys)) {
                 for ($i = 0, $sqls = $this->_processIndexes($table), $c = count($sqls); $i < $c; $i++) {
-                    $this->db->query($sqls[$i]);
+                    $this->db->statement($sqls[$i]);
                 }
             }
         }
@@ -613,21 +623,19 @@ class BaseCreator
     }
 
     /**
-     * @return mixed
-     *
-     * @throws DatabaseException
+     * @throws CreatorException
      */
-    public function dropTable(string $tableName, bool $ifExists = false, bool $cascade = false)
+    public function dropTable(string $tableName, bool $ifExists = false, bool $cascade = false): bool
     {
         if ($tableName === '') {
-            if ($this->db->debug) {
-                throw new DatabaseException('Un nom de table est nécessaire pour cette opération.');
+            if ($this->debug) {
+                throw CreatorException::needTableName();
             }
 
             return false;
         }
 
-        $prefix = $this->db->getPrefix();
+        $prefix = $this->prefix;
         if ($prefix !== '' && str_starts_with($tableName, $prefix)) {
             $tableName = substr($tableName, strlen($prefix));
         }
@@ -638,11 +646,11 @@ class BaseCreator
 
         $this->db->disableForeignKeyChecks();
 
-        $query = $this->db->query($query);
+        $result = $this->db->statement($query);
 
         $this->db->enableForeignKeyChecks();
 
-        if ($query && ! empty($this->dataCache['table_names'])) {
+        if ($result === true && ! empty($this->dataCache['table_names'])) {
             $key = array_search(
                 strtolower($prefix . $tableName),
                 array_map('strtolower', $this->dataCache['table_names']),
@@ -654,7 +662,7 @@ class BaseCreator
             }
         }
 
-        return $query;
+        return $result;
     }
 
     /**
@@ -680,25 +688,24 @@ class BaseCreator
     }
 
     /**
-     * @return mixed
-     *
-     * @throws DatabaseException
+     * @throws InvalidArgumentException
+     * @throws CreatorException
      */
-    public function renameTable(string $tableName, string $newTableName)
+    public function renameTable(string $tableName, string $newTableName): bool
     {
         if ($tableName === '' || $newTableName === '') {
             throw new InvalidArgumentException('Un nom de table est nécessaire pour cette opération.');
         }
 
         if ($this->renameTableStr === false) {
-            if ($this->db->debug) {
-                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
+            if ($this->debug) {
+                throw CreatorException::unsupportedFeature('RENAME TABLE');
             }
 
             return false;
         }
 
-        $result = $this->db->query(sprintf(
+        $result = $this->db->statement(sprintf(
             $this->renameTableStr,
             $this->db->prefixTable($tableName),
             $this->db->prefixTable($newTableName)
@@ -706,13 +713,13 @@ class BaseCreator
 
         if ($result && ! empty($this->dataCache['table_names'])) {
             $key = array_search(
-                strtolower($this->db->prefix . $tableName),
+                strtolower($this->prefix . $tableName),
                 array_map('strtolower', $this->dataCache['table_names']),
                 true
             );
 
             if ($key !== false) {
-                $this->dataCache['table_names'][$key] = $this->db->prefix . $newTableName;
+                $this->dataCache['table_names'][$key] = $this->prefix . $newTableName;
             }
         }
 
@@ -722,7 +729,7 @@ class BaseCreator
     /**
      * @param array<string, array|string>|string $field
      *
-     * @throws DatabaseException
+     * @throws CreatorException
      */
     public function addColumn(string $table, array|string $field): bool
     {
@@ -735,19 +742,19 @@ class BaseCreator
             $this->addField([$name => $field[$name]]);
         }
 
-        $sqls = $this->_alterTable('ADD', $this->db->prefix . $table, $this->_processFields());
+        $sqls = $this->_alterTable('ADD', $this->prefix . $table, $this->_processFields());
         $this->reset();
 
         if ($sqls === false) {
-            if ($this->db->debug) {
-                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
+            if ($this->debug) {
+                throw CreatorException::unsupportedFeature('ADD COLUMN');
             }
 
             return false;
         }
 
         foreach ($sqls as $sql) {
-            if ($this->db->query($sql) === false) {
+            if ($this->db->statement($sql) === false) {
                 return false;
             }
         }
@@ -758,23 +765,21 @@ class BaseCreator
     /**
      * @param list<string>|string $columnName Noms des champs à supprimer
      *
-     * @return mixed
-     *
-     * @throws DatabaseException
+     * @throws CreatorException
      */
-    public function dropColumn(string $table, array|string $columnName)
+    public function dropColumn(string $table, array|string $columnName): bool
     {
-        $sql = $this->_alterTable('DROP', $this->db->prefix . $table, $columnName);
+        $sql = $this->_alterTable('DROP', $this->prefix . $table, $columnName);
 
         if ($sql === false) {
-            if ($this->db->debug) {
-                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
+            if ($this->debug) {
+                throw CreatorException::unsupportedFeature('DROP COLUMN');
             }
 
             return false;
         }
 
-        return $this->db->query($sql);
+        return $this->db->statement($sql);
     }
 
     /**
@@ -795,12 +800,12 @@ class BaseCreator
             throw new RuntimeException('Les informations du champ sont requises');
         }
 
-        $sqls = $this->_alterTable('CHANGE', $this->db->prefix . $table, $this->_processFields());
+        $sqls = $this->_alterTable('CHANGE', $this->prefix . $table, $this->_processFields());
         $this->reset();
 
         if ($sqls === false) {
-            if ($this->db->debug) {
-                throw new DatabaseException('Cette fonction n\'est pas disponible pour la base de données que vous utilisez.');
+            if ($this->debug) {
+                throw CreatorException::unsupportedFeature('MODIFY COLUMN');
             }
 
             return false;
@@ -808,7 +813,7 @@ class BaseCreator
 
         if (is_array($sqls)) {
             foreach ($sqls as $sql) {
-                if ($this->db->query($sql) === false) {
+                if ($this->db->statement($sql) === false) {
                     return false;
                 }
             }
@@ -827,7 +832,7 @@ class BaseCreator
      */
     public function renameColumn(string $table, string $from, string $to): bool
     {
-        $field = array_filter($this->db->getFieldData($table), static fn ($field) => $field->name === $from);
+        $field = array_filter($this->db->getColumnData($table), static fn ($field) => $field->name === $from);
         $field = array_shift($field);
 
         if (null === $field) {
@@ -1042,7 +1047,7 @@ class BaseCreator
                 // Remplacer l'attribut NULL si c'est notre valeur par défaut
                 $attributes['NULL'] = true;
                 $field['null']      = empty($this->null) ? '' : ' ' . $this->null;
-            } elseif ($attributes['DEFAULT'] instanceof RawSql) {
+            } elseif ($attributes['DEFAULT'] instanceof Expression) {
                 $field['default'] = $this->default . $attributes['DEFAULT'];
             } else {
                 $field['default'] = $this->default . $this->db->escape($attributes['DEFAULT']);
@@ -1085,7 +1090,7 @@ class BaseCreator
 
         if (isset($this->primaryKeys['fields']) && $this->primaryKeys['fields'] !== []) {
             if ($asQuery === true) {
-                $sql .= 'ALTER TABLE ' . $this->db->escapeIdentifiers($this->db->prefix . $table) . ' ADD ';
+                $sql .= 'ALTER TABLE ' . $this->db->prefixTable($table) . ' ADD ';
             } else {
                 $sql .= ",\n\t";
             }
@@ -1107,7 +1112,7 @@ class BaseCreator
         $fk   = $this->foreignKeys;
 
         if ([] === $this->fields) {
-            $fieldData = $this->db->getFieldData($this->db->prefix . $table);
+            $fieldData = $this->db->getColumnData($this->db->prefixTable($table));
 
             $this->fields = array_combine(
                 array_map(static fn ($columnName) => $columnName->name, $fieldData),
@@ -1118,7 +1123,7 @@ class BaseCreator
         $fields = $this->fields;
 
         if ([] !== $this->keys) {
-            $sqls = $this->_processIndexes($this->db->prefix . $table, true);
+            $sqls = $this->_processIndexes($this->prefix . $table, true);
         }
 
         if ([] !== $this->primaryKeys) {
@@ -1168,12 +1173,12 @@ class BaseCreator
                 $this->keys[$i]['keyName']);
 
             if (in_array($i, $this->uniqueKeys, true)) {
-                if ($this->db->driver === 'SQLite3') {
+                if ($this->driver === 'sqlite') {
                     $sqls[] = 'CREATE UNIQUE INDEX ' . $keyName
                         . ' ON ' . $this->db->escapeIdentifiers($table)
                         . ' (' . implode(', ', $this->db->escapeIdentifiers($this->keys[$i]['fields'])) . ')';
                 } else {
-                    $sqls[] = 'ALTER TABLE ' . $this->db->escapeIdentifiers($table)
+                    $sqls[] = 'ALTER TABLE ' . $this->db->prefixTable($table)
                         . ' ADD CONSTRAINT ' . $keyName
                         . ' UNIQUE (' . implode(', ', $this->db->escapeIdentifiers($this->keys[$i]['fields'])) . ')';
                 }
@@ -1182,7 +1187,7 @@ class BaseCreator
             }
 
             $sqls[] = 'CREATE INDEX ' . $keyName
-                . ' ON ' . $this->db->escapeIdentifiers($table)
+                . ' ON ' . $this->db->prefixTable($table)
                 . ' (' . implode(', ', $this->db->escapeIdentifiers($this->keys[$i]['fields'])) . ')';
         }
 
@@ -1223,15 +1228,15 @@ class BaseCreator
 
             $nameIndex = $fkey['fkName'] !== '' ?
             $fkey['fkName'] :
-            $table . '_' . implode('_', $fkey['field']) . ($this->db->driver === 'OCI8' ? '_fk' : '_foreign');
+            $table . '_' . implode('_', $fkey['field']) . ($this->driver === 'OCI8' ? '_fk' : '_foreign');
 
             $nameIndexFilled      = $this->db->escapeIdentifiers($nameIndex);
             $foreignKeyFilled     = implode(', ', $this->db->escapeIdentifiers($fkey['field']));
-            $referenceTableFilled = $this->db->escapeIdentifiers($this->db->prefix . $fkey['referenceTable']);
+            $referenceTableFilled = $this->db->escapeIdentifiers($this->prefix . $fkey['referenceTable']);
             $referenceFieldFilled = implode(', ', $this->db->escapeIdentifiers($fkey['referenceField']));
 
             if ($asQuery === true) {
-                $sqls[$index] .= 'ALTER TABLE ' . $this->db->escapeIdentifiers($this->db->prefix . $table) . ' ADD ';
+                $sqls[$index] .= 'ALTER TABLE ' . $this->db->escapeIdentifiers($this->prefix . $table) . ' ADD ';
             } else {
                 $sqls[$index] .= ",\n\t";
             }
@@ -1243,7 +1248,7 @@ class BaseCreator
                 $sqls[$index] .= ' ON DELETE ' . $fkey['onDelete'];
             }
 
-            if ($this->db->driver !== 'OCI8' && $fkey['onUpdate'] !== false && in_array($fkey['onUpdate'], $this->fkAllowActions, true)) {
+            if ($this->driver !== 'OCI8' && $fkey['onUpdate'] !== false && in_array($fkey['onUpdate'], $this->fkAllowActions, true)) {
                 $sqls[$index] .= ' ON UPDATE ' . $fkey['onUpdate'];
             }
         }

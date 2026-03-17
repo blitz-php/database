@@ -67,7 +67,7 @@ class Table
     {
         $this->prefixedTableName = $table;
 
-        $prefix = $this->db->prefix;
+        $prefix = $this->db->getPrefix();
 
         if (! empty($prefix) && str_starts_with($table, $prefix)) {
             $table = substr($table, strlen($prefix));
@@ -102,7 +102,7 @@ class Table
      */
     public function run(): bool
     {
-        $this->db->query('PRAGMA foreign_keys = OFF');
+        $this->db->disableForeignKeyChecks();
 
         $this->db->transStart();
 
@@ -118,7 +118,7 @@ class Table
 
         $success = $this->db->transComplete();
 
-        $this->db->query('PRAGMA foreign_keys = ON');
+        $this->db->enableForeignKeyChecks();
 
         $this->db->resetDataCache();
 
@@ -291,10 +291,12 @@ class Table
             }
         }
 
+        $prefix = $this->db->getPrefix();
+
         foreach ($this->foreignKeys as $foreignKey) {
             $this->creator->addForeignKey(
                 $foreignKey->column_name,
-                trim($foreignKey->foreign_table_name, $this->db->DBPrefix),
+                trim($foreignKey->foreign_table_name, $prefix),
                 $foreignKey->foreign_column_name
             );
         }
@@ -325,8 +327,8 @@ class Table
             array_map(fn ($item) => $this->db->protectIdentifiers($item), $newFields)
         );
 
-        $this->db->query(
-            "INSERT INTO {$this->prefixedTableName}({$newFields}) SELECT {$exFields} FROM {$this->db->DBPrefix}temp_{$this->tableName}"
+        $this->db->statement(
+            "INSERT INTO {$this->prefixedTableName}({$newFields}) SELECT {$exFields} FROM {$this->db->getPrefix()}temp_{$this->tableName}"
         );
     }
 
