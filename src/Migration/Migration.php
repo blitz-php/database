@@ -11,6 +11,7 @@
 
 namespace BlitzPHP\Database\Migration;
 
+use BlitzPHP\Database\Config\Services;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\DatabaseManager;
 
@@ -182,7 +183,7 @@ abstract class Migration
     {
         if (! isset($this->connections[$name])) {
             // Résoudre la connexion via le DatabaseManager
-            $this->connections[$name] = $this->db->dbManager()->connect($name);
+            $this->connections[$name] = Services::dbManager()->connect($name);
         }
 
         return new ConnectionProxy($this->connections[$name], $this);

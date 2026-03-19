@@ -34,12 +34,15 @@ use Throwable;
 /**
  * Connexion de base à la base de données
  *
- * @method bool  columnExists(string $column, string $table) Vérifie si un champ existe dans une table
- * @method array getColumnData(string $table)                Retourne les métadonnées des champs d'une table
- * @method array getColumnNames(string $table)               Retourne les noms des champs d'une table
- * @method array getForeignKeyData(string $table)            Retourne les métadonnées des clés étrangères d'une table
- * @method array getIndexData(string $table)                 Retourne les métadonnées des index d'une table
- * @method bool  tableExists(string $name)                   Vérifie si une table existe
+ * @method array  listTables(bool $constrainByPrefix = false)                  Retourne la liste des tables de la base de données
+ * @method bool   tableExists(string $tableName, bool $cached = true)          Vérifie si une table existe
+ * @method array  getColumnNames(string $table)                                Retourne les noms des champs d'une table
+ * @method bool   columnExists(string $column, string $table)                  Vérifie si un champ existe dans une table
+ * @method array  getColumnData(string $table)                                 Retourne les informations détaillées des champs d'une table
+ * @method array  getIndexData(string $table)                                  Retourne les informations des index d'une table
+ * @method array  getForeignKeyData(string $table)                             Retourne les informations des clés étrangères d'une table
+ * @method self   clearCache()                                                 Vide le cache des métadonnées
+ * @method self   resetDataCache()                                             Alias de clearCache() - Vide le cache des métadonnées
  */
 abstract class BaseConnection implements ConnectionInterface
 {
@@ -87,15 +90,20 @@ abstract class BaseConnection implements ConnectionInterface
      */
     protected ?MetadataCollector $metadata = null;
 
+    /**
+     * Mapping des méthodes proxy vers MetadataCollector
+     *
+     * @var array<string, string>
+     */
     protected array $proxyMethods = [
-        'listTables',
-        'tableExists',
-        'getColumnNames',
-        'columnExists',
-        'getColumnData',
-        'getIndexData',
-        'getForeignKeyData',
-        'resetDataCache' => 'clearCache',
+        'listTables'        => 'listTables',
+        'tableExists'       => 'tableExists',
+        'getColumnNames'    => 'getColumnNames',
+        'columnExists'      => 'columnExists',
+        'getColumnData'     => 'getColumnData',
+        'getIndexData'      => 'getIndexData',
+        'getForeignKeyData' => 'getForeignKeyData',
+        'resetDataCache'    => 'clearCache',
     ];
 
     /**
@@ -600,11 +608,24 @@ abstract class BaseConnection implements ConnectionInterface
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Gère les appels aux méthodes proxy vers MetadataCollector
+     *
+     * @param string $name      Nom de la méthode appelée
+     * @param array  $arguments Arguments de la méthode
+     *
+     * @return mixed
+     *
+     * @throws BadMethodCallException
+     */
     public function __call(string $name, array $arguments = []): mixed
     {
+        // Méthodes proxy simples (même nom)
         if (in_array($name, $this->proxyMethods, true)) {
             return call_user_func_array([$this->metadata(), $name], $arguments);
         }
+        
+        // Méthodes proxy avec nom différent (ex: resetDataCache -> clearCache)
         if (array_key_exists($name, $this->proxyMethods)) {
             return call_user_func_array([$this->metadata(), $this->proxyMethods[$name]], $arguments);
         }
@@ -640,6 +661,9 @@ abstract class BaseConnection implements ConnectionInterface
      */
     abstract public function _listForeignKeys(string $table): array;
 
+    /**
+     * Récupère l'instance du collecteur de métadonnées
+     */
     private function metadata(): MetadataCollector
     {
         if (! $this->metadata) {

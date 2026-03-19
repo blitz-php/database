@@ -31,7 +31,7 @@ use BlitzPHP\Utilities\Support\Fluent;
  * @method $this primary()                                                                                                                            Ajoute un index primaire
  * @method $this unsigned() Définit la colonne INTEGER comme NON SIGNÉE (MySQL)
  * @method $this spatialIndex(string $indexName = null)                                                                                               Ajoute un index spatial
- * @method $this generatedAs(string|\Illuminate\Database\Query\Expression $expression = null) Crée une colonne d'identité conforme SQL (PostgreSQL)
+ * @method $this generatedAs(string|\BlitzPHP\Database\Query\Expression $expression = null) Crée une colonne d'identité conforme SQL (PostgreSQL)
  * @method $this storedAs(string $expression) Crée une colonne générée stockée (MySQL/PostgreSQL/SQLite)
  * @method $this first() Place la colonne "en premier" dans la table (MySQL)
  * @method $this type(string $type)                                                                                                                   Spécifie un type pour la colonne
