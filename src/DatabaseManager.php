@@ -59,6 +59,11 @@ class DatabaseManager implements ConnectionResolverInterface
     {
     }
 
+    public function __destruct()
+    {
+        $this->closeAll();
+    }
+
     /**
      * {@inheritDoc}
      */

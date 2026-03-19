@@ -13,7 +13,7 @@ namespace BlitzPHP\Database\Builder\Concerns;
 
 use BlitzPHP\Contracts\Database\BuilderInterface;
 use BlitzPHP\Database\Query\Expression;
-use BlitzPHP\Database\Result\BaseResult;
+use BlitzPHP\Database\Query\Result;
 use Closure;
 
 /**
@@ -146,33 +146,35 @@ trait DataMethods
 
         $result = $this->execute();
         
-        return $result instanceof BaseResult ? $result->affectedRows() : 0;
+        return $result instanceof Result ? $result->affectedRows() : 0;
     }
 
     /**
      * Insère et récupère l'ID généré
+     * 
+     * @return int|static|string|null
      */
-    public function insertGetId(array $values, ?string $sequence = null): int|string|null
+    public function insertGetId(array $values, ?string $sequence = null)
     {
-        $this->insert($values);
+        if (is_bool($inserted = $this->insert($values))) {
+            return $inserted === true ? $this->db->lastId($this->getTable()) : null;
+        }
 
-        return $this->db->lastId($this->getTable());
+        return $inserted;
     }
 
     /**
      * Insère et récupère l'enregistrement inséré
+     * 
+     * @return object|static|string|null
      */
-    public function insertAndGet(array $values): ?object
+    public function insertAndGet(array $values)
     {
-        $this->insert($values);
-
-        $id = $this->db->lastId($this->getTable());
-        
-        if ($id === null) {
-            return null;
+        if (is_int($id = $this->insertGetId($values))) {
+            return $this->clone()->where($this->getKeyName(), $id)->first();
         }
 
-        return $this->clone()->where($this->getKeyName(), $id)->first();
+        return $id;
     }
 
     /**

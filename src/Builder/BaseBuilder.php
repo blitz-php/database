@@ -159,14 +159,14 @@ class BaseBuilder implements BuilderInterface
     /**
      * Les callbacks qui doivent être invoqués avant l'exécution de la requête.
      *
-     * @var list<Closure($this): void>
+     * @var list<callable($this): void>
      */
     protected array $beforeQueryCallbacks = [];
 
     /**
      * Les callbacks qui doivent être invoqués après la récupération des données de la base de données.
      *
-     * @var list<Closure(mixed): mixed>
+     * @var list<callable(mixed): mixed>
      */
     protected array $afterQueryCallbacks = [];
 
@@ -758,7 +758,9 @@ class BaseBuilder implements BuilderInterface
         $this->applyBeforeQueryCallbacks();
         
         try {
-            return $this->query($this->toSql(), $this->getBindings());
+            $result = $this->query($this->toSql(), $this->getBindings());
+
+            return $this->applyAfterQueryCallbacks($result);
         } finally {
             $this->reset();
         }
@@ -1031,7 +1033,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Enregistre une closure à invoquer avant l'exécution de la requête.
      * 
-     * @param Closure($this): void $callback
+     * @param callable($this): void $callback
      */
     public function beforeQuery(callable $callback): static
     {
@@ -1046,7 +1048,7 @@ class BaseBuilder implements BuilderInterface
     public function applyBeforeQueryCallbacks(): void
     {
         foreach ($this->beforeQueryCallbacks as $callback) {
-            $callback($this);
+            call_user_func($callback, $this);
         }
 
         $this->beforeQueryCallbacks = [];
@@ -1055,9 +1057,9 @@ class BaseBuilder implements BuilderInterface
     /**
      * Enregistre une closure à invoquer après l'exécution de la requête.
      * 
-     * @param Closure(mixed): mixed $callback
+     * @param callable(mixed): mixed $callback
      */
-    public function afterQuery(Closure $callback): static
+    public function afterQuery(callable $callback): static
     {
         $this->afterQueryCallbacks[] = $callback;
 
@@ -1069,8 +1071,8 @@ class BaseBuilder implements BuilderInterface
      */
     public function applyAfterQueryCallbacks(mixed $result): mixed
     {
-        foreach ($this->afterQueryCallbacks as $afterQueryCallback) {
-            $result = $afterQueryCallback($result) ?: $result;
+        foreach ($this->afterQueryCallbacks as $callback) {
+            $result = call_user_func($callback, $result) ?: $result;
         }
 
         return $result;
