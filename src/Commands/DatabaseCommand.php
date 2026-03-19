@@ -39,7 +39,7 @@ abstract class DatabaseCommand extends Command
         return $this->resolver->connect($group, $shared);
     }
 
-     /**
+    /**
      * Recupere les informations a utiliser pour la connexion a la base de données
      *
      * @return array [group, configuration]
@@ -54,21 +54,21 @@ abstract class DatabaseCommand extends Command
      */
     public function runner(string $namespace, ?string $group = null): Runner
     {
-        $namespaces = match($namespace) {
+        $namespaces = match ($namespace) {
             'ALL'   => array_keys($this->container->get(Autoloader::class)->getNamespace()),
             default => [$namespace],
         };
 
         $locator = $this->container->get(LocatorInterface::class);
-        $files = [];
+        $files   = [];
 
         foreach ($namespaces as $namespace) {
             $files[$namespace] = $locator->listNamespaceFiles($namespace, '/Database/Migrations/');
         }
-    
+
         return new Runner(
-            $this->container->get(DatabaseManager::class), 
-            $group, 
+            $this->container->get(DatabaseManager::class),
+            $group,
             $files,
             config('migrations'),
         );

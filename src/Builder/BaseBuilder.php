@@ -75,7 +75,7 @@ class BaseBuilder implements BuilderInterface
      * Colonnes à sélectionner
      */
     protected array $columns = [];
-    
+
     /**
      * Liste des conditions WHERE
      */
@@ -124,7 +124,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Option DISTINCT
      */
-    protected string|bool $distinct = false;
+    protected bool|string $distinct = false;
 
     /**
      * Option IGNORE
@@ -170,9 +170,6 @@ class BaseBuilder implements BuilderInterface
      */
     protected array $afterQueryCallbacks = [];
 
-    /**
-     * @var QueryCompiler
-     */
     protected QueryCompiler $compiler;
 
     /**
@@ -186,7 +183,7 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Methode magique pour recupere une valeur interne du Builder
-     * 
+     *
      * @internal
      */
     public function __get(string $name): mixed
@@ -204,12 +201,12 @@ class BaseBuilder implements BuilderInterface
     protected function createCompiler(): QueryCompiler
     {
         $driver = $this->db->getDriver();
-        
-        return match($driver) {
-            'mysql' => new MySQLCompiler($this->db),
-            'pgsql' => new PostgreCompiler($this->db),
+
+        return match ($driver) {
+            'mysql'  => new MySQLCompiler($this->db),
+            'pgsql'  => new PostgreCompiler($this->db),
             'sqlite' => new SQLiteCompiler($this->db),
-            default => throw new DatabaseException("Unsupported driver: {$driver}")
+            default  => throw new DatabaseException("Unsupported driver: {$driver}"),
         };
     }
 
@@ -234,7 +231,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Définit un statut de mode de test.
      */
-    public function testMode(bool $mode = true): self
+    public function testMode(bool $mode = true): static
     {
         $this->testMode = $mode;
 
@@ -244,14 +241,12 @@ class BaseBuilder implements BuilderInterface
     /**
      * Définit un statut de l'état d'attente de la requête.
      */
-    public function pending(bool $state = true): self
+    public function pending(bool $state = true): static
     {
         $this->pending = $state;
 
         return $this;
     }
-
-
 
     /**
      * Recupere le nom de la table principale.
@@ -270,10 +265,10 @@ class BaseBuilder implements BuilderInterface
      *
      * @param list<string>|string|null $from
      */
-    public function from($from, bool $overwrite = false): self
+    public function from($from, bool $overwrite = false): static
     {
         if ($from === null) {
-            $this->from = '';
+            $this->from   = '';
             $this->tables = [];
 
             return $this;
@@ -282,7 +277,7 @@ class BaseBuilder implements BuilderInterface
         if ($overwrite) {
             $this->tables = [];
         }
-        
+
         if (is_string($from)) {
             $from = explode(',', $from);
         }
@@ -300,11 +295,11 @@ class BaseBuilder implements BuilderInterface
     /**
      * @param BaseBuilder $from
      */
-    public function fromSubquery(BuilderInterface $from, string $alias = ''): self
+    public function fromSubquery(BuilderInterface $from, string $alias = ''): static
     {
         $table = $this->buildSubquery($from, true, $alias);
         $this->db->addTableAlias($alias);
-        
+
         $this->reset();
         $this->tables = [$table];
         $this->bindings->merge($from->bindings);
@@ -319,7 +314,7 @@ class BaseBuilder implements BuilderInterface
      *
      * @alias self::from()
      */
-    public function table($from): self
+    public function table($from): static
     {
         return $this->from($from, true);
     }
@@ -327,7 +322,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Définit la table dans laquelle les données seront insérées
      */
-    public function into(string $table): self
+    public function into(string $table): static
     {
         return $this->table($table);
     }
@@ -335,23 +330,23 @@ class BaseBuilder implements BuilderInterface
     /**
      * Définit les colonnes à sélectionner
      *
-     * @param array|string|Expression $columns Colonnes à sélectionner
+     * @param array|Expression|string $columns Colonnes à sélectionner
      */
-    public function select($columns = '*'): self
+    public function select($columns = '*'): static
     {
         // Gestion de l'ancienne signature avec limit/offset
         if (func_num_args() > 1 && is_int(func_get_arg(1))) {
             if (! $this->testMode) {
-                trigger_error(
+                @trigger_error(
                     'Passing limit/offset to select() is deprecated. Use limit() and offset() methods instead.',
-                    E_USER_DEPRECATED
+                    E_USER_DEPRECATED,
                 );
             }
-            
-            $limit = func_get_arg(1);
+
+            $limit  = func_get_arg(1);
             $offset = func_num_args() > 2 ? func_get_arg(2) : null;
             $this->limit($limit, $offset);
-            
+
             $columns = func_get_arg(0);
         }
 
@@ -386,61 +381,65 @@ class BaseBuilder implements BuilderInterface
     /**
      * Sélectionne avec un alias explicite
      */
-    public function selectAs(string $column, string $alias): self
+    public function selectAs(string $column, string $alias): static
     {
         $this->columns[] = $this->buildColumnName($column) . ' AS ' . $this->db->escapeIdentifiers($alias);
-        
+
         return $this->asCrud('select');
     }
 
     /**
      * Sélectionne une expression avec alias
      */
-    public function selectExpr(string $expression, string $alias, array $bindings = []): self
+    public function selectExpr(string $expression, string $alias, array $bindings = []): static
     {
         $this->columns[] = new Expression($expression);
         $this->bindings->addMany($bindings);
+
         return $this->asCrud('select');
     }
 
     /**
      * Ajoute une sous requete a la selection
      */
-    public function selectSubquery(BuilderInterface $subquery, string $as): self
+    public function selectSubquery(BuilderInterface $subquery, string $as): static
     {
         $this->columns[] = $this->buildSubquery($subquery, true, $as);
+
         return $this->asCrud('select');
     }
 
     /**
      * Ajoute une clause DISTINCT
      */
-    public function distinct(bool $value = true): self
+    public function distinct(bool $value = true): static
     {
         $this->distinct = $value;
+
         return $this->asCrud('select');
     }
 
     /**
      * Ajoute une clause DISTINCT ON (PostgreSQL)
      */
-    public function distinctOn(array $columns): self
+    public function distinctOn(array $columns): static
     {
         if ($this->db->getDriver() !== 'pgsql') {
             throw new DatabaseException('DISTINCT ON is only supported by PostgreSQL');
         }
 
         $this->distinct = 'DISTINCT ON (' . implode(', ', array_map([$this->db, 'escapeIdentifiers'], $columns)) . ')';
+
         return $this->asCrud('select');
     }
-    
+
     /**
      * Ajoute une clause LIMIT
      */
-    public function limit(int $limit, ?int $offset = null): self
+    public function limit(int $limit, ?int $offset = null): static
     {
         $this->limit = max(0, $limit);
-        
+
         if ($offset !== null) {
             $this->offset = max(0, $offset);
         }
@@ -451,10 +450,10 @@ class BaseBuilder implements BuilderInterface
     /**
      * Ajoute une clause OFFSET
      */
-    public function offset(int $offset, ?int $limit = null): self
+    public function offset(int $offset, ?int $limit = null): static
     {
         $this->offset = max(0, $offset);
-        
+
         if ($limit !== null) {
             $this->limit = max(0, $limit);
         }
@@ -465,24 +464,25 @@ class BaseBuilder implements BuilderInterface
     /**
      * Ajoute une option IGNORE
      */
-    public function ignore(bool $value = true): self
+    public function ignore(bool $value = true): static
     {
         $this->ignore = $value;
+
         return $this;
     }
 
     /**
      * Définit les valeurs pour INSERT/UPDATE
-     * 
+     *
      * @param array|object|string $key   Nom du champ, ou tableau de paire champs/valeurs
      * @param mixed               $value Valeur du champ, si $key est un simple champ
      */
-    public function set($key, $value = ''): self
+    public function set($key, $value = ''): static
     {
         if (is_string($key)) {
             $key = [$key => $value];
         }
-        
+
         $key = $this->objectToArray($key);
 
         foreach ($key as $k => $v) {
@@ -504,12 +504,12 @@ class BaseBuilder implements BuilderInterface
      */
     public function insert(array|object $data = [])
     {
-        return $this->run('successfulable', function() use($data) {
+        return $this->run('successfulable', function () use ($data) {
             $this->crud = 'insert';
 
             $this->set($data);
 
-            if ($this->values === [] && !$this->pending) {
+            if ($this->values === [] && ! $this->pending) {
                 throw new DatabaseException('You must give entries to insert.');
             }
         });
@@ -528,8 +528,8 @@ class BaseBuilder implements BuilderInterface
     /**
      * Insertion multiple
      *
-     * @param list<array|object> $data Tableau a deux dimensions contenant les valeurs a inserer
-     * @param int $chunkSize Taille optimale des chunks
+     * @param list<array|object> $data      Tableau a deux dimensions contenant les valeurs a inserer
+     * @param int                $chunkSize Taille optimale des chunks
      *
      * @return int|string
      */
@@ -547,32 +547,32 @@ class BaseBuilder implements BuilderInterface
         $placeholders = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
         $columnList   = implode(', ', array_map([$this->db, 'escapeIdentifiers'], $columns));
         $table        = $this->db->escapeIdentifiers($this->getTable());
-      
+
         $totalAffected = 0;
         $chunks        = array_chunk($data, $chunkSize);
         $allSql        = [];
 
-        $callback = function() use ($ignore, $chunks, $table, $columnList, $placeholders, &$totalAffected, &$allSql) {
+        $callback = function () use ($ignore, $chunks, $table, $columnList, $placeholders, &$totalAffected, &$allSql) {
             foreach ($chunks as $chunk) {
-                $values = array_fill(0, count($chunk), $placeholders);
+                $values   = array_fill(0, count($chunk), $placeholders);
                 $bindings = [];
-                
+
                 foreach ($chunk as $row) {
                     array_push($bindings, ...array_values((array) $row));
                 }
-                
+
                 $sql = $this->compiler->compileInsertion($table, $columnList, implode(', ', $values), $ignore);
-            
+
                 if ($this->testMode) {
                     $allSql[] = $sql;
                 } else {
                     $totalAffected += $this->db->affectingStatement($sql, $bindings);
                 }
             }
-            
+
             return [$allSql, $totalAffected];
         };
-        
+
         [$allSql, $totalAffected] = $this->db->transaction($callback);
 
         return $this->testMode ? implode('; ', $allSql) : $totalAffected;
@@ -581,8 +581,8 @@ class BaseBuilder implements BuilderInterface
     /**
      * Insertion multiple avec IGNORE
      *
-     * @param list<array|object> $data Tableau a deux dimensions contenant les valeurs a inserer
-     * @param int $chunkSize Taille optimale des chunks
+     * @param list<array|object> $data      Tableau a deux dimensions contenant les valeurs a inserer
+     * @param int                $chunkSize Taille optimale des chunks
      *
      * @return int|string
      */
@@ -593,29 +593,29 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * UPSERT (INSERT ... ON DUPLICATE KEY UPDATE)
-     * 
+     *
      * @return int|static|string
      */
     public function upsert(array $values, array $uniqueBy, ?array $update = null)
     {
-        return $this->run('affectable', function() use($values, $uniqueBy, $update) {
+        return $this->run('affectable', function () use ($values, $uniqueBy, $update) {
             $this->crud = 'upsert';
-        
+
             // Support des insertions multiples
             if (isset($values[0]) && is_array($values[0])) {
                 $this->values = $values;
             } else {
                 $this->values = [$values];
             }
-            
-            $this->uniqueBy = $uniqueBy;
+
+            $this->uniqueBy      = $uniqueBy;
             $this->updateColumns = $update ?? array_keys($values[0] ?? $values);
         });
     }
 
     /**
      * INSERT OR IGNORE
-     * 
+     *
      * @return int|static|string
      */
     public function insertOrIgnore(array $values)
@@ -632,12 +632,12 @@ class BaseBuilder implements BuilderInterface
      */
     public function update(array|object $data = [])
     {
-        return $this->run('affectable', function() use($data) {
+        return $this->run('affectable', function () use ($data) {
             $this->crud = 'update';
 
             $this->set($data);
 
-            if ($this->values === [] && !$this->pending) {
+            if ($this->values === [] && ! $this->pending) {
                 throw new DatabaseException('You must give entries to insert.');
             }
         });
@@ -646,18 +646,18 @@ class BaseBuilder implements BuilderInterface
     /**
      * Exécute une requête de remplacement.
      *
-     * @param array|object $data    Tableau ou objet de clés et de valeurs à remplacer
+     * @param array|object $data Tableau ou objet de clés et de valeurs à remplacer
      *
      * @return int|static|string
      */
     public function replace(array|object $data = [])
     {
-        return $this->run('affectable', function() use($data) {
+        return $this->run('affectable', function () use ($data) {
             $this->crud = 'replace';
 
             $this->set($data);
 
-            if ($this->values === [] && !$this->pending) {
+            if ($this->values === [] && ! $this->pending) {
                 throw new DatabaseException('You must give entries to insert.');
             }
         });
@@ -670,7 +670,7 @@ class BaseBuilder implements BuilderInterface
     {
         $exists = $this->clone()->where($attributes)->exists();
 
-        if (!$exists) {
+        if (! $exists) {
             return $this->insert(array_merge($attributes, $values)) !== false;
         }
 
@@ -689,7 +689,7 @@ class BaseBuilder implements BuilderInterface
         }
 
         $this->insert(array_merge($attributes, $values));
-        
+
         return $this->clone()->where($attributes)->first();
     }
 
@@ -710,13 +710,13 @@ class BaseBuilder implements BuilderInterface
     /**
      * Exécute une requête de suppression.
      *
-     * @param array $where   Conditions de suppression
+     * @param array $where Conditions de suppression
      *
      * @return int|self|string
      */
     public function delete(?array $where = null, ?int $limit = null)
     {
-        return $this->run('affectable', function() use($where, $limit) {
+        return $this->run('affectable', function () use ($where, $limit) {
             $this->crud = 'delete';
 
             if ($where !== null && $where !== []) {
@@ -739,7 +739,7 @@ class BaseBuilder implements BuilderInterface
      */
     public function truncate(?string $table = null)
     {
-        return $this->run('successfulable', function() use($table) {
+        return $this->run('successfulable', function () use ($table) {
             $this->crud = 'truncate';
 
             if ($table !== null && $table !== '') {
@@ -747,16 +747,16 @@ class BaseBuilder implements BuilderInterface
             }
         });
     }
-    
+
     /**
      * Exécute la requête construite
-     * 
+     *
      * @return Result
      */
     public function execute(): ResultInterface
     {
         $this->applyBeforeQueryCallbacks();
-        
+
         try {
             $result = $this->query($this->toSql(), $this->getBindings());
 
@@ -778,7 +778,7 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * @param 'affectable'|'successfulable' $as
-     * 
+     *
      * @return ($as is 'affectable' ? int|static|string : bool|static|string)
      */
     protected function run(string $as, Closure $callback)
@@ -815,9 +815,7 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Récupère les résultats de la requete dans une collection
-     * 
-     * @param int|string $type
-     * 
+     *
      * @return Collection<int, TValue>
      */
     public function collect(int|string $type = PDO::FETCH_OBJ): Collection
@@ -827,6 +825,8 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Récupère le premier résultat
+     *
+     * @param mixed $type
      */
     public function first($type = PDO::FETCH_OBJ): mixed
     {
@@ -835,6 +835,8 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Récupère une ligne spécifique
+     *
+     * @param mixed $type
      */
     public function row(int $index, $type = PDO::FETCH_OBJ): mixed
     {
@@ -848,7 +850,7 @@ class BaseBuilder implements BuilderInterface
      */
     public function value(array|string $name)
     {
-        $names = (array) $name;
+        $names  = (array) $name;
         $values = [];
 
         $row = $this->select($names)->first(PDO::FETCH_OBJ);
@@ -869,7 +871,7 @@ class BaseBuilder implements BuilderInterface
      */
     public function values(array|string $name): array
     {
-        $names = (array) $name;
+        $names   = (array) $name;
         $columns = [];
 
         $rows = $this->select($names)->all(PDO::FETCH_OBJ);
@@ -901,41 +903,41 @@ class BaseBuilder implements BuilderInterface
      */
     public function doesntExist(): bool
     {
-        return !$this->exists();
+        return ! $this->exists();
     }
 
     /**
      * Verrouillage pour mise à jour
      */
-    public function lockForUpdate(): self
+    public function lockForUpdate(): static
     {
-        $this->lock = match($this->db->getDriver()) {
+        $this->lock = match ($this->db->getDriver()) {
             'sqlite' => '', // SQLite ne supporte pas le verrouillage
-            default => 'FOR UPDATE'
+            default  => 'FOR UPDATE',
         };
-        
+
         return $this;
     }
 
     /**
      * Verrouillage partagé
      */
-    public function sharedLock(): self
+    public function sharedLock(): static
     {
-        $this->lock = match($this->db->getDriver()) {
-            'mysql' => 'LOCK IN SHARE MODE',
-            'pgsql' => 'FOR SHARE',
+        $this->lock = match ($this->db->getDriver()) {
+            'mysql'  => 'LOCK IN SHARE MODE',
+            'pgsql'  => 'FOR SHARE',
             'sqlite' => '', // SQLite ne supporte pas le verrouillage
-            default => 'LOCK IN SHARE MODE'
+            default  => 'LOCK IN SHARE MODE',
         };
-        
+
         return $this;
     }
 
     /**
      * Verrouillage SKIP LOCKED
      */
-    public function skipLocked(): self
+    public function skipLocked(): static
     {
         $this->lock .= ' SKIP LOCKED';
 
@@ -945,7 +947,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Verrouillage NOWAIT
      */
-    public function lockNowait(): self
+    public function lockNowait(): static
     {
         $this->lock .= ' NOWAIT';
 
@@ -954,9 +956,9 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Incremente un champ numerique par la valeur specifiee.
-     * 
+     *
      * @param array<string, mixed> $extra
-     * 
+     *
      * @return int<0, max>|static|string
      *
      * @throws DatabaseException
@@ -970,8 +972,8 @@ class BaseBuilder implements BuilderInterface
      * Incrémente les valeurs des colonnes spécifiées par les montants donnés.
      *
      * @param array<string, float|int|numeric-string> $columns
-     * @param array<string, mixed> $extra
-     * 
+     * @param array<string, mixed>                    $extra
+     *
      * @return int<0, max>|static|string
      *
      * @throws InvalidArgumentException
@@ -980,8 +982,9 @@ class BaseBuilder implements BuilderInterface
     {
         foreach ($columns as $column => $amount) {
             if (! is_numeric($amount)) {
-                throw new InvalidArgumentException("Non-numeric value passed as increment amount for column: '$column'.");
-            } elseif (! is_string($column)) {
+                throw new InvalidArgumentException("Non-numeric value passed as increment amount for column: '{$column}'.");
+            }
+            if (! is_string($column)) {
                 throw new InvalidArgumentException('Non-associative array passed to incrementEach method.');
             }
 
@@ -993,9 +996,9 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Decremente un champ numerique par la valeur specifiee.
-     * 
+     *
      * @param array<string, mixed> $extra
-     * 
+     *
      * @return int<0, max>|static|string
      *
      * @throws DatabaseException
@@ -1009,8 +1012,8 @@ class BaseBuilder implements BuilderInterface
      * Décrémente les valeurs des colonnes spécifiées par les montants donnés.
      *
      * @param array<string, float|int|numeric-string> $columns
-     * @param array<string, mixed> $extra
-     * 
+     * @param array<string, mixed>                    $extra
+     *
      * @return int<0, max>|static|string
      *
      * @throws InvalidArgumentException
@@ -1019,8 +1022,9 @@ class BaseBuilder implements BuilderInterface
     {
         foreach ($columns as $column => $amount) {
             if (! is_numeric($amount)) {
-                throw new InvalidArgumentException("Non-numeric value passed as decrement amount for column: '$column'.");
-            } elseif (! is_string($column)) {
+                throw new InvalidArgumentException("Non-numeric value passed as decrement amount for column: '{$column}'.");
+            }
+            if (! is_string($column)) {
                 throw new InvalidArgumentException('Non-associative array passed to decrementEach method.');
             }
 
@@ -1032,7 +1036,7 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Enregistre une closure à invoquer avant l'exécution de la requête.
-     * 
+     *
      * @param callable($this): void $callback
      */
     public function beforeQuery(callable $callback): static
@@ -1041,14 +1045,14 @@ class BaseBuilder implements BuilderInterface
 
         return $this;
     }
-    
+
     /**
      * Invoque les callbacks de modification "avant requête".
      */
     public function applyBeforeQueryCallbacks(): void
     {
         foreach ($this->beforeQueryCallbacks as $callback) {
-            call_user_func($callback, $this);
+            $callback($this);
         }
 
         $this->beforeQueryCallbacks = [];
@@ -1056,7 +1060,7 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Enregistre une closure à invoquer après l'exécution de la requête.
-     * 
+     *
      * @param callable(mixed): mixed $callback
      */
     public function afterQuery(callable $callback): static
@@ -1072,19 +1076,16 @@ class BaseBuilder implements BuilderInterface
     public function applyAfterQueryCallbacks(mixed $result): mixed
     {
         foreach ($this->afterQueryCallbacks as $callback) {
-            $result = call_user_func($callback, $result) ?: $result;
+            $result = $callback($result) ?: $result;
         }
 
         return $result;
     }
 
-    /**
-     * 
-     */
     public function explain(): array
     {
         $sql = 'EXPLAIN ' . $this->toSql();
-    
+
         return $this->query($sql, $this->getBindings())->resultArray();
     }
 
@@ -1095,7 +1096,7 @@ class BaseBuilder implements BuilderInterface
     {
         return $this->compiler->compile($this);
     }
-    
+
     /**
      * Récupère le SQL et réinitialise le builder
      */
@@ -1103,7 +1104,7 @@ class BaseBuilder implements BuilderInterface
     {
         $sql = $this->toRawSql();
 
-        if (!$preserve) {
+        if (! $preserve) {
             $this->reset();
         }
 
@@ -1123,18 +1124,18 @@ class BaseBuilder implements BuilderInterface
      */
     public function getBindings(): array
     {
-        $types = match($this->crud) {
-            'select'                => ['where', 'having', 'order', 'union'],
-            'insert', 'replace'     => ['values'],
-            'upsert'                => ['values', 'uniqueBy'], // Si on a des bindings pour les conflits
-            'update'                => ['values', 'where', 'join'],
-            'delete'                => ['where', 'join'],
-            'truncate'              => null, // Pas de bindings pour TRUNCATE
-            default                 => [], // Fallback à tous
+        $types = match ($this->crud) {
+            'select' => ['where', 'having', 'order', 'union'],
+            'insert', 'replace' => ['values'],
+            'upsert'   => ['values', 'uniqueBy'], // Si on a des bindings pour les conflits
+            'update'   => ['values', 'where', 'join'],
+            'delete'   => ['where', 'join'],
+            'truncate' => null, // Pas de bindings pour TRUNCATE
+            default    => [], // Fallback à tous
         };
 
-        return $types === null 
-            ? [] 
+        return $types === null
+            ? []
             : $this->db->prepareBindings($this->bindings->getOrdered($types));
     }
 
@@ -1156,7 +1157,7 @@ class BaseBuilder implements BuilderInterface
     /**
      * Affiche le SQL pour debug
      */
-    public function dump(): self
+    public function dump(): static
     {
         dump($this->toRawSql());
 
@@ -1174,25 +1175,25 @@ class BaseBuilder implements BuilderInterface
     /**
      * Réinitialise le builder
      */
-    public function reset(): self
+    public function reset(): static
     {
-        $this->from = '';
-        $this->tables = [];
-        $this->columns = [];
-        $this->wheres = [];
-        $this->joins = [];
-        $this->orders = [];
-        $this->groups = [];
-        $this->havings = [];
-        $this->unions = [];
-        $this->values = [];
-        $this->bindings = new BindingCollection();
-        $this->distinct = false;
-        $this->ignore = false;
-        $this->limit = null;
-        $this->offset = null;
-        $this->lock = null;
-        $this->uniqueBy = [];
+        $this->from          = '';
+        $this->tables        = [];
+        $this->columns       = [];
+        $this->wheres        = [];
+        $this->joins         = [];
+        $this->orders        = [];
+        $this->groups        = [];
+        $this->havings       = [];
+        $this->unions        = [];
+        $this->values        = [];
+        $this->bindings      = new BindingCollection();
+        $this->distinct      = false;
+        $this->ignore        = false;
+        $this->limit         = null;
+        $this->offset        = null;
+        $this->lock          = null;
+        $this->uniqueBy      = [];
         $this->updateColumns = [];
         $this->db->setAliasedTables([]);
 
@@ -1204,21 +1205,21 @@ class BaseBuilder implements BuilderInterface
      */
     public function clone(): static
     {
-        $clone = clone $this;
+        $clone           = clone $this;
         $clone->bindings = clone $this->bindings;
-        
+
         return $clone;
     }
 
     /**
      * Définit le type d'opération CRUD à effectuer
-     * 
+     *
      * @internal
      */
-    protected function asCrud(string $type): self
+    protected function asCrud(string $type): static
     {
         $this->crud = $type;
-        
+
         return $this;
     }
 
@@ -1248,7 +1249,7 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Supprime l'alias d'un nom de table
-     * 
+     *
      * @internal
      */
     protected function removeAlias(string $from): string
@@ -1264,10 +1265,10 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Construit une sous-requête
-     * 
-     * @param self|Closure $builder
+     *
+     * @param Closure|self $builder
      */
-    protected function buildSubquery(Closure|BuilderInterface $builder, bool $wrapped = false, string $alias = ''): string
+    protected function buildSubquery(BuilderInterface|Closure $builder, bool $wrapped = false, string $alias = ''): string
     {
         if ($builder instanceof Closure) {
             $builder($builder = $this->db->newQuery());
@@ -1294,12 +1295,12 @@ class BaseBuilder implements BuilderInterface
     protected function buildColumnName(string $column): string
     {
         $column = trim($column);
-        
+
         // Cas spécial: expression SQL brute (ne pas parser)
         if (preg_match('/^\(.*\)$/', $column) || Utils::isRawExpression($column)) {
             return $column;
         }
-        
+
         $parts     = explode(' ', $column);
         $column    = array_shift($parts);
         $operator  = implode(' ', $parts);
@@ -1316,13 +1317,13 @@ class BaseBuilder implements BuilderInterface
         }
 
         // Étape 2: Extraction des alias (améliorée)
-        if ($operator !== '' && !Utils::hasOperator($operator)) {
+        if ($operator !== '' && ! Utils::hasOperator($operator)) {
             if (Utils::isAlias($operator)) {
-                $alias = Utils::extractAlias($operator);
+                $alias    = Utils::extractAlias($operator);
                 $operator = '';
             } else {
                 // Ce n'est pas un alias, c'est un opérateur ou une clause
-                $column = implode(' ', [$column, $operator]);
+                $column   = implode(' ', [$column, $operator]);
                 $operator = '';
             }
         }
@@ -1331,12 +1332,12 @@ class BaseBuilder implements BuilderInterface
         $functionPattern = '/^(' . implode('|', array_map('preg_quote', Utils::SQL_FUNCTIONS)) . ')\s*\(\s*(.+?)\s*\)$/i';
         if (preg_match($functionPattern, $column, $matches)) {
             $aggregate = $matches[1];
-            $column = $matches[2];
+            $column    = $matches[2];
         }
 
         // Étape 4: Gestion des alias de table
         $column = Utils::formatQualifiedColumn($this->db, $column);
-        
+
         // Étape 5: Reconstruction avec fonction d'agrégation
         if ($aggregate !== null) {
             $column = strtoupper($aggregate) . '(' . $column . ')';

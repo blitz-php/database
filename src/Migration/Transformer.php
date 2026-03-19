@@ -53,15 +53,15 @@ class Transformer
      */
     protected function createTable(Builder $builder, bool $ifNotExists = false): void
     {
-        $primaryKeyColumns = [];
-        $autoIncrementColumns = [];
+        $primaryKeyColumns      = [];
+        $autoIncrementColumns   = [];
         $explicitPrimaryColumns = [];
 
         foreach ($builder->getColumns() as $column) {
             $this->creator->addField([
-                $column->name => $this->makeColumn($column)
+                $column->name => $this->makeColumn($column),
             ]);
-         
+
             if ($column->autoIncrement ?? false) {
                 $autoIncrementColumns[] = $column->name;
             }
@@ -81,18 +81,18 @@ class Transformer
         } elseif (count($autoIncrementColumns) > 1) {
             // Plusieurs auto_increment (cas rare) - on prévient
             trigger_error(
-                "Plusieurs colonnes auto_increment détectées. Utilisez primary() pour spécifier la clé primaire.",
-                E_USER_WARNING
+                'Plusieurs colonnes auto_increment détectées. Utilisez primary() pour spécifier la clé primaire.',
+                E_USER_WARNING,
             );
         }
 
         if ($primaryKeyColumns !== []) {
             $this->creator->addPrimaryKey(
-                $primaryKeyColumns, 
-                $builder->createIndexName('primary', $primaryKeyColumns)
+                $primaryKeyColumns,
+                $builder->createIndexName('primary', $primaryKeyColumns),
             );
         }
-        
+
         foreach ($builder->getIndexes() as $index) {
             $this->addIndex($index);
         }
@@ -153,22 +153,21 @@ class Transformer
         }
     }
 
-    
-
     /**
      * Convertit les index fluides des colonnes en commandes explicites
      */
     protected function addFluentIndexes(Builder $builder): void
     {
         $existingIndexes = [];
+
         foreach ($builder->getIndexes() as $index) {
-            $key = $index->type . ':' . implode(',', $index->columns);
+            $key                   = $index->type . ':' . implode(',', $index->columns);
             $existingIndexes[$key] = true;
         }
-        
+
         foreach ($builder->getColumns() as $column) {
             // Ignorer les colonnes qui n'ont pas d'index
-            if (!$column->hasFluentIndexes()) {
+            if (! $column->hasFluentIndexes()) {
                 continue;
             }
 
@@ -197,13 +196,13 @@ class Transformer
                     $builder->{$indexMethod}($column->name);
                     $existingIndexes[$indexKey] = true;
                 }
-                
+
                 // Cas 2: $value === false (suppression d'index)
                 elseif ($value === false && $column->change) {
                     $dropMethod = 'drop' . ucfirst($indexMethod);
                     $builder->{$dropMethod}([$column->name]);
                 }
-                
+
                 // Cas 3: $value est une chaîne (nom d'index explicite)
                 elseif (is_string($value)) {
                     $builder->{$indexMethod}($column->name, $value);
@@ -241,27 +240,27 @@ class Transformer
     protected function addForeignKey(ForeignKey $fk): void
     {
         $onDelete = match (true) {
-            ($fk->cascadeOnDelete ?? null)  === true => 'cascade',
+            ($fk->cascadeOnDelete ?? null) === true  => 'cascade',
             ($fk->restrictOnDelete ?? null) === true => 'restrict',
-            ($fk->nullOnDelete ?? null)     === true => 'set null',
+            ($fk->nullOnDelete ?? null) === true     => 'set null',
             ($fk->noActionOnDelete ?? null) === true => 'no action',
-                                            default  => $fk->onDelete ?? ''
-        };      
-        $onUpdate = match (true) {
-            ($fk->cascadeOnUpdate ?? null)  === true => 'cascade',
-            ($fk->restrictOnUpdate ?? null) === true => 'restrict',
-            ($fk->nullOnUpdate ?? null)     === true => 'set null',
-            ($fk->noActionOnUpdate ?? null) === true => 'no action',
-                                            default  => $fk->onUpdate ?? ''
+            default                                  => $fk->onDelete ?? '',
         };
-        
+        $onUpdate = match (true) {
+            ($fk->cascadeOnUpdate ?? null) === true  => 'cascade',
+            ($fk->restrictOnUpdate ?? null) === true => 'restrict',
+            ($fk->nullOnUpdate ?? null) === true     => 'set null',
+            ($fk->noActionOnUpdate ?? null) === true => 'no action',
+            default                                  => $fk->onUpdate ?? '',
+        };
+
         $this->creator->addForeignKey(
             $fk->columns,
             $fk->on,
             $fk->references ?? $fk->columns,
             $onUpdate,
             $onDelete,
-            $fk->name ?? ''
+            $fk->name ?? '',
         );
     }
 
@@ -298,7 +297,7 @@ class Transformer
         if (is_array($type)) {
             $attributes['type']       = $type[0];
             $attributes['constraint'] = $type[1] ?? null;
-        } else if (str_contains($type, '|')) {
+        } elseif (str_contains($type, '|')) {
             $parts              = explode('|', $type);
             $attributes['type'] = $parts[$column->primary === true ? 1 : 0];
         } elseif (str_contains($type, '{precision}')) {
@@ -326,7 +325,7 @@ class Transformer
 
         if ($column->useCurrent === true) {
             $attributes['default'] = new Expression('CURRENT_TIMESTAMP');
-        }  elseif (isset($column->default)) {
+        } elseif (isset($column->default)) {
             $attributes['default'] = $column->type === 'boolean' ? (int) $column->default : $column->default;
         }
 

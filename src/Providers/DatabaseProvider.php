@@ -26,10 +26,10 @@ class DatabaseProvider extends AbstractProvider
     public static function definitions(): array
     {
         return [
-            'database'                         => static fn ()                                            => Services::database(),
-            DatabaseManager::class             => static fn ()                                           => Services::dbManager(),
-            ConnectionResolverInterface::class => static fn (ContainerInterface $container)                        => $container->get(DatabaseManager::class),
-            ConnectionInterface::class         => static fn (ConnectionResolverInterface $resolver)  => $resolver->connect(),
+            'database'                         => static fn () => Services::database(),
+            DatabaseManager::class             => static fn () => Services::dbManager(),
+            ConnectionResolverInterface::class => static fn (ContainerInterface $container) => $container->get(DatabaseManager::class),
+            ConnectionInterface::class         => static fn (ConnectionResolverInterface $resolver) => $resolver->connect(),
         ];
     }
 }

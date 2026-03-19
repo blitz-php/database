@@ -14,13 +14,13 @@ namespace BlitzPHP\Database\Migration\Definitions;
 use BlitzPHP\Utilities\Support\Fluent;
 
 /**
- * @method $this deferrable(bool $value = true) Définit la clé étrangère comme différable (PostgreSQL)
  * @method $this initiallyImmediate(bool $value = true) Définit le moment par défaut pour vérifier la contrainte (PostgreSQL)
- * @method $this on(string $table) Spécifie la table référencée
- * @method $this onDelete(string $action) Ajoute une action ON DELETE
- * @method $this onUpdate(string $action) Ajoute une action ON UPDATE
- * @method $this references(string|array $columns) Spécifie la ou les colonnes référencées
- * 
+ * @method $this deferrable(bool $value = true) Définit la clé étrangère comme différable (PostgreSQL)
+ * @method $this on(string $table)                                                                                               Spécifie la table référencée
+ * @method $this onDelete(string $action)                                                                                        Ajoute une action ON DELETE
+ * @method $this onUpdate(string $action)                                                                                        Ajoute une action ON UPDATE
+ * @method $this references(array|string $columns)                                                                               Spécifie la ou les colonnes référencées
+ *
  * @credit <a href="https://laravel.com">Laravel Framework - Illuminate\Database\Schema\ForeignKeyDefinition</a>
  */
 class ForeignKey extends Fluent

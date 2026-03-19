@@ -33,13 +33,16 @@ use Throwable;
 
 /**
  * Connexion de base à la base de données
- * 
- * @method bool tableExists(string $name) Vérifie si une table existe
- * @method array getColumnNames(string $table) Retourne les noms des champs d'une table
- * @method bool columnExists(string $column, string $table) Vérifie si un champ existe dans une table
- * @method array getColumnData(string $table) Retourne les métadonnées des champs d'une table
- * @method array getIndexData(string $table) Retourne les métadonnées des index d'une table
- * @method array getForeignKeyData(string $table) Retourne les métadonnées des clés étrangères d'une table
+ *
+ * @method array  listTables(bool $constrainByPrefix = false)                  Retourne la liste des tables de la base de données
+ * @method bool   tableExists(string $tableName, bool $cached = true)          Vérifie si une table existe
+ * @method array  getColumnNames(string $table)                                Retourne les noms des champs d'une table
+ * @method bool   columnExists(string $column, string $table)                  Vérifie si un champ existe dans une table
+ * @method array  getColumnData(string $table)                                 Retourne les informations détaillées des champs d'une table
+ * @method array  getIndexData(string $table)                                  Retourne les informations des index d'une table
+ * @method array  getForeignKeyData(string $table)                             Retourne les informations des clés étrangères d'une table
+ * @method self   clearCache()                                                 Vide le cache des métadonnées
+ * @method self   resetDataCache()                                             Alias de clearCache() - Vide le cache des métadonnées
  */
 abstract class BaseConnection implements ConnectionInterface
 {
@@ -55,11 +58,11 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Configuration de la connexion
-     * 
+     *
      * @var array{
      *  dsn?: string,
-     *  hostname: string, port: int, username?: string, password?: string, 
-     *  database?: string, charset?: string, collation?: string, strict_on?: boolean,
+     *  hostname: string, port: int, username?: string, password?: string,
+     *  database?: string, charset?: string, collation?: string, strict_on?: bool,
      *  debug?: bool
      * }
      */
@@ -78,7 +81,7 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Tous les callbacks qui doivent être invoqués avant l'exécution d'une requête.
      *
-     * @var (Closure(string, array, static): mixed)[]
+     * @var list<Closure(string, array, static): mixed>
      */
     protected array $beforeExecutingCallbacks = [];
 
@@ -87,15 +90,20 @@ abstract class BaseConnection implements ConnectionInterface
      */
     protected ?MetadataCollector $metadata = null;
 
+    /**
+     * Mapping des méthodes proxy vers MetadataCollector
+     *
+     * @var array<string, string>
+     */
     protected array $proxyMethods = [
-        'listTables',
-        'tableExists',
-        'getColumnNames',
-        'columnExists',
-        'getColumnData',
-        'getIndexData',
-        'getForeignKeyData',
-        'resetDataCache' => 'clearCache',
+        'listTables'        => 'listTables',
+        'tableExists'       => 'tableExists',
+        'getColumnNames'    => 'getColumnNames',
+        'columnExists'      => 'columnExists',
+        'getColumnData'     => 'getColumnData',
+        'getIndexData'      => 'getIndexData',
+        'getForeignKeyData' => 'getForeignKeyData',
+        'resetDataCache'    => 'clearCache',
     ];
 
     /**
@@ -107,14 +115,14 @@ abstract class BaseConnection implements ConnectionInterface
      * Niveau de profondeur des transactions
      */
     protected int $transDepth = 0;
-    
+
     /**
      * Drapeau du statut des transaction
      *
      * Utilise avec les transactions pour determiner si un rollback est en cours.
      */
     protected bool $transStatus = true;
-    
+
     /**
      * Points de sauvegarde des transactions (pour les transaction imbriquees)
      */
@@ -142,9 +150,9 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Constructeur
-     * 
-     * @param ?LoggerInterface $logger Journaliseur
-     * @param ?EventManagerInterface $event Gestionnaire d'evenement
+     *
+     * @param ?LoggerInterface       $logger Journaliseur
+     * @param ?EventManagerInterface $event  Gestionnaire d'evenement
      */
     public function __construct(array $config, protected ?LoggerInterface $logger = null, protected ?EventManagerInterface $event = null)
     {
@@ -167,13 +175,13 @@ abstract class BaseConnection implements ConnectionInterface
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_OBJ);
             $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-            
+
             $this->afterConnect();
         } catch (PDOException $e) {
             throw new DatabaseException(
-                "Impossible de se connecter à la base de données : " . $e->getMessage(),
+                'Impossible de se connecter à la base de données : ' . $e->getMessage(),
                 0,
-                $e
+                $e,
             );
         }
     }
@@ -185,13 +193,13 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @return PDO
      */
     public function connect(bool $persistent = false): mixed
     {
         $options = $this->getPdoOptions();
-        
+
         if ($persistent) {
             $options[PDO::ATTR_PERSISTENT] = true;
         }
@@ -200,7 +208,7 @@ abstract class BaseConnection implements ConnectionInterface
             $this->getDsn(),
             $this->config['username'] ?? null,
             $this->config['password'] ?? null,
-            $options
+            $options,
         );
     }
 
@@ -219,7 +227,7 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Retourne les options PDO par défaut
-     * 
+     *
      * @return array<int, mixed>
      */
     protected function getPdoOptions(): array
@@ -257,7 +265,7 @@ abstract class BaseConnection implements ConnectionInterface
     {
         $this->pdo = null;
     }
-    
+
     /**
      * Obtient le nom de la connexion à la base de données.
      */
@@ -332,10 +340,10 @@ abstract class BaseConnection implements ConnectionInterface
 
         return $bindings;
     }
-    
+
     /**
      * Exécute une instruction SQL et journalise son contexte d'exécution.
-     * 
+     *
      * @param Closure(string, array): mixed $callback
      */
     protected function run(string $query, array $bindings, Closure $callback)
@@ -351,34 +359,34 @@ abstract class BaseConnection implements ConnectionInterface
         try {
             $result = $callback($query, $bindings);
             $this->logQuery($query, $bindings, microtime(true) - $start);
-            
+
             return $result;
         } catch (PDOException $e) {
             $this->logQuery($query, $bindings, microtime(true) - $start, $e);
-            
+
             if ($this->transDepth > 0) {
                 $this->transStatus = false;
             }
-            
+
             throw new QueryException(
                 $this->getName(),
                 $query,
                 $this->prepareBindings($bindings),
                 $e,
-                $this->getConnectionDetails()
+                $this->getConnectionDetails(),
             );
         }
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function query(string $sql, array $bindings = []): ResultInterface
     {
-        return $this->run($sql, $bindings, function($query, $bindings) use ($sql) {
+        return $this->run($sql, $bindings, function ($query, $bindings) {
             $statement = $this->pdo->prepare($query);
-            $success = $statement->execute($this->prepareBindings($bindings));
-            
+            $success   = $statement->execute($this->prepareBindings($bindings));
+
             return $this->result = new Result($this, $statement, $success);
         });
     }
@@ -390,6 +398,7 @@ abstract class BaseConnection implements ConnectionInterface
     {
         return $this->run($query, $bindings, function ($query, $bindings) {
             $statement = $this->pdo->prepare($query);
+
             return $statement->execute($this->prepareBindings($bindings));
         });
     }
@@ -416,7 +425,7 @@ abstract class BaseConnection implements ConnectionInterface
             'sql'      => $sql,
             'bindings' => $bindings,
             'time'     => $time,
-            'error'    => $e?->getMessage()
+            'error'    => $e?->getMessage(),
         ]);
     }
 
@@ -426,7 +435,7 @@ abstract class BaseConnection implements ConnectionInterface
     public function simpleQuery(string $query)
     {
         $this->initialize();
-        
+
         try {
             return $this->pdo->query($query);
         } catch (PDOException $e) {
@@ -435,7 +444,7 @@ abstract class BaseConnection implements ConnectionInterface
                 $query,
                 [],
                 $e,
-                $this->getConnectionDetails()
+                $this->getConnectionDetails(),
             );
         }
     }
@@ -464,21 +473,21 @@ abstract class BaseConnection implements ConnectionInterface
         }
 
         $this->initialize();
-        
+
         if ($this->transDepth === 0) {
-            $this->transStatus = !$testMode;
-            $this->transDepth = 1;
-            
+            $this->transStatus = ! $testMode;
+            $this->transDepth  = 1;
+
             return $this->pdo->beginTransaction();
         }
-        
+
         // Création d'un savepoint pour les transactions imbriquées
         $savepoint = 'sp_' . $this->transDepth;
         $this->pdo->exec("SAVEPOINT {$savepoint}");
         $this->savepoints[$this->transDepth] = $savepoint;
-        
+
         $this->transDepth++;
-        
+
         return true;
     }
 
@@ -490,23 +499,24 @@ abstract class BaseConnection implements ConnectionInterface
         if (! $this->transEnabled || $this->transDepth === 0) {
             return false;
         }
-        
+
         $this->initialize();
-        
+
         if ($this->transDepth === 1) {
             $this->transDepth = 0;
+
             return $this->pdo->commit();
         }
-        
+
         // Libération du savepoint
         $savepoint = $this->savepoints[$this->transDepth] ?? null;
         if ($savepoint) {
             $this->pdo->exec("RELEASE SAVEPOINT {$savepoint}");
             unset($this->savepoints[$this->transDepth]);
         }
-        
+
         $this->transDepth--;
-        
+
         return true;
     }
 
@@ -518,24 +528,25 @@ abstract class BaseConnection implements ConnectionInterface
         if (! $this->transEnabled || $this->transDepth === 0) {
             return false;
         }
-        
+
         $this->initialize();
-        
+
         if ($this->transDepth === 1) {
-            $this->transDepth = 0;
+            $this->transDepth  = 0;
             $this->transStatus = true;
+
             return $this->pdo->rollBack();
         }
-        
+
         // Retour au savepoint
         $savepoint = $this->savepoints[$this->transDepth] ?? null;
         if ($savepoint) {
             $this->pdo->exec("ROLLBACK TO SAVEPOINT {$savepoint}");
             unset($this->savepoints[$this->transDepth]);
         }
-        
+
         $this->transDepth--;
-        
+
         return true;
     }
 
@@ -546,9 +557,10 @@ abstract class BaseConnection implements ConnectionInterface
     {
         if ($this->transStatus === false) {
             $this->rollback();
+
             return false;
         }
-        
+
         return $this->commit();
     }
 
@@ -572,15 +584,15 @@ abstract class BaseConnection implements ConnectionInterface
     {
         for ($i = 1; $i <= $attempts; $i++) {
             $this->beginTransaction();
-            
+
             try {
                 $result = $callback($this);
                 $this->commit();
-                
+
                 return $result;
             } catch (Throwable $e) {
                 $this->rollback();
-                
+
                 if ($i === $attempts) {
                     throw $e;
                 }
@@ -596,14 +608,28 @@ abstract class BaseConnection implements ConnectionInterface
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Gère les appels aux méthodes proxy vers MetadataCollector
+     *
+     * @param string $name      Nom de la méthode appelée
+     * @param array  $arguments Arguments de la méthode
+     *
+     * @return mixed
+     *
+     * @throws BadMethodCallException
+     */
     public function __call(string $name, array $arguments = []): mixed
     {
+        // Méthodes proxy simples (même nom)
         if (in_array($name, $this->proxyMethods, true)) {
             return call_user_func_array([$this->metadata(), $name], $arguments);
         }
+        
+        // Méthodes proxy avec nom différent (ex: resetDataCache -> clearCache)
         if (array_key_exists($name, $this->proxyMethods)) {
             return call_user_func_array([$this->metadata(), $this->proxyMethods[$name]], $arguments);
         }
+
         throw new BadMethodCallException(sprintf('Methode %s non definie', static::class . '::' . $name));
     }
 
@@ -635,9 +661,12 @@ abstract class BaseConnection implements ConnectionInterface
      */
     abstract public function _listForeignKeys(string $table): array;
 
+    /**
+     * Récupère l'instance du collecteur de métadonnées
+     */
     private function metadata(): MetadataCollector
     {
-        if (!$this->metadata) {
+        if (! $this->metadata) {
             $this->metadata = new MetadataCollector($this);
         }
 
@@ -685,35 +714,35 @@ abstract class BaseConnection implements ConnectionInterface
     public function escapeString($str, bool $like = false): array|string
     {
         if (is_array($str)) {
-            return array_map(fn($s) => $this->escapeString($s, $like), $str);
+            return array_map(fn ($s) => $this->escapeString($s, $like), $str);
         }
 
         if ($str instanceof Stringable) {
             $str = (string) $str;
         }
-        
+
         $str = $this->pdo->quote($str);
-        
+
         if ($like === true) {
             $str = str_replace(['%', '_'], ['\\%', '\\_'], $str);
         }
-        
+
         return $str;
     }
 
     /**
      * Entoure une chaîne de guillemets et échappe le contenu d'un paramètre de chaîne.
      */
-    public function quote(string|null|Expression $value): string
+    public function quote(Expression|string|null $value): string
     {
         if ($value === null) {
             return 'NULL';
         }
-        
+
         if ($value instanceof Expression) {
             return (string) $value;
         }
-        
+
         if (! is_string($value = Utils::castValue($value))) {
             return $value;
         }
@@ -730,10 +759,10 @@ abstract class BaseConnection implements ConnectionInterface
             return array_map([$this, 'escapeIdentifiers'], $item);
         }
 
-        if (!isset($this->escapeCache[$item])) {
+        if (! isset($this->escapeCache[$item])) {
             $this->escapeCache[$item] = $this->doEscapeIdentifiers($item);
         }
-            
+
         return $this->escapeCache[$item];
     }
 
@@ -745,6 +774,7 @@ abstract class BaseConnection implements ConnectionInterface
 
         if (str_contains($item, '.')) {
             $parts = explode('.', $item);
+
             return implode('.', array_map([$this, 'escapeIdentifier'], $parts));
         }
 
@@ -834,7 +864,7 @@ abstract class BaseConnection implements ConnectionInterface
         if ($alias !== $table) {
             $this->aliasedTables[$table] = $alias;
         }
-        
+
         return [$this->aliasedTables[$table] ?? $table, $table];
     }
 
@@ -895,18 +925,18 @@ abstract class BaseConnection implements ConnectionInterface
      */
     public function getDriver(): string
     {
-        $this->initialize();        
-        
+        $this->initialize();
+
         return $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
     }
-    
+
     /**
      * Returns a string containing the version of the database being used.
      */
     public function getVersion(): string
     {
         $this->initialize();
-                
+
         return $this->pdo->getAttribute(PDO::ATTR_SERVER_VERSION);
     }
 
@@ -957,9 +987,9 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Retourne une nouvelle instance non partagee du query builder pour cette connexion.
-     * 
+     *
      * @param list<string>|string $tableName
-     * 
+     *
      * @return BaseBuilder
      */
     public function table(array|string $tableName): BuilderInterface
@@ -969,14 +999,13 @@ abstract class BaseConnection implements ConnectionInterface
 
     /**
      * Returns a new instance of the BaseBuilder class with a cleared FROM clause.
-     * 
+     *
      * @return BaseBuilder
      */
     public function newQuery(): BuilderInterface
     {
         return new BaseBuilder($this);
     }
-
 
     /**
      * {@inheritDoc}
@@ -992,10 +1021,10 @@ abstract class BaseConnection implements ConnectionInterface
     public function error(): array
     {
         $errorInfo = $this->pdo?->errorInfo() ?? [];
-        
+
         return [
-            'code' => $errorInfo[1] ?? 0,
-            'message' => $errorInfo[2] ?? ''
+            'code'    => $errorInfo[1] ?? 0,
+            'message' => $errorInfo[2] ?? '',
         ];
     }
 

@@ -53,7 +53,7 @@ class Seed extends DatabaseCommand
      */
     public function handle()
     {
-        $group = $this->option('group');
+        $group  = $this->option('group');
         $silent = $this->option('silent') !== null;
         $locale = $this->option('locale', config('app.language', 'fr_FR'));
 
@@ -82,12 +82,13 @@ class Seed extends DatabaseCommand
         return $this->prompt(
             'Quel seeder souhaitez-vous exécuter ?',
             'DatabaseSeeder',
-            function ($val) {
+            static function ($val) {
                 if (empty($val)) {
                     throw new InvalidArgumentException('Veuillez entrer le nom du seeder.');
                 }
+
                 return $val;
-            }
+            },
         );
     }
 
@@ -107,7 +108,7 @@ class Seed extends DatabaseCommand
         $className = $name;
 
         // Si le nom ne contient pas de namespace, on essaie les chemins standards
-        if (!str_contains($name, '\\')) {
+        if (! str_contains($name, '\\')) {
             foreach ($paths as $path) {
                 $fullClass = $path . $name;
                 if (class_exists($fullClass)) {
@@ -117,11 +118,11 @@ class Seed extends DatabaseCommand
             }
         }
 
-        if (!class_exists($className)) {
+        if (! class_exists($className)) {
             throw new InvalidArgumentException(
                 "Le seeder '{$name}' n'a pas été trouvé.\n" .
                 "Chemins recherchés :\n" .
-                implode("\n", array_map(fn($p) => "- {$p}{$name}", $paths))
+                implode("\n", array_map(static fn ($p) => "- {$p}{$name}", $paths)),
             );
         }
 

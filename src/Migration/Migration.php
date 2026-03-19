@@ -11,6 +11,7 @@
 
 namespace BlitzPHP\Database\Migration;
 
+use BlitzPHP\Database\Config\Services;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\DatabaseManager;
 
@@ -55,7 +56,7 @@ abstract class Migration
 
     /**
      * Détermine si cette migration doit être exécutée
-     * 
+     *
      * Peut être surchargée pour des conditions complexes
      */
     public function shouldRun(): bool
@@ -65,7 +66,7 @@ abstract class Migration
 
     /**
      * Initialise les éléments nécessaire pour le fonctionnement de la migration
-     * 
+     *
      * @internal Utilisé par le Runner pour injecter la connexion et le gestionnaire de bd
      */
     public function initialize(DatabaseManager $dbManager, BaseConnection $db): self
@@ -81,7 +82,7 @@ abstract class Migration
      * Récupère les builders de tables
      *
      * @return list<Builder>
-     * 
+     *
      * @internal Utilisé par le Runner
      */
     public function getBuilders(): array
@@ -93,7 +94,7 @@ abstract class Migration
      * Récupère les connexions utilisées par cette migration
      *
      * @return array<string, BaseConnection>
-     * 
+     *
      * @internal Utilisé par le ConnectionProxy
      */
     public function getConnections(): array
@@ -103,7 +104,7 @@ abstract class Migration
 
     /**
      * Crée une nouvelle table sur une connexion spécifique
-     * 
+     *
      * @internal Utilisé par le ConnectionProxy
      */
     public function createOnConnection(string $connection, string $table, callable $callback, bool $ifNotExists = false): void
@@ -117,7 +118,7 @@ abstract class Migration
 
     /**
      * Modifie une table existante sur une connexion spécifique
-     * 
+     *
      * @internal Utilisé par le ConnectionProxy
      */
     public function alterOnConnection(string $connection, string $table, callable $callback): void
@@ -131,46 +132,46 @@ abstract class Migration
 
     /**
      * Supprime une table existante sur une connexion spécifique
-     * 
+     *
      * @internal Utilisé par le ConnectionProxy
      */
     public function dropOnConnection(string $connection, string $table, bool $ifExists): void
     {
         $builder = $this->makeBuilderFor($connection, $table);
         $builder->dropTable($ifExists);
-        
+
         $this->builders[] = $builder;
     }
 
     /**
      * renomme une table existante sur une connexion spécifique
-     * 
+     *
      * @internal Utilisé par le ConnectionProxy
      */
     public function renameOnConnection(string $connection, string $from, string $to): void
     {
         $builder = $this->makeBuilderFor($connection, $from);
         $builder->renameTable($to);
-        
+
         $this->builders[] = $builder;
     }
 
     /**
      * Vérifie si une table existe sur une connexion spécifique
-     * 
+     *
      * @internal Utilisé par le ConnectionProxy
      */
-    public function hasTableOnConnection(string $connection, string $table): bool 
+    public function hasTableOnConnection(string $connection, string $table): bool
     {
         return ($this->connections[$connection] ?? $this->db)->tableExists($table);
     }
 
     /**
      * Vérifie si un champ existe dans une table sur une connexion spécifique
-     * 
+     *
      * @internal Utilisé par le ConnectionProxy
      */
-    public function hasColumnOnConnection(string $connection, string $table, string $column): bool 
+    public function hasColumnOnConnection(string $connection, string $table, string $column): bool
     {
         return ($this->connections[$connection] ?? $this->db)->columnExists($column, $table);
     }
@@ -180,9 +181,9 @@ abstract class Migration
      */
     protected function connection(string $name): ConnectionProxy
     {
-        if (!isset($this->connections[$name])) {
+        if (! isset($this->connections[$name])) {
             // Résoudre la connexion via le DatabaseManager
-            $this->connections[$name] = $this->db->dbManager()->connect($name);
+            $this->connections[$name] = Services::dbManager()->connect($name);
         }
 
         return new ConnectionProxy($this->connections[$name], $this);
@@ -247,7 +248,7 @@ abstract class Migration
     /**
      * Vérifie si une table existe
      */
-    protected function hasTable(string $name): bool 
+    protected function hasTable(string $name): bool
     {
         return $this->hasTableOnConnection('default', $name);
     }
@@ -255,7 +256,7 @@ abstract class Migration
     /**
      * Vérifie si un champ existe dans une table
      */
-    protected function hasColumn(string $table, string $column): bool 
+    protected function hasColumn(string $table, string $column): bool
     {
         return $this->hasColumnOnConnection('default', $table, $column);
     }
@@ -264,7 +265,7 @@ abstract class Migration
      * Crée un builder pour une connexion et une table spécifiques
      */
     private function makeBuilderFor(string $connection, string $table): Builder
-    {        
+    {
         $builder = new Builder($table);
         $builder->setConnection($this->connections[$connection] ?? $this->db);
 

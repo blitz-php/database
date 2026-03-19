@@ -15,12 +15,12 @@ use BlitzPHP\Database\Connection\BaseConnection;
 
 /**
  * Proxy pour permettre les opérations sur différentes connexions
- * 
+ *
  * Permet d'écrire : $this->connection('sqlite')->create('users', ...)
  */
 class ConnectionProxy
 {
-    public function __construct(protected BaseConnection $connection, protected Migration $migration) 
+    public function __construct(protected BaseConnection $connection, protected Migration $migration)
     {
     }
 
@@ -33,7 +33,7 @@ class ConnectionProxy
             $this->getConnectionName(),
             $table,
             $callback,
-            $ifNotExists
+            $ifNotExists,
         );
     }
 
@@ -53,7 +53,7 @@ class ConnectionProxy
         $this->migration->alterOnConnection(
             $this->getConnectionName(),
             $table,
-            $callback
+            $callback,
         );
     }
 
@@ -73,7 +73,7 @@ class ConnectionProxy
         $this->migration->dropOnConnection(
             $this->getConnectionName(),
             $table,
-            $ifExists
+            $ifExists,
         );
     }
 
@@ -93,30 +93,30 @@ class ConnectionProxy
         $this->migration->renameOnConnection(
             $this->getConnectionName(),
             $from,
-            $to
+            $to,
         );
     }
 
     /**
      * Vérifie si une table existe
      */
-    public function hasTable(string $name): bool 
+    public function hasTable(string $name): bool
     {
         return $this->migration->hasTableOnConnection(
-            $this->getConnectionName(), 
-            $name
+            $this->getConnectionName(),
+            $name,
         );
     }
 
     /**
      * Vérifie si un champ existe dans une table
      */
-    public function hasColumn(string $table, string $column): bool 
+    public function hasColumn(string $table, string $column): bool
     {
         return $this->migration->hasColumnOnConnection(
-            $this->getConnectionName(), 
-            $table, 
-            $column
+            $this->getConnectionName(),
+            $table,
+            $column,
         );
     }
 
@@ -131,7 +131,7 @@ class ConnectionProxy
                 return $name;
             }
         }
-        
+
         return 'unknown';
     }
 }

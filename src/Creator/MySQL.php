@@ -282,7 +282,7 @@ class MySQL extends BaseCreator
     {
         $sql = sprintf(
             'ALTER TABLE %s DROP PRIMARY KEY',
-            $this->db->prefixTable($table)
+            $this->db->prefixTable($table),
         );
 
         return $this->db->statement($sql);

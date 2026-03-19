@@ -24,13 +24,13 @@ abstract class QueryCompiler
     public function __construct(protected BaseConnection $db)
     {
     }
-    
+
     /**
      * Compile la requête en fonction du type CRUD
      */
     public function compile(BaseBuilder $builder): string
     {
-        return match($builder->crud) {
+        return match ($builder->crud) {
             'select'   => $this->compileSelect($builder),
             'insert'   => $this->compileInsert($builder),
             'update'   => $this->compileUpdate($builder),
@@ -38,7 +38,7 @@ abstract class QueryCompiler
             'truncate' => $this->compileTruncate($builder),
             'replace'  => $this->compileReplace($builder),
             'upsert'   => $this->compileUpsert($builder),
-            default    => throw new InvalidArgumentException(sprintf('Unsupported CRUD operation: %s', $builder->crud))
+            default    => throw new InvalidArgumentException(sprintf('Unsupported CRUD operation: %s', $builder->crud)),
         };
     }
 
@@ -105,17 +105,18 @@ abstract class QueryCompiler
     public function compileInsert(BaseBuilder $builder): string
     {
         $table = $this->db->escapeIdentifiers($builder->getTable());
-        
+
         // Récupérer la première ligne pour les colonnes
         $firstRow = $builder->values[0] ?? $builder->values;
-        $columns = implode(', ', array_map([$this->db, 'escapeIdentifiers'], array_keys($firstRow)));
-        
+        $columns  = implode(', ', array_map([$this->db, 'escapeIdentifiers'], array_keys($firstRow)));
+
         // Support des insertions multiples
         if (isset($builder->values[0]) && is_array($builder->values[0])) {
             $values = [];
+
             foreach ($builder->values as $row) {
                 $rowValues = array_map([$this, 'wrapValue'], $row);
-                $values[] = '(' . implode(', ', $rowValues) . ')';
+                $values[]  = '(' . implode(', ', $rowValues) . ')';
             }
             $values = implode(', ', $values);
         } else {
@@ -130,11 +131,11 @@ abstract class QueryCompiler
      */
     public function compileInsertUsing(BaseBuilder $builder): string
     {
-        $table = $this->db->escapeIdentifiers($builder->getTable());
+        $table   = $this->db->escapeIdentifiers($builder->getTable());
         $columns = implode(', ', array_map([$this->db, 'escapeIdentifiers'], $builder->columns));
-        
+
         /** @var BaseBuilder $query */
-        $query = $builder->values['query'];
+        $query    = $builder->values['query'];
         $subquery = $query->toSql();
 
         return "INSERT INTO {$table} ({$columns}) {$subquery}";
@@ -154,23 +155,24 @@ abstract class QueryCompiler
     protected function compileUpdateStandard(BaseBuilder $builder): string
     {
         $table = $this->db->makeTableName($builder->getTable());
-        
+
         $sql = ["UPDATE {$table}"];
-        
+
         $sets = [];
+
         foreach ($builder->values as $column => $value) {
             $column = $this->db->escapeIdentifiers($column);
             $sets[] = "{$column} = " . $this->wrapValue($value);
         }
-        
+
         if ([] !== $builder->joins) {
             // Si des jointures sont présentes mais non supportées, on lève une exception.
             throw new DatabaseException(
-                "Les jointures dans UPDATE ne sont pas supportées par " . $this->db->getDriver()
+                'Les jointures dans UPDATE ne sont pas supportées par ' . $this->db->getDriver(),
             );
         }
 
-        $sql[] = "SET " . implode(', ', $sets);
+        $sql[] = 'SET ' . implode(', ', $sets);
 
         if ([] !== $builder->wheres) {
             $sql[] = 'WHERE';
@@ -190,7 +192,7 @@ abstract class QueryCompiler
     public function compileDelete(BaseBuilder $builder): string
     {
         $table = $this->db->escapeIdentifiers($builder->getTable());
-        
+
         $sql = ["DELETE FROM {$table}"];
 
         if ([] !== $builder->joins) {
@@ -215,17 +217,18 @@ abstract class QueryCompiler
     public function compileReplace(BaseBuilder $builder): string
     {
         $table = $this->db->escapeIdentifiers($builder->getTable());
-        
+
         // Récupérer la première ligne pour les colonnes
         $firstRow = $builder->values[0] ?? $builder->values;
-        $columns = implode(', ', array_map([$this->db, 'escapeIdentifiers'], array_keys($firstRow)));
-        
+        $columns  = implode(', ', array_map([$this->db, 'escapeIdentifiers'], array_keys($firstRow)));
+
         // Support des insertions multiples pour REPLACE
         if (isset($builder->values[0]) && is_array($builder->values[0])) {
             $values = [];
+
             foreach ($builder->values as $row) {
                 $rowValues = array_map([$this, 'wrapValue'], $row);
-                $values[] = '(' . implode(', ', $rowValues) . ')';
+                $values[]  = '(' . implode(', ', $rowValues) . ')';
             }
             $values = implode(', ', $values);
         } else {
@@ -241,16 +244,17 @@ abstract class QueryCompiler
     public function compileUpsert(BaseBuilder $builder): string
     {
         $table = $this->db->escapeIdentifiers($builder->getTable());
-        
+
         // Récupérer la première ligne pour les colonnes
         $firstRow = $builder->values[0] ?? $builder->values;
-        $columns = implode(', ', array_map([$this->db, 'escapeIdentifiers'], array_keys($firstRow)));
-        
+        $columns  = implode(', ', array_map([$this->db, 'escapeIdentifiers'], array_keys($firstRow)));
+
         // Construire les valeurs (support multi-insert)
         if (isset($builder->values[0]) && is_array($builder->values[0])) {
             $valueRows = [];
+
             foreach ($builder->values as $row) {
-                $rowValues = array_map([$this, 'wrapValue'], $row);
+                $rowValues   = array_map([$this, 'wrapValue'], $row);
                 $valueRows[] = '(' . implode(', ', $rowValues) . ')';
             }
             $values = implode(', ', $valueRows);
@@ -310,7 +314,7 @@ abstract class QueryCompiler
      */
     public function compileJoin(JoinClause $join): string
     {
-        $type = $join->getType();
+        $type  = $join->getType();
         $table = $join->getTable();
 
         $sql = "{$type} JOIN {$table}";
@@ -365,7 +369,7 @@ abstract class QueryCompiler
                 $compiled[] = $this->db->escapeIdentifiers($order['column']) . ' ' . trim($order['direction']);
             }
         }
-        
+
         return implode(', ', array_map('trim', $compiled));
     }
 
@@ -393,7 +397,7 @@ abstract class QueryCompiler
         $compiled = [];
 
         foreach ($unions as $union) {
-            $type = $union['all'] ? 'UNION ALL' : 'UNION';
+            $type       = $union['all'] ? 'UNION ALL' : 'UNION';
             $compiled[] = $type . ' ' . $union['query']->toSql();
         }
 
@@ -427,51 +431,58 @@ abstract class QueryCompiler
     {
         switch ($where['type']) {
             case 'basic':
-                $column = $this->db->escapeIdentifiers($where['column']);
+                $column   = $this->db->escapeIdentifiers($where['column']);
                 $operator = $this->translateOperator($where['operator']);
-                
+
                 if (isset($where['value']) && $where['value'] instanceof Expression) {
                     return "{$column} {$operator} {$where['value']}";
                 }
-                
+
                 return "{$column} {$operator} ?";
 
             case 'in':
-                $column = $this->db->escapeIdentifiers($where['column']);
+                $column       = $this->db->escapeIdentifiers($where['column']);
                 $placeholders = implode(', ', array_fill(0, count($where['values']), '?'));
+
                 return "{$column} {$where['operator']} ({$placeholders})";
 
             case 'insub':
-                $column = $this->db->escapeIdentifiers($where['column']);
+                $column   = $this->db->escapeIdentifiers($where['column']);
                 $subquery = $where['query']->toSql();
-                $not = $where['not'] ? 'NOT ' : '';
+                $not      = $where['not'] ? 'NOT ' : '';
+
                 return "{$column} {$not}IN ({$subquery})";
 
             case 'null':
                 $column = $this->db->escapeIdentifiers($where['column']);
+
                 return "{$column} IS " . ($where['not'] ? 'NOT NULL' : 'NULL');
 
             case 'between':
                 $column = $this->db->escapeIdentifiers($where['column']);
-                $not = $where['not'] ? 'NOT ' : '';
+                $not    = $where['not'] ? 'NOT ' : '';
+
                 return "{$column} {$not}BETWEEN ? AND ?";
 
             case 'betweencolumns':
                 $column = $this->db->escapeIdentifiers($where['column']);
-                $col1 = $this->db->escapeIdentifiers($where['values'][0]);
-                $col2 = $this->db->escapeIdentifiers($where['values'][1]);
-                $not = $where['not'] ? 'NOT ' : '';
+                $col1   = $this->db->escapeIdentifiers($where['values'][0]);
+                $col2   = $this->db->escapeIdentifiers($where['values'][1]);
+                $not    = $where['not'] ? 'NOT ' : '';
+
                 return "{$column} {$not}BETWEEN {$col1} AND {$col2}";
 
             case 'valuebetween':
                 $col1 = $this->db->escapeIdentifiers($where['column1']);
                 $col2 = $this->db->escapeIdentifiers($where['column2']);
-                $not = $where['not'] ? 'NOT ' : '';
+                $not  = $where['not'] ? 'NOT ' : '';
+
                 return "? {$not}BETWEEN {$col1} AND {$col2}";
 
             case 'column':
-                $first = $this->db->escapeIdentifiers($where['first']);
+                $first  = $this->db->escapeIdentifiers($where['first']);
                 $second = $this->db->escapeIdentifiers($where['second']);
+
                 return "{$first} {$where['operator']} {$second}";
 
             case 'nested':
@@ -479,7 +490,8 @@ abstract class QueryCompiler
 
             case 'exists':
                 $subquery = $where['query']->toSql();
-                $not = $where['not'] ? 'NOT ' : '';
+                $not      = $where['not'] ? 'NOT ' : '';
+
                 return "{$not}EXISTS ({$subquery})";
 
             case 'raw':
@@ -497,7 +509,7 @@ abstract class QueryCompiler
                     strtoupper($where['type']),
                     $where['column'],
                     $where['operator'],
-                    $where['values']
+                    $where['values'],
                 );
 
             default:
@@ -512,6 +524,7 @@ abstract class QueryCompiler
                 if ($where['operator'] === 'JSON_CONTAINS') {
                     return $this->compileJsonContains($where['column'], $where['value'], $where['not']);
                 }
+
                 return '';
 
             case 'jsonkey':
@@ -522,6 +535,7 @@ abstract class QueryCompiler
 
             case 'jsonsearch':
                 return $this->compileJsonSearch($where['column'], $where['value'], $where['not']);
+
             default:
                 return '';
         }
@@ -541,22 +555,24 @@ abstract class QueryCompiler
     public function compileBetweenColumns(string $column, array $values, bool $not = false): string
     {
         $column = $this->db->escapeIdentifiers($column);
-        $col1 = $this->db->escapeIdentifiers($values[0]);
-        $col2 = $this->db->escapeIdentifiers($values[1]);
+        $col1   = $this->db->escapeIdentifiers($values[0]);
+        $col2   = $this->db->escapeIdentifiers($values[1]);
         $notStr = $not ? 'NOT ' : '';
-        
+
         return "{$column} {$notStr}BETWEEN {$col1} AND {$col2}";
     }
 
     /**
      * Compile une clause WHERE VALUE BETWEEN
+     *
+     * @param mixed $value
      */
     public function compileValueBetween($value, string $column1, string $column2, bool $not = false): string
     {
-        $col1 = $this->db->escapeIdentifiers($column1);
-        $col2 = $this->db->escapeIdentifiers($column2);
+        $col1   = $this->db->escapeIdentifiers($column1);
+        $col2   = $this->db->escapeIdentifiers($column2);
         $notStr = $not ? 'NOT ' : '';
-        
+
         return "? {$notStr}BETWEEN {$col1} AND {$col2}";
     }
 
@@ -576,31 +592,31 @@ abstract class QueryCompiler
 
             switch ($condition['type']) {
                 case 'basic':
-                    $parts[] = $this->db->escapeIdentifiers($condition['first']) . 
-                              ' ' . $condition['operator'] . ' ' . 
+                    $parts[] = $this->db->escapeIdentifiers($condition['first']) .
+                              ' ' . $condition['operator'] . ' ' .
                               $this->db->escapeIdentifiers($condition['second']);
                     break;
 
                 case 'where':
-                    $parts[] = $this->db->escapeIdentifiers($condition['first']) . 
+                    $parts[] = $this->db->escapeIdentifiers($condition['first']) .
                               ' ' . $condition['operator'] . ' ?';
                     break;
 
                 case 'in':
                     $placeholders = implode(', ', array_fill(0, count($condition['values']), '?'));
-                    $parts[] = $this->db->escapeIdentifiers($condition['column']) . 
-                              ($condition['not'] ? ' NOT IN ' : ' IN ') . 
+                    $parts[]      = $this->db->escapeIdentifiers($condition['column']) .
+                              ($condition['not'] ? ' NOT IN ' : ' IN ') .
                               '(' . $placeholders . ')';
                     break;
 
                 case 'null':
-                    $parts[] = $this->db->escapeIdentifiers($condition['column']) . 
+                    $parts[] = $this->db->escapeIdentifiers($condition['column']) .
                               ($condition['not'] ? ' IS NOT NULL' : ' IS NULL');
                     break;
 
                 case 'nested':
                     $nestedConditions = $this->compileJoinConditions($condition['join']->getConditions());
-                    $parts[] = '(' . $nestedConditions . ')';
+                    $parts[]          = '(' . $nestedConditions . ')';
                     break;
             }
         }
@@ -610,6 +626,8 @@ abstract class QueryCompiler
 
     /**
      * Enveloppe une valeur pour le SQL
+     *
+     * @param mixed $value
      */
     protected function wrapValue($value): string
     {
@@ -632,7 +650,7 @@ abstract class QueryCompiler
      * Compile la clause DISTINCT
      */
     abstract protected function compileDistinct(bool|string $distinct): string;
-     
+
     /**
      * Compile la clause LOCK
      */
@@ -660,9 +678,11 @@ abstract class QueryCompiler
 
     /**
      * Compile une clause JSON CONTAINS
+     *
+     * @param mixed $value
      */
     abstract protected function compileJsonContains(string $column, $value, bool $not = false): string;
-    
+
     /**
      * Compile une clause JSON CONTAINS KEY
      */

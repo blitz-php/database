@@ -165,7 +165,7 @@ class BaseCreator
     protected array $dataCache = [];
 
     /**
-     * Drapeau de debugage. 
+     * Drapeau de debugage.
      * Doit on afficher les erreurs ?
      */
     protected bool $debug = false;
@@ -192,7 +192,7 @@ class BaseCreator
 
     /**
      * Constructeur.
-     * 
+     *
      * @param BaseConnection $db La connexion a la base de donnees
      */
     public function __construct(protected BaseConnection $db)
@@ -268,7 +268,7 @@ class BaseCreator
                 $ifNotExists ? $this->createDatabaseIfStr : $this->createDatabaseStr,
                 $this->db->escapeIdentifier($dbName),
                 $this->charset,
-                $this->collation
+                $this->collation,
             ));
 
             if (! $result && $this->debug) {
@@ -328,14 +328,14 @@ class BaseCreator
             if (! $result && $this->debug) {
                 throw CreatorException::unableToDropDatabase($dbName);
             }
-    
+
             if (! empty($this->dataCache['db_names'])) {
                 $key = array_search(strtolower($dbName), array_map('strtolower', $this->dataCache['db_names']), true);
                 if ($key !== false) {
                     unset($this->dataCache['db_names'][$key]);
                 }
             }
-    
+
             return $result;
         } catch (Throwable $e) {
             if ($this->debug) {
@@ -521,7 +521,7 @@ class BaseCreator
         $sql = sprintf(
             (string) $this->dropConstraintStr,
             $this->db->prefixTable($table),
-            $this->db->escapeIdentifiers($foreignName)
+            $this->db->escapeIdentifiers($foreignName),
         );
 
         if ($sql === '') {
@@ -536,8 +536,8 @@ class BaseCreator
     }
 
     /**
-     * @throws InvalidArgumentException
      * @throws CreatorException
+     * @throws InvalidArgumentException
      */
     public function createTable(string $table, bool $ifNotExists = false, array $attributes = []): bool
     {
@@ -605,7 +605,7 @@ class BaseCreator
             'CREATE TABLE',
             $this->db->escapeIdentifiers($table),
             $columns,
-            $this->_createTableAttributes($attributes)
+            $this->_createTableAttributes($attributes),
         );
     }
 
@@ -654,7 +654,7 @@ class BaseCreator
             $key = array_search(
                 strtolower($prefix . $tableName),
                 array_map('strtolower', $this->dataCache['table_names']),
-                true
+                true,
             );
 
             if ($key !== false) {
@@ -688,8 +688,8 @@ class BaseCreator
     }
 
     /**
-     * @throws InvalidArgumentException
      * @throws CreatorException
+     * @throws InvalidArgumentException
      */
     public function renameTable(string $tableName, string $newTableName): bool
     {
@@ -708,14 +708,14 @@ class BaseCreator
         $result = $this->db->statement(sprintf(
             $this->renameTableStr,
             $this->db->prefixTable($tableName),
-            $this->db->prefixTable($newTableName)
+            $this->db->prefixTable($newTableName),
         ));
 
         if ($result && ! empty($this->dataCache['table_names'])) {
             $key = array_search(
                 strtolower($this->prefix . $tableName),
                 array_map('strtolower', $this->dataCache['table_names']),
-                true
+                true,
             );
 
             if ($key !== false) {

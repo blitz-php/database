@@ -31,7 +31,7 @@ class JoinClause
      * Opérateurs supportés
      */
     protected array $operators = [
-        '=', '<', '>', '<=', '>=', '<>', '!=', 
+        '=', '<', '>', '<=', '>=', '<>', '!=',
         'LIKE', 'NOT LIKE', 'ILIKE', 'NOT ILIKE',
         'IN', 'NOT IN', 'EXISTS', 'NOT EXISTS',
         'BETWEEN', 'NOT BETWEEN',
@@ -50,61 +50,65 @@ class JoinClause
     /**
      * Ajoute une condition ON avec AND
      */
-    public function on(string|Closure $first, ?string $operator = null, ?string $second = null, string $boolean = 'and'): self
+    public function on(Closure|string $first, ?string $operator = null, ?string $second = null, string $boolean = 'and'): self
     {
         if ($first instanceof Closure) {
             return $this->whereNested($first, $boolean);
         }
 
         if ($second === null) {
-            $second = $operator;
+            $second   = $operator;
             $operator = '=';
         }
 
         return $this->addCondition([
-            'type' => 'basic',
-            'first' => $first,
+            'type'     => 'basic',
+            'first'    => $first,
             'operator' => $operator,
-            'second' => $second,
-            'boolean' => $boolean
+            'second'   => $second,
+            'boolean'  => $boolean,
         ]);
     }
 
     /**
      * Ajoute une condition ON avec OR
      */
-    public function orOn(string|Closure $first, ?string $operator = null, ?string $second = null): self
+    public function orOn(Closure|string $first, ?string $operator = null, ?string $second = null): self
     {
         return $this->on($first, $operator, $second, 'or');
     }
 
     /**
      * Ajoute une condition supplémentaire sur la jointure
+     *
+     * @param mixed|null $value
      */
-    public function where(string|Closure $first, ?string $operator = null, $value = null, string $boolean = 'and'): self
+    public function where(Closure|string $first, ?string $operator = null, $value = null, string $boolean = 'and'): self
     {
         if ($first instanceof Closure) {
             return $this->whereNested($first, $boolean);
         }
 
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
 
         return $this->addCondition([
-            'type' => 'where',
-            'first' => $first,
+            'type'     => 'where',
+            'first'    => $first,
             'operator' => $operator,
-            'value' => $value,
-            'boolean' => $boolean
+            'value'    => $value,
+            'boolean'  => $boolean,
         ]);
     }
 
     /**
      * Ajoute une condition WHERE avec OR
+     *
+     * @param mixed|null $value
      */
-    public function orWhere(string|Closure $first, ?string $operator = null, $value = null): self
+    public function orWhere(Closure|string $first, ?string $operator = null, $value = null): self
     {
         return $this->where($first, $operator, $value, 'or');
     }
@@ -115,11 +119,11 @@ class JoinClause
     public function whereIn(string $column, array $values, string $boolean = 'and'): self
     {
         return $this->addCondition([
-            'type' => 'in',
-            'column' => $column,
-            'values' => $values,
+            'type'    => 'in',
+            'column'  => $column,
+            'values'  => $values,
             'boolean' => $boolean,
-            'not' => false
+            'not'     => false,
         ]);
     }
 
@@ -129,11 +133,11 @@ class JoinClause
     public function whereNotIn(string $column, array $values, string $boolean = 'and'): self
     {
         return $this->addCondition([
-            'type' => 'in',
-            'column' => $column,
-            'values' => $values,
+            'type'    => 'in',
+            'column'  => $column,
+            'values'  => $values,
             'boolean' => $boolean,
-            'not' => true
+            'not'     => true,
         ]);
     }
 
@@ -143,10 +147,10 @@ class JoinClause
     public function whereNull(string $column, string $boolean = 'and'): self
     {
         return $this->addCondition([
-            'type' => 'null',
-            'column' => $column,
+            'type'    => 'null',
+            'column'  => $column,
             'boolean' => $boolean,
-            'not' => false
+            'not'     => false,
         ]);
     }
 
@@ -156,10 +160,10 @@ class JoinClause
     public function whereNotNull(string $column, string $boolean = 'and'): self
     {
         return $this->addCondition([
-            'type' => 'null',
-            'column' => $column,
+            'type'    => 'null',
+            'column'  => $column,
             'boolean' => $boolean,
-            'not' => true
+            'not'     => true,
         ]);
     }
 
@@ -173,9 +177,9 @@ class JoinClause
 
         if (count($join->conditions)) {
             $this->addCondition([
-                'type' => 'nested',
-                'join' => $join,
-                'boolean' => $boolean
+                'type'    => 'nested',
+                'join'    => $join,
+                'boolean' => $boolean,
             ]);
         }
 

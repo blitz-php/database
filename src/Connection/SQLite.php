@@ -39,22 +39,22 @@ class SQLite extends BaseConnection
      */
     protected function getDsn(): string
     {
-        if (!empty($this->config['dsn'])) {
+        if (! empty($this->config['dsn'])) {
             return $this->config['dsn'];
         }
 
         $database = $this->config['database'];
-        
+
         if ($database === ':memory:') {
             return 'sqlite::memory:';
         }
-        
-        if (!file_exists($database) && !is_writable(dirname($database))) {
+
+        if (! file_exists($database) && ! is_writable(dirname($database))) {
             throw new DatabaseException(
-                "Impossible de créer la base de données SQLite : le répertoire n'est pas accessible en écriture"
+                "Impossible de créer la base de données SQLite : le répertoire n'est pas accessible en écriture",
             );
         }
-        
+
         return "sqlite:{$database}";
     }
 
@@ -64,7 +64,7 @@ class SQLite extends BaseConnection
     protected function afterConnect(): void
     {
         // Activer les clés étrangères
-        if (!empty($this->config['foreign_keys'])) {
+        if (! empty($this->config['foreign_keys'])) {
             $this->pdo->exec($this->enableForeignKeyChecks);
         }
     }
@@ -75,14 +75,14 @@ class SQLite extends BaseConnection
     public function _listTables(bool $constrainByPrefix = false): string
     {
         $sql = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'";
-        
+
         if ($constrainByPrefix && $this->getPrefix() !== '') {
             $sql .= " AND name LIKE '" . $this->getPrefix() . "%'";
         }
-        
+
         return $sql;
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -103,7 +103,7 @@ class SQLite extends BaseConnection
             INNER JOIN pragma_index_xinfo(sqlite_master.name) ii ON ii.name IS NOT NULL
             LEFT JOIN pragma_table_info(" . $this->escape(strtolower($table)) . ") ti ON ti.name = ii.name
             WHERE sqlite_master.type='index' AND sqlite_master.tbl_name = " . $this->escape(strtolower($table)) . ' COLLATE NOCASE';
-    
+
         $rows    = $this->query($sql)->resultObject();
         $indexes = [];
 
@@ -128,17 +128,17 @@ class SQLite extends BaseConnection
         $columns = [];
 
         foreach ($rows as $row) {
-            $column = new stdClass();
-            $column->name = $row->name;
-            $column->type = $row->type;
-            $column->nullable = !$row->notnull;
-            $column->default = $row->dflt_value;
+            $column              = new stdClass();
+            $column->name        = $row->name;
+            $column->type        = $row->type;
+            $column->nullable    = ! $row->notnull;
+            $column->default     = $row->dflt_value;
             $column->primary_key = (bool) $row->pk;
-            $column->max_length = null;
-            
+            $column->max_length  = null;
+
             $columns[] = $column;
         }
-        
+
         return $columns;
     }
 

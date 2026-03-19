@@ -34,14 +34,14 @@ class Seed
 
     /**
      * Définition des colonnes
-     * 
+     *
      * @var array<string, mixed>
      */
     protected array $columns = [];
 
     /**
      * Closures pour les cas complexes
-     * 
+     *
      * @var array<string, callable>
      */
     protected array $closures = [];
@@ -68,14 +68,14 @@ class Seed
 
     /**
      * Callbacks avant insertion
-     * 
+     *
      * @var list<callable>
      */
     protected array $beforeInsertCallbacks = [];
 
     /**
      * Callbacks après insertion
-     * 
+     *
      * @var list<callable>
      */
     protected array $afterInsertCallbacks = [];
@@ -92,9 +92,9 @@ class Seed
 
     /**
      * Constructeur
-     * 
-     * @param BaseConnection $db Connexion à la base de données
-     * @param string $table Nom de la table
+     *
+     * @param BaseConnection $db    Connexion à la base de données
+     * @param string         $table Nom de la table
      * @param FakerGenerator $faker Générateur Faker
      */
     public function __construct(protected BaseConnection $db, protected string $table, protected FakerGenerator $faker)
@@ -120,7 +120,7 @@ class Seed
     public function column(string $name, mixed $definition): self
     {
         // Si c'est une closure, on la garde à part pour la flexibilité
-        if (is_callable($definition) && !is_string($definition)) {
+        if (is_callable($definition) && ! is_string($definition)) {
             $this->closures[$name] = $definition;
         } else {
             $this->columns[$name] = $definition;
@@ -159,7 +159,7 @@ class Seed
         }
 
         $firstRow = reset($data);
-        
+
         if (! is_array($firstRow)) {
             $this->rawData = [$data];
         } else {
@@ -181,25 +181,25 @@ class Seed
 
     /**
      * Ajoute un callback avant chaque insertion
-     * 
-     * @param Closure(array $data, int $index, ?int $insertId): array|null|void $callback
+     *
+     * @param Closure(array $data, int $index, ?int $insertId): array|void|null $callback
      */
     public function beforeInsert(callable $callback): self
     {
         $this->beforeInsertCallbacks[] = $callback;
-        
+
         return $this;
     }
 
     /**
      * Ajoute un callback après chaque insertion
-     * 
-     * @param Closure(array $data, int $index, ?int $insertId): array|null|void $callback
+     *
+     * @param Closure(array $data, int $index, ?int $insertId): array|void|null $callback
      */
     public function afterInsert(callable $callback): self
     {
         $this->afterInsertCallbacks[] = $callback;
-        
+
         return $this;
     }
 
@@ -227,23 +227,26 @@ class Seed
         $columns = array_keys(reset($this->rawData));
 
         $chunks = array_chunk($this->rawData, $this->bulkSize);
-        
+
         foreach ($chunks as $chunkIndex => $chunk) {
             $data = [];
+
             foreach ($chunk as $rowIndex => $row) {
                 $preparedRow = [];
+
                 foreach ($columns as $column) {
                     $preparedRow[$column] = $row[$column] ?? null;
                 }
-                
+
                 $this->executeCallbacks($this->beforeInsertCallbacks, $preparedRow, $rowIndex);
                 $data[] = $preparedRow;
             }
-            
+
             $this->builder->bulkInsert($data);
-            
+
             // Callbacks after (avec l'ID du premier élément comme approximation)
             $firstId = $this->db->lastId();
+
             foreach ($data as $index => $row) {
                 $this->executeCallbacks($this->afterInsertCallbacks, $row, $index, $firstId + $index);
             }
@@ -255,44 +258,45 @@ class Seed
      */
     protected function generateAndInsertData(): void
     {
-       // Résoudre les dépendances une seule fois
-       $dependencies = $this->resolveDependencies();
+        // Résoudre les dépendances une seule fois
+        $dependencies = $this->resolveDependencies();
 
-       // Générer les données par lots
-       $batches = (int) ceil($this->rowCount / $this->bulkSize);
-       
-       for ($batch = 0; $batch < $batches; $batch++) {
-           $batchData = [];
-           $start = $batch * $this->bulkSize;
-           $end = min($start + $this->bulkSize, $this->rowCount);
-           
-           for ($i = $start; $i < $end; $i++) {
-               $row = [];
-               
-               // Traiter les configurations d'abord (plus rapides)
-               foreach ($this->columns as $column => $definition) {
-                   $row[$column] = $this->resolveConfig($definition, $dependencies);
-               }
-               
-               // Traiter les closures ensuite (plus flexibles)
-               foreach ($this->closures as $column => $closure) {
-                   $row[$column] = $closure($this->faker, $dependencies, $i);
-               }
-               
-               $this->executeCallbacks($this->beforeInsertCallbacks, $row, $i);
-               
-               $batchData[] = $row;
-           }
-           
-           $this->builder->bulkInsert($batchData);
-           
-           // Callbacks after (avec approximation des IDs)
-           $firstId = $this->db->lastId();
-           foreach ($batchData as $offset => $row) {
-               $this->executeCallbacks($this->afterInsertCallbacks, $row, $start + $offset, $firstId + $offset);
-           }
-       }
-   }
+        // Générer les données par lots
+        $batches = (int) ceil($this->rowCount / $this->bulkSize);
+
+        for ($batch = 0; $batch < $batches; $batch++) {
+            $batchData = [];
+            $start     = $batch * $this->bulkSize;
+            $end       = min($start + $this->bulkSize, $this->rowCount);
+
+            for ($i = $start; $i < $end; $i++) {
+                $row = [];
+
+                // Traiter les configurations d'abord (plus rapides)
+                foreach ($this->columns as $column => $definition) {
+                    $row[$column] = $this->resolveConfig($definition, $dependencies);
+                }
+
+                // Traiter les closures ensuite (plus flexibles)
+                foreach ($this->closures as $column => $closure) {
+                    $row[$column] = $closure($this->faker, $dependencies, $i);
+                }
+
+                $this->executeCallbacks($this->beforeInsertCallbacks, $row, $i);
+
+                $batchData[] = $row;
+            }
+
+            $this->builder->bulkInsert($batchData);
+
+            // Callbacks after (avec approximation des IDs)
+            $firstId = $this->db->lastId();
+
+            foreach ($batchData as $offset => $row) {
+                $this->executeCallbacks($this->afterInsertCallbacks, $row, $start + $offset, $firstId + $offset);
+            }
+        }
+    }
 
     /**
      * Résout une configuration
@@ -301,17 +305,17 @@ class Seed
     {
         // Cache pour les appels répétés
         $cacheKey = is_array($config) ? md5(serialize($config)) : null;
-        
+
         if ($cacheKey && isset($this->cache[$cacheKey])) {
             return $this->cache[$cacheKey];
         }
 
         $result = match (true) {
             // Valeur simple (pas de configuration)
-            !is_array($config) => $config,
+            ! is_array($config) => $config,
 
             // Configuration standard
-            default => $this->resolveArrayConfig($config, $dependencies)
+            default => $this->resolveArrayConfig($config, $dependencies),
         };
 
         if ($cacheKey) {
@@ -329,11 +333,11 @@ class Seed
         $type = $config[0] ?? null;
 
         return match ($type) {
-            'faker' => $this->resolveFaker($config),
+            'faker'        => $this->resolveFaker($config),
             'faker:unique' => $this->resolveUniqueFaker($config),
-            'relation' => $this->resolveRelation($config, $dependencies),
-            'optional' => $this->resolveOptional($config, $dependencies),
-            default => $config // Retourne tel quel si non reconnu
+            'relation'     => $this->resolveRelation($config, $dependencies),
+            'optional'     => $this->resolveOptional($config, $dependencies),
+            default        => $config, // Retourne tel quel si non reconnu
         };
     }
 
@@ -342,10 +346,10 @@ class Seed
      */
     protected function resolveFaker(array $config): mixed
     {
-        $method = $config[1] ?? null;
+        $method    = $config[1] ?? null;
         $arguments = $config[2] ?? [];
 
-        if (!$method) {
+        if (! $method) {
             throw SeederException::unspecifiedFakerMethod();
         }
 
@@ -357,11 +361,11 @@ class Seed
      */
     protected function resolveUniqueFaker(array $config): mixed
     {
-        $method = $config[1] ?? null;
-        $arguments = $config[2] ?? [];
+        $method     = $config[1] ?? null;
+        $arguments  = $config[2] ?? [];
         $maxRetries = $config[3] ?? 10000;
 
-        if (!$method) {
+        if (! $method) {
             throw SeederException::unspecifiedFakerMethod();
         }
 
@@ -373,14 +377,15 @@ class Seed
      */
     protected function resolveRelation(array $config, array $dependencies): mixed
     {
-        $table = $config[1] ?? null;
+        $table  = $config[1] ?? null;
         $column = $config[2] ?? 'id';
 
-        if (!$table || !isset($dependencies[$table])) {
+        if (! $table || ! isset($dependencies[$table])) {
             throw SeederException::relationTableNotFound($table);
         }
 
         $values = $dependencies[$table];
+
         return $values[array_rand($values)];
     }
 
@@ -389,9 +394,9 @@ class Seed
      */
     protected function resolveOptional(array $config, array $dependencies): mixed
     {
-        $weight = $config[1] ?? 0.5;
+        $weight  = $config[1] ?? 0.5;
         $default = $config[2] ?? null;
-        $value = $config[3] ?? null;
+        $value   = $config[3] ?? null;
 
         if (mt_rand() / mt_getrandmax() <= $weight) {
             if ($value === null) {
@@ -399,6 +404,7 @@ class Seed
                 // ou on retourne null
                 return null;
             }
+
             return $this->resolveConfig($value, $dependencies);
         }
 
@@ -443,6 +449,8 @@ class Seed
 
     /**
      * Exécute les callbacks
+     *
+     * @param mixed|null $insertId
      */
     protected function executeCallbacks(array $callbacks, array &$data, int $index, $insertId = null): void
     {

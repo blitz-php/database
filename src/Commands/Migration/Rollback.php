@@ -47,8 +47,8 @@ class Rollback extends DatabaseCommand
      */
     public function handle()
     {
-        if (on_prod() && !$this->option('force')) {
-            if (!$this->confirm('Êtes-vous sûr de vouloir annuler des migrations en production ?')) {
+        if (on_prod() && ! $this->option('force')) {
+            if (! $this->confirm('Êtes-vous sûr de vouloir annuler des migrations en production ?')) {
                 return EXIT_SUCCESS;
             }
         }
@@ -58,58 +58,59 @@ class Rollback extends DatabaseCommand
         $group = $this->option('group', 'default');
         $batch = $this->option('all') ? 0 : $this->option('batch', 1);
 
-        if (is_string($batch) && !preg_match('/^-?\d+$/', $batch)) {
+        if (is_string($batch) && ! preg_match('/^-?\d+$/', $batch)) {
             $this->error('Le numéro de lot doit être un entier.');
+
             return EXIT_ERROR;
         }
         $batch = (int) $batch;
 
         $runner = $this->runner('ALL', $group);
-        
+
         $rolledBack = 0;
         $errorCount = 0;
 
-        $runner->on('process.empty-migrations', function() {
+        $runner->on('process.empty-migrations', function () {
             $this->warning('Aucune migration à annuler');
         })
-        ->on('migration.error', function($payload) use(&$errorCount) {
-            ['migration' => $migration, 'exception' => $e] = $payload;
+            ->on('migration.error', function ($payload) use (&$errorCount) {
+                ['migration' => $migration, 'exception' => $e] = $payload;
 
-            $this->justify(
-                $this->getMigrationName($migration), 
-                $this->color->error('Échec')
-            );
-            
-            if (!$this->option('continue-on-error')) {
-                throw $e;
-            }
-            
-            $errorCount++;
-        })
-        ->on('migration.skipped', function($payload) {
-            ['migration' => $migration] = $payload;
+                $this->justify(
+                    $this->getMigrationName($migration),
+                    $this->color->error('Échec'),
+                );
 
-            $this->justify(
-                $this->getMigrationName($migration), 
-                $this->color->warn('Fichier introuvable')
-            );
-        })
-        ->on('migration.done', function($payload) use(&$rolledBack) {
-            ['migration' => $migration, 'duration' => $duration] = $payload;
-            
-            $this->justify(
-                $this->getMigrationName($migration), 
-                $this->color->comment($duration . ' ms') . ' ' . $this->color->ok('Annulé')
-            );
-            
-            $rolledBack++;
-        });
+                if (! $this->option('continue-on-error')) {
+                    throw $e;
+                }
+
+                $errorCount++;
+            })
+            ->on('migration.skipped', function ($payload) {
+                ['migration' => $migration] = $payload;
+
+                $this->justify(
+                    $this->getMigrationName($migration),
+                    $this->color->warn('Fichier introuvable'),
+                );
+            })
+            ->on('migration.done', function ($payload) use (&$rolledBack) {
+                ['migration' => $migration, 'duration' => $duration] = $payload;
+
+                $this->justify(
+                    $this->getMigrationName($migration),
+                    $this->color->comment($duration . ' ms') . ' ' . $this->color->ok('Annulé'),
+                );
+
+                $rolledBack++;
+            });
 
         $runner->rollback($batch, $group);
 
         if ($rolledBack > 0) {
             $this->newLine()->success("{$rolledBack} migration(s) annulée(s) avec succès.");
-            
+
             if ($this->option('show-stats')) {
                 $this->displayStats($runner, $rolledBack, $errorCount, $batch);
             }
@@ -128,7 +129,7 @@ class Rollback extends DatabaseCommand
             $migration->namespace ?? $migration->history->namespace,
             $migration->version ?? $migration->history->version,
             $migration->migration ?? $migration->history->migration,
-            $migration->history->batch ?? '?'
+            $migration->history->batch ?? '?',
         );
     }
 
@@ -138,19 +139,19 @@ class Rollback extends DatabaseCommand
     private function displayStats(Runner $runner, int $rolledBack, int $errorCount, int $targetBatch): void
     {
         $options = ['sep' => '-', 'second' => ['fg' => Color::GREEN]];
-        $data = [
+        $data    = [
             'Migrations annulées' => $rolledBack,
             'Migrations échouées' => $errorCount,
             'Lot cible'           => $targetBatch,
             'Groupe de connexion' => $this->option('group', 'default'),
         ];
-        
+
         $this->eol()->border(char: '*');
-        
+
         foreach ($data as $k => $v) {
             $this->justify($k, (string) $v, $options);
-        } 
-        
+        }
+
         $this->border(char: '*');
     }
 }

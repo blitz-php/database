@@ -40,24 +40,24 @@ class MySQL extends BaseConnection
      */
     protected function getDsn(): string
     {
-        if (!empty($this->config['dsn'])) {
+        if (! empty($this->config['dsn'])) {
             return $this->config['dsn'];
         }
 
         $dsn = "mysql:host={$this->config['hostname']}";
-        
-        if (!empty($this->config['port'])) {
+
+        if (! empty($this->config['port'])) {
             $dsn .= ";port={$this->config['port']}";
         }
-        
-        if (!empty($this->config['database'])) {
+
+        if (! empty($this->config['database'])) {
             $dsn .= ";dbname={$this->config['database']}";
         }
-        
-        if (!empty($this->config['charset'])) {
+
+        if (! empty($this->config['charset'])) {
             $dsn .= ";charset={$this->config['charset']}";
         }
-        
+
         return $dsn;
     }
 
@@ -67,16 +67,16 @@ class MySQL extends BaseConnection
     protected function afterConnect(): void
     {
         // Configuration du charset
-        if (!empty($this->config['charset'])) {
+        if (! empty($this->config['charset'])) {
             $statement = "SET NAMES '{$this->config['charset']}'";
-            
-            if (!empty($this->config['collation'])) {
+
+            if (! empty($this->config['collation'])) {
                 $statement .= " COLLATE '{$this->config['collation']}'";
             }
 
             $this->pdo->exec($statement);
         }
-        
+
         // Mode strict
         if (isset($this->config['strict_on']) && $this->config['strict_on'] === true) {
             $this->pdo->exec("SET sql_mode = 'STRICT_ALL_TABLES'");
@@ -91,12 +91,13 @@ class MySQL extends BaseConnection
         try {
             $this->pdo->exec("USE {$this->escapeIdentifiers($databaseName)}");
             $this->config['database'] = $databaseName;
+
             return true;
         } catch (PDOException $e) {
             throw new DatabaseException(
-                "Impossible de sélectionner la base de données : " . $e->getMessage(),
+                'Impossible de sélectionner la base de données : ' . $e->getMessage(),
                 0,
-                $e
+                $e,
             );
         }
     }
@@ -107,14 +108,14 @@ class MySQL extends BaseConnection
     public function _listTables(bool $constrainByPrefix = false): string
     {
         $sql = "SHOW TABLES FROM `{$this->getDatabase()}`";
-        
+
         if ($constrainByPrefix && $this->getPrefix() !== '') {
             $sql .= " LIKE '" . $this->getPrefix() . "%'";
         }
-        
+
         return $sql;
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -126,13 +127,13 @@ class MySQL extends BaseConnection
         $indexes = [];
 
         foreach ($rows as $row) {
-            $index = new stdClass();
+            $index       = new stdClass();
             $index->name = $row->Key_name;
-            $index->type = match(true) {
-                $row->Key_name === 'PRIMARY' => 'PRIMARY',
+            $index->type = match (true) {
+                $row->Key_name === 'PRIMARY'    => 'PRIMARY',
                 $row->Index_type === 'FULLTEXT' => 'FULLTEXT',
-                isset($row->Non_unique) => $row->Index_type === 'SPATIAL' ? 'SPATIAL' : 'INDEX',
-                default => 'UNIQUE',
+                isset($row->Non_unique)         => $row->Index_type === 'SPATIAL' ? 'SPATIAL' : 'INDEX',
+                default                         => 'UNIQUE',
             };
 
             $indexes[] = $index;
@@ -150,18 +151,18 @@ class MySQL extends BaseConnection
 
         $rows    = $this->query($sql)->resultObject();
         $columns = [];
-        
+
         foreach ($rows as $row) {
             $column              = new stdClass();
             $column->name        = $row->Field;
             $column->type        = $row->Type;
             $column->nullable    = $row->Null === 'YES';
             $column->default     = $row->Default;
-            $column->primary_key = $row->Key  === 'PRI';
-            
+            $column->primary_key = $row->Key === 'PRI';
+
             $columns[] = $column;
         }
-        
+
         return $columns;
     }
 
@@ -170,7 +171,7 @@ class MySQL extends BaseConnection
      */
     public function _listForeignKeys(string $table): array
     {
-        $sql ='
+        $sql = '
             SELECT
                 tc.CONSTRAINT_NAME,
                 tc.TABLE_NAME,

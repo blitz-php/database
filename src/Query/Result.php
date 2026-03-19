@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * This file is part of Blitz PHP framework - Database Layer.
+ *
+ * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
+ *
+ * For the full copyright and license information, please view
+ * the LICENSE file that was distributed with this source code.
+ */
+
 namespace BlitzPHP\Database\Query;
 
 use BadMethodCallException;
@@ -15,7 +24,7 @@ class Result implements ResultInterface
 {
     /**
      * Details de la requete
-     * 
+     *
      * @var array{num_rows: int, affected_rows: int, insert_id: int}
      */
     private array $details = [
@@ -38,10 +47,10 @@ class Result implements ResultInterface
     ];
 
     private array $proxy = [
-        'all'    => 'get',
-        'one'    => 'first',
+        'all'         => 'get',
+        'one'         => 'first',
         'columnCount' => 'countColumn',
-        'lastId' => 'insertID',
+        'lastId'      => 'insertID',
     ];
 
     public function __construct(protected BaseConnection $db, protected PDOStatement $statement, protected bool $success = true)
@@ -60,7 +69,7 @@ class Result implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function successful(): bool 
+    public function successful(): bool
     {
         return $this->success;
     }
@@ -68,7 +77,7 @@ class Result implements ResultInterface
     /**
      * Détermine si la requête est une requête qui écrit des données en BD
      */
-    public function isWritableQuery(): bool 
+    public function isWritableQuery(): bool
     {
         return Utils::isWritableSql($this->sql());
     }
@@ -78,18 +87,18 @@ class Result implements ResultInterface
      */
     public function first(int|string $type = PDO::FETCH_OBJ): mixed
     {
-        if (in_array($type, ['array', PDO::FETCH_ASSOC])) {
+        if (in_array($type, ['array', PDO::FETCH_ASSOC], true)) {
             return $this->fetchAssoc();
         }
 
-        if (in_array($type, ['object', PDO::FETCH_OBJ])) {
+        if (in_array($type, ['object', PDO::FETCH_OBJ], true)) {
             return $this->fetchObject();
         }
 
         if (is_string($type) && class_exists($type)) {
             return $this->fetchObject($type);
         }
-        
+
         return null;
     }
 
@@ -134,7 +143,7 @@ class Result implements ResultInterface
     /**
      * {@inheritDoc}
      */
-    public function row(int $index, null|int|string $type = PDO::FETCH_OBJ): mixed
+    public function row(int $index, int|string|null $type = PDO::FETCH_OBJ): mixed
     {
         $records = $this->result($type);
 
@@ -166,7 +175,7 @@ class Result implements ResultInterface
         $names = [];
 
         for ($i = 0; $i < $count; $i++) {
-            $column = $this->statement->getColumnMeta($i);
+            $column  = $this->statement->getColumnMeta($i);
             $names[] = $column['name'] ?? "column_{$i}";
         }
 
@@ -185,18 +194,18 @@ class Result implements ResultInterface
         }
 
         $count = $this->countColumn();
-        $data = [];
+        $data  = [];
 
         for ($i = 0; $i < $count; $i++) {
             $meta = $this->statement->getColumnMeta($i);
-            
+
             $column            = new stdClass();
             $column->name      = $meta['name'] ?? "column_{$i}";
             $column->type      = $meta['native_type'] ?? 'unknown';
             $column->length    = $meta['len'] ?? null;
             $column->precision = $meta['precision'] ?? null;
             $column->flags     = $meta['flags'] ?? [];
-            
+
             $data[] = $column;
         }
 
@@ -211,7 +220,7 @@ class Result implements ResultInterface
     public function get(int|string $type = PDO::FETCH_OBJ): array
     {
         $data = is_string($type) ? $this->resultClass($type) : $this->result($type);
-        
+
         $this->details['num_rows'] = count($data);
 
         return $data;
@@ -228,9 +237,9 @@ class Result implements ResultInterface
         } else {
             $this->statement->setFetchMode($mode);
         }
-        
+
         $data = $this->statement->fetchAll();
-     
+
         $this->statement->closeCursor();
 
         return $data;
@@ -285,7 +294,7 @@ class Result implements ResultInterface
         if ($this->isWritableQuery()) {
             return null;
         }
-        
+
         $this->statement->setFetchMode(PDO::FETCH_CLASS, $className);
 
         return $this->statement->fetch();

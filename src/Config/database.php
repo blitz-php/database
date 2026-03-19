@@ -45,7 +45,7 @@ return [
          *
          * Si défini sur 'auto', alors vaudra true en developpement et false en production
          */
-        'debug' => !on_prod(),
+        'debug' => ! on_prod(),
         /** @var string */
         'charset' => 'utf8mb4',
         /** @var string */

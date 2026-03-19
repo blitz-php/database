@@ -20,17 +20,17 @@ class QueryException extends PDOException
     /**
      * Create a new query exception instance.
      *
-     * @param  string  $connectionName Le nom de la connexion à la base de données.
-     * @param  string  $sql Le SQL de la requête.
-     * @param  array  $bindings Les bindings pour la requête.
-     * @param  null|'read'|'write'  $readWriteType Le type de lecture/écriture PDO pour la requête exécutée.
-     * @param  array  $connectionDetails Les détails de connexion pour la requête (hôte, port, base de données, etc.).
+     * @param string              $connectionName    Le nom de la connexion à la base de données.
+     * @param string              $sql               Le SQL de la requête.
+     * @param array               $bindings          Les bindings pour la requête.
+     * @param 'read'|'write'|null $readWriteType     Le type de lecture/écriture PDO pour la requête exécutée.
+     * @param array               $connectionDetails Les détails de connexion pour la requête (hôte, port, base de données, etc.).
      */
     public function __construct(public string $connectionName, protected string $sql, protected array $bindings, Throwable $previous, protected array $connectionDetails = [], public ?string $readWriteType = null)
     {
         parent::__construct('', 0, $previous);
 
-        $this->code = $previous->getCode();
+        $this->code    = $previous->getCode();
         $this->message = $this->formatMessage($connectionName, $sql, $bindings, $previous);
 
         if ($previous instanceof PDOException) {
@@ -45,7 +45,7 @@ class QueryException extends PDOException
     {
         $details = $this->formatConnectionDetails();
 
-        return $previous->getMessage().' (Connection: '.$connectionName.$details.', SQL: '. Text::replaceArray('?', $bindings, $sql).')';
+        return $previous->getMessage() . ' (Connection: ' . $connectionName . $details . ', SQL: ' . Text::replaceArray('?', $bindings, $sql) . ')';
     }
 
     /**
@@ -63,18 +63,18 @@ class QueryException extends PDOException
 
         if ($driver !== 'sqlite') {
             if (! empty($this->connectionDetails['unix_socket'])) {
-                $segments[] = 'Socket: '.$this->connectionDetails['unix_socket'];
+                $segments[] = 'Socket: ' . $this->connectionDetails['unix_socket'];
             } else {
                 $host = $this->connectionDetails['host'] ?? '';
 
-                $segments[] = 'Host: '.(is_array($host) ? implode(', ', $host) : $host);
-                $segments[] = 'Port: '.($this->connectionDetails['port'] ?? '');
+                $segments[] = 'Host: ' . (is_array($host) ? implode(', ', $host) : $host);
+                $segments[] = 'Port: ' . ($this->connectionDetails['port'] ?? '');
             }
         }
 
-        $segments[] = 'Database: '.($this->connectionDetails['database'] ?? '');
+        $segments[] = 'Database: ' . ($this->connectionDetails['database'] ?? '');
 
-        return ', '.implode(', ', $segments);
+        return ', ' . implode(', ', $segments);
     }
 
     /**

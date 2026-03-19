@@ -41,8 +41,8 @@ class Reset extends DatabaseCommand
      */
     public function handle()
     {
-        if (on_prod() && !$this->option('force')) {
-            if (!$this->confirm('Êtes-vous sûr de vouloir réinitialiser TOUTES les migrations en production ?')) {
+        if (on_prod() && ! $this->option('force')) {
+            if (! $this->confirm('Êtes-vous sûr de vouloir réinitialiser TOUTES les migrations en production ?')) {
                 return EXIT_SUCCESS;
             }
         }
@@ -50,13 +50,11 @@ class Reset extends DatabaseCommand
         $this->eol()->info('Réinitialisation de toutes les migrations...');
 
         $group = $this->option('group', 'default');
-        
-        $result = $this->call('migrate:rollback', [
+
+        return $this->call('migrate:rollback', [
             '--group' => $group,
             '--all'   => true,
             '--force' => $this->option('force'),
         ]);
-
-        return $result;
     }
 }

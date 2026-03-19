@@ -297,7 +297,7 @@ class Table
             $this->creator->addForeignKey(
                 $foreignKey->column_name,
                 trim($foreignKey->foreign_table_name, $prefix),
-                $foreignKey->foreign_column_name
+                $foreignKey->foreign_column_name,
             );
         }
 
@@ -320,15 +320,15 @@ class Table
 
         $exFields = implode(
             ', ',
-            array_map(fn ($item) => $this->db->protectIdentifiers($item), $exFields)
+            array_map(fn ($item) => $this->db->protectIdentifiers($item), $exFields),
         );
         $newFields = implode(
             ', ',
-            array_map(fn ($item) => $this->db->protectIdentifiers($item), $newFields)
+            array_map(fn ($item) => $this->db->protectIdentifiers($item), $newFields),
         );
 
         $this->db->statement(
-            "INSERT INTO {$this->prefixedTableName}({$newFields}) SELECT {$exFields} FROM {$this->db->getPrefix()}temp_{$this->tableName}"
+            "INSERT INTO {$this->prefixedTableName}({$newFields}) SELECT {$exFields} FROM {$this->db->getPrefix()}temp_{$this->tableName}",
         );
     }
 
