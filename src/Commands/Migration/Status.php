@@ -43,35 +43,37 @@ class Status extends DatabaseCommand
     {
         $this->eol()->info('Récupération du statut des migrations...');
 
-        $group = $this->option('group', 'default');
+        $group  = $this->option('group', 'default');
         $runner = $this->runner('ALL', $group);
-        
+
         $history = $runner->getHistory($group);
-        $files = $runner->findMigrationFiles();
-        
+        $files   = $runner->findMigrationFiles();
+
         if (empty($files)) {
             $this->warning('Aucun fichier de migration trouvé.');
+
             return EXIT_SUCCESS;
         }
-        
+
         $executedMap = [];
+
         foreach ($history as $item) {
-            $key = $item->migration . '_' . $item->version;
+            $key               = $item->migration . '_' . $item->version;
             $executedMap[$key] = $item;
         }
 
         $tbody = [];
 
         foreach ($files as $file) {
-            $key = $file->migration . '_' . $file->version;
+            $key      = $file->migration . '_' . $file->version;
             $executed = isset($executedMap[$key]);
-            
-            $date = $executed ? date('Y-m-d H:i', $executedMap[$key]->time) : '---';
-            $batch = $executed ? $executedMap[$key]->batch : '---';
-            $status = $executed 
+
+            $date   = $executed ? date('Y-m-d H:i', $executedMap[$key]->time) : '---';
+            $batch  = $executed ? $executedMap[$key]->batch : '---';
+            $status = $executed
                 ? $this->color->ok('EXÉCUTÉE')
                 : $this->color->warn('EN ATTENTE');
-            
+
             $tbody[] = [
                 $this->getMigrationName($file),
                 $date,
@@ -83,9 +85,9 @@ class Status extends DatabaseCommand
         $this->table(['MIGRATION', 'EXÉCUTÉE', 'LOT', 'STATUT'], $tbody);
 
         // Statistiques
-        $total = count($files);
+        $total         = count($files);
         $executedCount = count($history);
-        $pendingCount = $total - $executedCount;
+        $pendingCount  = $total - $executedCount;
 
         $this->newLine()->info('RÉSUMÉ');
         $this->justify('Total migrations', (string) $total);
@@ -105,7 +107,7 @@ class Status extends DatabaseCommand
             '[%s] %s_%s',
             $migration->namespace,
             $migration->version,
-            $migration->migration
+            $migration->migration,
         );
     }
 }

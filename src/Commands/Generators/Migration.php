@@ -17,7 +17,7 @@ use InvalidArgumentException;
 
 /**
  * Génère un squelette de fichier de migration.
- * 
+ *
  * Analyse le nom de la migration pour déterminer automatiquement
  * l'action (create/modify) et la table concernée.
  */
@@ -94,11 +94,11 @@ class Migration extends Command
 
         try {
             $this->generateClass($this->parameters());
-            
+
             return EXIT_SUCCESS;
         } catch (InvalidArgumentException $e) {
             $this->error($e->getMessage());
-            
+
             return EXIT_ERROR;
         }
     }
@@ -110,9 +110,9 @@ class Migration extends Command
     {
         $name      = $this->argument('name');
         $anonymous = $this->option('anonymous') === true;
-        
+
         $parsed = $this->parseMigrationName($name);
-        
+
         $create  = $this->option('create');
         $alter   = $this->option('alter');
         $table   = $this->option('table');
@@ -120,7 +120,7 @@ class Migration extends Command
 
         if ($create && $alter) {
             throw new InvalidArgumentException(
-                'Impossible d\'utiliser "create" et "alter" simultanément.'
+                'Impossible d\'utiliser "create" et "alter" simultanément.',
             );
         }
 
@@ -135,27 +135,27 @@ class Migration extends Command
             $detectedTable = $parsed['table'];
         }
 
-         // Si c'est une session, on force l'action à 'create' et la table par défaut
+        // Si c'est une session, on force l'action à 'create' et la table par défaut
         if ($session) {
-            $action = 'create';
-            $table = $table ?: 'blitz_sessions';
+            $action        = 'create';
+            $table         = $table ?: 'blitz_sessions';
             $detectedTable = $table;
         }
 
-        if (!$action) {
+        if (! $action) {
             throw new InvalidArgumentException(
                 "Impossible de déterminer l'action à partir du nom '{$name}'.\n" .
-                "Utilisez --create=table ou --table=table pour spécifier explicitement."
+                'Utilisez --create=table ou --table=table pour spécifier explicitement.',
             );
         }
 
         $table = $this->cleanTableName($table ?: $detectedTable);
 
         // Valider qu'on a une table (sauf pour certaines actions)
-        if (!$table && !in_array($action, ['drop', 'delete', 'remove'])) {
+        if (! $table && ! in_array($action, ['drop', 'delete', 'remove'], true)) {
             throw new InvalidArgumentException(
                 "Impossible de déterminer la table à partir du nom '{$name}'. \n" .
-                "Utilisez --table=tableName pour spécifier le nom de la table explicitement."
+                'Utilisez --table=tableName pour spécifier le nom de la table explicitement.',
             );
         }
 
@@ -182,7 +182,7 @@ class Migration extends Command
     protected function parseMigrationName(string $name): array
     {
         $name = $this->normalizeName($name);
-        
+
         $result = [
             'action' => null,
             'table'  => null,
@@ -191,20 +191,20 @@ class Migration extends Command
         // Pattern 1: action_table (ex: create_users_table, add_email_to_users)
         if (preg_match('/^(' . $this->getKeywordsPattern() . ')_(.+?)(?:_table)?$/', $name, $matches)) {
             $result['action'] = $this->mapKeywordToAction($matches[1]);
-            $result['table'] = $this->extractTableName($matches[2]);
+            $result['table']  = $this->extractTableName($matches[2]);
         }
-        
+
         // Pattern 2: ActionTable (ex: CreateUsersTable, AddEmailToUsers)
         elseif (preg_match('/^(' . $this->getKeywordsPattern(true) . ')([A-Z][a-zA-Z0-9]+)$/', $name, $matches)) {
             $result['action'] = $this->mapKeywordToAction(strtolower($matches[1]));
-            $result['table'] = $this->decamelize($matches[2]);
+            $result['table']  = $this->decamelize($matches[2]);
         }
-        
+
         // Pattern 3: table_action (ex: users_create, users_add_email)
         elseif (preg_match('/^([a-z][a-z0-9_]+)_(' . $this->getKeywordsPattern() . ')(?:_(.+))?$/', $name, $matches)) {
-            $result['table'] = $matches[1];
+            $result['table']  = $matches[1];
             $result['action'] = $this->mapKeywordToAction($matches[2]);
-            
+
             // Si c'est une modification de colonne, on garde le nom original
             if (isset($matches[3])) {
                 $result['table'] .= ' (colonne: ' . $matches[3] . ')';
@@ -226,15 +226,15 @@ class Migration extends Command
         // Enlever les préfixes/suffixes "table" redondants
         $table = preg_replace('/^(table_|tbl_)/', '', $table);
         $table = preg_replace('/(_table|_tbl)$/', '', $table);
-        
+
         // Enlever les caractères indésirables
         $table = preg_replace('/[^a-z0-9_]/', '', $table);
-        
+
         // Éviter les underscores multiples
         $table = preg_replace('/_+/', '_', $table);
-        
+
         $table = trim($table, '_');
-        
+
         return $table ?: null;
     }
 
@@ -246,10 +246,10 @@ class Migration extends Command
         // Convertir CamelCase en snake_case
         $name = preg_replace('/(?<!^)[A-Z]/', '_$0', $name);
         $name = strtolower($name);
-        
+
         // Nettoyer les caractères spéciaux
         $name = preg_replace('/[^a-z0-9_]/', '', $name);
-        
+
         return trim($name, '_');
     }
 
@@ -268,15 +268,15 @@ class Migration extends Command
     {
         // Enlever les prépositions courantes
         $input = preg_replace('/_(to|in|on|at|for|from)_/', '_', $input);
-        
+
         // Garder seulement le dernier segment significatif
         $parts = explode('_', $input);
-        
+
         // Si c'est "add_column_to_table", on veut "table"
-        if (count($parts) > 2 && in_array($parts[0], ['add', 'remove', 'drop'])) {
+        if (count($parts) > 2 && in_array($parts[0], ['add', 'remove', 'drop'], true)) {
             return end($parts);
         }
-        
+
         return $input;
     }
 
@@ -288,16 +288,16 @@ class Migration extends Command
         $allKeywords = array_merge(
             $this->createKeywords,
             $this->modifyKeywords,
-            $this->dropKeywords
+            $this->dropKeywords,
         );
-        
+
         $allKeywords = array_unique($allKeywords);
-        
+
         if ($forCamelCase) {
             // Pour CamelCase, on garde les mots tels quels
             $allKeywords = array_map('ucfirst', $allKeywords);
         }
-        
+
         return implode('|', array_map('preg_quote', $allKeywords));
     }
 
@@ -307,19 +307,19 @@ class Migration extends Command
     protected function mapKeywordToAction(string $keyword): string
     {
         $keyword = strtolower($keyword);
-        
-        if (in_array($keyword, $this->createKeywords)) {
+
+        if (in_array($keyword, $this->createKeywords, true)) {
             return 'create';
         }
-        
-        if (in_array($keyword, $this->dropKeywords)) {
+
+        if (in_array($keyword, $this->dropKeywords, true)) {
             return 'drop';
         }
-        
-        if (in_array($keyword, $this->modifyKeywords)) {
+
+        if (in_array($keyword, $this->modifyKeywords, true)) {
             return 'alter';
         }
-        
+
         // Par défaut, on considère comme une modification
         return 'alter';
     }
@@ -330,7 +330,7 @@ class Migration extends Command
     protected function basename(string $filename): string
     {
         $timestamp = gmdate(config('migrations.timestampFormat', 'YmdHis_'));
-        
+
         return $timestamp . $this->decamelize(basename($filename));
     }
 }

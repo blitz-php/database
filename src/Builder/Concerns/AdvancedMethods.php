@@ -22,12 +22,11 @@ use DateTimeInterface;
  */
 trait AdvancedMethods
 {
-
     /**
      * Liste des requêtes UNION
      */
     protected array $unions = [];
-    
+
     /*
     |--------------------------------------------------------------------------
     | DATE QUERIES
@@ -36,6 +35,9 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE pour les dates
+     *
+     * @param mixed|null $operator
+     * @param mixed|null $value
      */
     public function whereDate(array|string $column, $operator = null, $value = null, string $boolean = 'and'): static
     {
@@ -58,6 +60,9 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE NOT DATE
+     *
+     * @param mixed|null $operator
+     * @param mixed|null $value
      */
     public function whereNotDate(array|string $column, $operator = null, $value = null, string $boolean = 'and'): static
     {
@@ -68,12 +73,15 @@ trait AdvancedMethods
         [$column, $operator, $value] = $this->normalizeWhereParameters($column, $operator, $value);
 
         $operator = $this->invertOperator($operator);
-        
+
         return $this->whereDate($column, $operator, $value, $boolean);
     }
 
     /**
      * Ajoute une clause WHERE DATE avec OR
+     *
+     * @param mixed|null $operator
+     * @param mixed|null $value
      */
     public function orWhereDate(array|string $column, $operator = null, $value = null): static
     {
@@ -82,6 +90,9 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE NOT DATE avec OR
+     *
+     * @param mixed|null $operator
+     * @param mixed|null $value
      */
     public function orWhereNotDate(array|string $column, $operator = null, $value = null): static
     {
@@ -90,11 +101,14 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE pour les heures
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function whereTime(string $column, $operator, $value = null, string $boolean = 'and'): static
     {
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
 
@@ -107,21 +121,27 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE NOT TIME
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function whereNotTime(string $column, $operator, $value = null, string $boolean = 'and'): static
     {
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
 
         $operator = $this->invertOperator($operator);
-        
+
         return $this->whereTime($column, $operator, $value, $boolean);
     }
 
     /**
      * Ajoute une clause WHERE TIME avec OR
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function orWhereTime(string $column, $operator, $value = null): static
     {
@@ -130,6 +150,9 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE NOT TIME avec OR
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function orWhereNotTime(string $column, $operator, $value = null): static
     {
@@ -138,11 +161,14 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE pour le jour
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function whereDay(string $column, $operator, $value = null, string $boolean = 'and'): static
     {
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
 
@@ -151,21 +177,27 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE NOT DAY
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function whereNotDay(string $column, $operator, $value = null, string $boolean = 'and'): static
     {
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
 
         $operator = $this->invertOperator($operator);
-        
+
         return $this->whereDay($column, $operator, $value, $boolean);
     }
 
     /**
      * Ajoute une clause WHERE DAY avec OR
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function orWhereDay(string $column, $operator, $value = null): static
     {
@@ -174,6 +206,9 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE NOT DAY avec OR
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function orWhereNotDay(string $column, $operator, $value = null): static
     {
@@ -182,11 +217,14 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE pour le mois
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function whereMonth(string $column, $operator, $value = null, string $boolean = 'and'): static
     {
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
 
@@ -195,21 +233,27 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE NOT MONTH
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function whereNotMonth(string $column, $operator, $value = null, string $boolean = 'and'): static
     {
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
-        
+
         $operator = $this->invertOperator($operator);
-        
+
         return $this->whereMonth($column, $operator, $value, $boolean);
     }
 
     /**
      * Ajoute une clause WHERE MONTH avec OR
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function orWhereMonth(string $column, $operator, $value = null): static
     {
@@ -218,6 +262,9 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE NOT MONTH avec OR
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function orWhereNotMonth(string $column, $operator, $value = null): static
     {
@@ -226,11 +273,14 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE pour l'année
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function whereYear(string $column, $operator, $value = null, string $boolean = 'and'): static
     {
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
 
@@ -239,21 +289,27 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE NOT YEAR
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function whereNotYear(string $column, $operator, $value = null, string $boolean = 'and'): static
     {
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
-        
+
         $operator = $this->invertOperator($operator);
-        
+
         return $this->whereYear($column, $operator, $value, $boolean);
     }
 
     /**
      * Ajoute une clause WHERE YEAR avec OR
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function orWhereYear(string $column, $operator, $value = null): static
     {
@@ -262,6 +318,9 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE NOT YEAR avec OR
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function orWhereNotYear(string $column, $operator, $value = null): static
     {
@@ -270,11 +329,14 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE pour la semaine
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function whereWeek(string $column, $operator, $value = null, string $boolean = 'and'): static
     {
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
 
@@ -283,26 +345,32 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE pour le jour de la semaine (0-6)
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function whereDayOfWeek(string $column, $operator, $value = null, string $boolean = 'and'): static
     {
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
 
         $function = $this->db->getDriver() === 'pgsql' ? 'EXTRACT(DOW FROM ' : 'DAYOFWEEK(';
-        
+
         return $this->whereRaw($function . $column . ') ' . $operator . ' ?', [$value], $boolean);
     }
 
     /**
      * Ajoute une clause WHERE pour le trimestre
+     *
+     * @param mixed      $operator
+     * @param mixed|null $value
      */
     public function whereQuarter(string $column, $operator, $value = null, string $boolean = 'and'): static
     {
         if ($value === null) {
-            $value = $operator;
+            $value    = $operator;
             $operator = '=';
         }
 
@@ -405,15 +473,17 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE pour les colonnes JSON
+     *
+     * @param mixed $value
      */
     public function whereJsonContains(string $column, $value, string $boolean = 'and', bool $not = false): static
     {
         $this->wheres[] = [
-            'type' => 'json',
-            'column' => $column,
-            'value' => $value,
-            'boolean' => $boolean,
-            'not' => $not,
+            'type'     => 'json',
+            'column'   => $column,
+            'value'    => $value,
+            'boolean'  => $boolean,
+            'not'      => $not,
             'operator' => 'JSON_CONTAINS',
         ];
 
@@ -424,6 +494,8 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE JSON NOT CONTAINS
+     *
+     * @param mixed $value
      */
     public function whereJsonDoesntContain(string $column, $value, string $boolean = 'and'): static
     {
@@ -432,6 +504,8 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE OR JSON CONTAINS
+     *
+     * @param mixed $value
      */
     public function orWhereJsonContains(string $column, $value): static
     {
@@ -440,6 +514,8 @@ trait AdvancedMethods
 
     /**
      * Ajoute une clause WHERE OR JSON NOT CONTAINS
+     *
+     * @param mixed $value
      */
     public function orWhereJsonDoesntContain(string $column, $value): static
     {
@@ -452,13 +528,13 @@ trait AdvancedMethods
     public function whereJsonContainsKey(string $column, string $boolean = 'and', bool $not = false): static
     {
         $operator = $not ? 'JSON_NOT_CONTAINS_KEY' : 'JSON_CONTAINS_KEY';
-        
+
         $this->wheres[] = [
-            'type' => 'jsonkey',
-            'column' => $column,
-            'boolean' => $boolean,
-            'not' => $not,
-            'operator' => $operator
+            'type'     => 'jsonkey',
+            'column'   => $column,
+            'boolean'  => $boolean,
+            'not'      => $not,
+            'operator' => $operator,
         ];
 
         return $this;
@@ -494,12 +570,12 @@ trait AdvancedMethods
     public function whereJsonLength(string $column, string $operator, int $value, string $boolean = 'and'): static
     {
         $this->wheres[] = [
-            'type' => 'jsonlength',
-            'column' => $column,
-            'value' => $value,
+            'type'     => 'jsonlength',
+            'column'   => $column,
+            'value'    => $value,
             'operator' => $operator,
-            'boolean' => $boolean,
-            'json_op' => 'JSON_LENGTH'
+            'boolean'  => $boolean,
+            'json_op'  => 'JSON_LENGTH',
         ];
 
         $this->bindings->add($value);
@@ -521,11 +597,11 @@ trait AdvancedMethods
     public function whereJsonSearch(string $column, string $value, string $boolean = 'and', bool $not = false): static
     {
         $this->wheres[] = [
-            'type' => 'jsonsearch',
-            'column' => $column,
-            'value' => $value,
+            'type'    => 'jsonsearch',
+            'column'  => $column,
+            'value'   => $value,
             'boolean' => $boolean,
-            'not' => $not
+            'not'     => $not,
         ];
 
         $this->bindings->add($value);
@@ -542,11 +618,11 @@ trait AdvancedMethods
     /**
      * Ajoute une requête UNION
      */
-    public function union(Closure|BuilderInterface $query, bool $all = false): static
+    public function union(BuilderInterface|Closure $query, bool $all = false): static
     {
         $this->unions[] = [
             'query' => $this->createUnionQuery($query),
-            'all' => $all
+            'all'   => $all,
         ];
 
         return $this;
@@ -555,7 +631,7 @@ trait AdvancedMethods
     /**
      * Ajoute une requête UNION ALL
      */
-    public function unionAll(Closure|BuilderInterface $query): static
+    public function unionAll(BuilderInterface|Closure $query): static
     {
         return $this->union($query, true);
     }
@@ -563,14 +639,14 @@ trait AdvancedMethods
     /**
      * Crée une requête pour UNION
      */
-    protected function createUnionQuery(Closure|BaseBuilder $query): BaseBuilder
+    protected function createUnionQuery(BaseBuilder|Closure $query): BaseBuilder
     {
         if ($query instanceof Closure) {
             $builder = $this->newQuery();
             $query($builder);
-            
+
             $this->bindings->merge($builder->bindings);
-            
+
             return $builder;
         }
 

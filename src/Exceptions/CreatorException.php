@@ -22,7 +22,7 @@ class CreatorException extends DatabaseException
     {
         return new static(static::t(
             'La fonctionnalité "%s" n\'est pas supportée par ce pilote de base de données.',
-            [$feature]
+            [$feature],
         ));
     }
 
@@ -30,7 +30,7 @@ class CreatorException extends DatabaseException
     {
         return new static(static::t(
             'Aucun champ défini pour la table "%s".',
-            [$table]
+            [$table],
         ));
     }
 
@@ -38,7 +38,7 @@ class CreatorException extends DatabaseException
     {
         return new static(static::t(
             'Type de champ invalide : "%s".',
-            [$type]
+            [$type],
         ));
     }
 
@@ -46,7 +46,7 @@ class CreatorException extends DatabaseException
     {
         return new static(static::t('Impossible de créer la base de données "%s".', [$name]), previous: $previous);
     }
-    
+
     public static function unableToDropDatabase(string $name, ?Throwable $previous = null): self
     {
         return new static(static::t('Impossible de supprimer la base de données "%s".', [$name]), previous: $previous);

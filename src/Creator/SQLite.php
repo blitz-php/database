@@ -234,15 +234,15 @@ class SQLite extends BaseCreator
         if ($processedField['type'] === 'TEXT') {
             // Retirer les parenthèses autour de la contrainte
             $constraint = trim($processedField['length'], '()');
-    
+
             if (str_starts_with($constraint, "'")) {
                 // Cas énumération : ('A','B','C')
                 $processedField['type'] .= ' CHECK(' . $column . ' IN (' . $constraint . '))';
-            } elseif (ctype_digit($constraint) && (int)$constraint > 0) {
+            } elseif (ctype_digit($constraint) && (int) $constraint > 0) {
                 // Cas longueur numérique : (255)
-                $processedField['type'] .= ' CHECK(length(' . $column . ') <= ' . (int)$constraint . ')';
+                $processedField['type'] .= ' CHECK(length(' . $column . ') <= ' . (int) $constraint . ')';
             }
-        }    
+        }
 
         return $column
             . ' ' . $processedField['type']
@@ -278,7 +278,7 @@ class SQLite extends BaseCreator
     protected function _attributeAutoIncrement(array &$attributes, array &$field)
     {
         if (! empty($attributes['AUTO_INCREMENT']) && $attributes['AUTO_INCREMENT'] === true
-            && stripos($field['type'], 'int') !== false) {
+            && str_contains(strtolower($field['type']), strtolower('int'))) {
             $field['type']           = 'INTEGER PRIMARY KEY';
             $field['default']        = '';
             $field['null']           = '';

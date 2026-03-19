@@ -21,7 +21,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Gestionnaire de bases de données
- * 
+ *
  * Responsabilités:
  * - Résolution des connexions
  * - Gestion des instances partagées
@@ -51,9 +51,9 @@ class DatabaseManager implements ConnectionResolverInterface
 
     /**
      * Constructeur
-     * 
-     * @param ?LoggerInterface $logger Logger
-     * @param ?EventManagerInterface $event Event Manager
+     *
+     * @param ?LoggerInterface       $logger Logger
+     * @param ?EventManagerInterface $event  Event Manager
      */
     public function __construct(protected ?LoggerInterface $logger = null, protected ?EventManagerInterface $event = null)
     {
@@ -74,7 +74,7 @@ class DatabaseManager implements ConnectionResolverInterface
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @param array|ConnectionInterface|string|null $group
      */
     public function connect($group = null, bool $shared = true): ConnectionInterface
@@ -103,14 +103,14 @@ class DatabaseManager implements ConnectionResolverInterface
 
     /**
      * {@inheritDoc}
-     * 
-     * @return array{0: string, 1: array}  [nom_du_groupe, configuration]
+     *
+     * @return array{0: string, 1: array} [nom_du_groupe, configuration]
      */
     public function connectionInfo(array|string|null $group = null): array
     {
         // Si c'est un tableau, c'est une configuration ad-hoc
         if (is_array($group)) {
-            $config = $group;
+            $config    = $group;
             $groupName = 'custom-' . md5(json_encode($config));
 
             return [$groupName, $config];
@@ -127,11 +127,11 @@ class DatabaseManager implements ConnectionResolverInterface
         }
 
         // Fallback vers default si le groupe n'existe pas
-        if (!isset($config[$group]) && $group !== 'default' && !str_starts_with($group, 'custom-')) {
+        if (! isset($config[$group]) && $group !== 'default' && ! str_starts_with($group, 'custom-')) {
             $group = 'default';
         }
 
-        if (!isset($config[$group])) {
+        if (! isset($config[$group])) {
             throw new InvalidArgumentException("Le groupe de connexion '{$group}' n'est pas configuré.");
         }
 
@@ -158,11 +158,11 @@ class DatabaseManager implements ConnectionResolverInterface
      */
     public function creator(?ConnectionInterface $db = null): BaseCreator
     {
-        $db = $db ?? $this->activeConnection(); 
+        $db ??= $this->activeConnection();
 
-        $driver = $this->normalizeDriver($db->getDriver());
+        $driver    = $this->normalizeDriver($db->getDriver());
         $className = "BlitzPHP\\Database\\Creator\\{$driver}";
-        
+
         return new $className($db);
     }
 
@@ -192,7 +192,7 @@ class DatabaseManager implements ConnectionResolverInterface
 
     /**
      * Retourne les noms de tous les groupes de connexion configurés
-     * 
+     *
      * @return list<string>
      */
     public function getConnectionNames(): array
@@ -241,7 +241,7 @@ class DatabaseManager implements ConnectionResolverInterface
         }
 
         if (! str_contains($config['database'], DIRECTORY_SEPARATOR)) {
-            $config['database'] = defined('APP_STORAGE_PATH') 
+            $config['database'] = defined('APP_STORAGE_PATH')
                 ? APP_STORAGE_PATH . $config['database']
                 : $config['database'];
         }
@@ -255,7 +255,7 @@ class DatabaseManager implements ConnectionResolverInterface
     protected function createConnection(array $config): ConnectionInterface
     {
         // Parser le DSN si nécessaire
-        if (!empty($config['dsn']) && str_contains($config['dsn'], '://')) {
+        if (! empty($config['dsn']) && str_contains($config['dsn'], '://')) {
             $config = $this->parseDSN($config);
         }
 
@@ -273,12 +273,12 @@ class DatabaseManager implements ConnectionResolverInterface
     {
         // Enlever 'pdo' du nom si présent
         $driver = str_ireplace('pdo', '', $driver);
-        
+
         return match (strtolower($driver)) {
             'mysql' => 'MySQL',
             'pgsql', 'postgre', 'postgresql' => 'Postgre',
             'sqlite' => 'SQLite',
-            default => throw new InvalidArgumentException("Driver non supporté : {$driver}")
+            default  => throw new InvalidArgumentException("Driver non supporté : {$driver}"),
         };
     }
 
@@ -289,7 +289,7 @@ class DatabaseManager implements ConnectionResolverInterface
     {
         $dsn = parse_url($params['dsn']);
 
-        if (!$dsn) {
+        if (! $dsn) {
             throw new InvalidArgumentException('La chaîne DSN est invalide.');
         }
 
@@ -303,8 +303,9 @@ class DatabaseManager implements ConnectionResolverInterface
             'database' => isset($dsn['path']) ? rawurldecode(substr($dsn['path'], 1)) : '',
         ];
 
-        if (!empty($dsn['query'])) {
+        if (! empty($dsn['query'])) {
             parse_str($dsn['query'], $extra);
+
             foreach ($extra as $key => $val) {
                 if (is_string($val) && in_array(strtolower($val), ['true', 'false', 'null'], true)) {
                     $val = $val === 'null' ? null : filter_var($val, FILTER_VALIDATE_BOOLEAN);

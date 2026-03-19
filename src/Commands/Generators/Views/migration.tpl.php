@@ -1,6 +1,6 @@
 <@php
 
-<?php if (!$anonymous): ?>
+<?php if (! $anonymous): ?>
 namespace {namespace};
 
 <?php endif; ?>
@@ -25,22 +25,22 @@ class {class} extends Migration
 			$table->timestamp('timestamp');
 			$table->binary('data');
 			$table->index('timestamp');
-<?php if ($matchIP): ?>			
+<?php if ($matchIP): ?>
 			$table->primary(['id', 'ip_address']);
 <?php else: ?>
 			$table->primary('id');
 <?php endif; ?>
 		});
-<?php elseif ($action === 'create' && !empty($table)): ?>
+<?php elseif ($action === 'create' && ! empty($table)): ?>
 		$this->create('<?= $table ?>', function(Builder $table) {
 	    	$table->id();
 	    	$table->timestamps();
 		});
-<?php elseif ($action === 'drop' && !empty($table)): ?>
+<?php elseif ($action === 'drop' && ! empty($table)): ?>
 		$this->dropIfExists('<?= $table ?>');
-<?php elseif ($action === 'alter' && !empty($table)): ?>
+<?php elseif ($action === 'alter' && ! empty($table)): ?>
 		$this->alter('<?= $table ?>', function(Builder $table) {
-	    	// 
+	    	//
 		});
 <?php else: ?>
 		//
@@ -52,16 +52,16 @@ class {class} extends Migration
      */
 	public function down(): void
     {
-<?php if ($action === 'create' && !empty($table)): ?>
+<?php if ($action === 'create' && ! empty($table)): ?>
 		$this->dropIfExists('<?= $table ?>');
-<?php elseif ($action === 'drop' && !empty($table)): ?>
+<?php elseif ($action === 'drop' && ! empty($table)): ?>
 		$this->create('<?= $table ?>', function(Builder $table) {
 	    	$table->id();
 	    	$table->timestamps();
 		});
-<?php elseif ($action === 'alter' && !empty($table)): ?>
+<?php elseif ($action === 'alter' && ! empty($table)): ?>
 		$this->alter('<?= $table ?>', function(Builder $table) {
-	    	// 
+	    	//
 		});
 <?php else: ?>
 		//

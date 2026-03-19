@@ -11,8 +11,8 @@
 
 namespace BlitzPHP\Database\Builder\Concerns;
 
-use BlitzPHP\Database\Exceptions\RecordsNotFoundException;
 use BlitzPHP\Database\Exceptions\MultipleRecordsFoundException;
+use BlitzPHP\Database\Exceptions\RecordsNotFoundException;
 use BlitzPHP\Traits\Conditionable;
 use BlitzPHP\Utilities\Helpers;
 use BlitzPHP\Utilities\Iterable\Collection;
@@ -22,13 +22,13 @@ use RuntimeException;
 
 /**
  * @template TValue
- * 
+ *
  * @mixin \BlitzPHP\Database\Builder\BaseBuilder
  */
 trait BuildsQueries
 {
     use Conditionable;
-    
+
     /**
      * Passe la requête à un callback donné puis la retourne.
      *
@@ -46,9 +46,10 @@ trait BuildsQueries
      *
      * @template TReturn
      *
-     * @param  (callable($this): TReturn)  $callback
-     * 
-     * @return (TReturn is null|void ? $this : TReturn)
+     * @param (callable($this): TReturn) $callback
+     * @param mixed                      $callback
+     *
+     * @return (TReturn is void|null ? $this : TReturn)
      */
     public function pipe($callback)
     {
@@ -65,13 +66,13 @@ trait BuildsQueries
 
     /**
      * Contraint la requête à la "page" précédente de résultats avant un ID donné.
-     * 
+     *
      * Pagination avec curseur (pour les grandes tables)
      */
     public function forPageBeforeId(int $perPage = 15, ?int $lastId = 0, string $column = 'id'): self
     {
         $this->orders = $this->removeExistingOrdersFor($column);
-        
+
         if ($lastId === null) {
             $this->whereNotNull($column);
         } else {
@@ -80,10 +81,10 @@ trait BuildsQueries
 
         return $this->orderBy($column, 'DESC')->limit($perPage);
     }
-    
+
     /**
      * Contraint la requête à la "page" suivante de résultats après un ID donné.
-     * 
+     *
      * Pagination avec curseur (pour les grandes tables)
      */
     public function forPageAfterId(int $perPage = 15, ?int $lastId = 0, string $column = 'id'): self
@@ -101,8 +102,8 @@ trait BuildsQueries
 
     /**
      * Traitement par lots
-     * 
-     * @param  callable(Collection<int, TValue>, int): mixed  $callback
+     *
+     * @param callable(Collection<int, TValue>, int): mixed $callback
      */
     public function chunk(int $count, callable $callback): bool
     {
@@ -115,14 +116,14 @@ trait BuildsQueries
         do {
             $offset = (($page - 1) * $count) + (int) $skip;
             $limit  = $remaining === null ? $count : min($count, $remaining);
-            
-            if ($limit == 0) {
+
+            if ($limit === 0) {
                 break;
             }
 
             $results = $this->clone()->limit($limit, $offset)->collect();
-            
-            if (0 == $countResults = $results->count()) {
+
+            if (0 === $countResults = $results->count()) {
                 break;
             }
 
@@ -133,7 +134,7 @@ trait BuildsQueries
             unset($results);
 
             $page++;
-        } while ($countResults == $count);
+        } while ($countResults === $count);
 
         return true;
     }
@@ -144,7 +145,7 @@ trait BuildsQueries
      * @template TReturn
      *
      * @param callable(TValue): TReturn $callback
-     * 
+     *
      * @return Collection<int, TReturn>
      */
     public function chunkMap(callable $callback, int $count = 1000): Collection
@@ -187,7 +188,7 @@ trait BuildsQueries
      */
     public function orderedChunkById(int $count, callable $callback, string $column = 'id', ?string $alias = null, bool $descending = false): bool
     {
-        $alias   ??= $column;
+        $alias ??= $column;
         $lastId    = null;
         $skip      = $this->offset;
         $remaining = $this->limit;
@@ -202,7 +203,7 @@ trait BuildsQueries
             }
 
             $limit = $remaining === null ? $count : min($count, $remaining);
-            if ($limit == 0) {
+            if ($limit === 0) {
                 break;
             }
 
@@ -233,7 +234,7 @@ trait BuildsQueries
             unset($results);
 
             $page++;
-        } while ($countResults == $count);
+        } while ($countResults === $count);
 
         return true;
     }
@@ -247,7 +248,7 @@ trait BuildsQueries
      */
     public function each(callable $callback, int $count = 1000): bool
     {
-        return $this->chunk($count, function ($results) use ($callback) {
+        return $this->chunk($count, static function ($results) use ($callback) {
             foreach ($results as $key => $value) {
                 if ($callback($value, $key) === false) {
                     return false;
@@ -261,7 +262,7 @@ trait BuildsQueries
      */
     public function eachById(callable $callback, int $count = 1000, string $column = 'id', ?string $alias = null): bool
     {
-        return $this->chunkById($count, function ($results, $page) use ($callback, $count) {
+        return $this->chunkById($count, static function ($results, $page) use ($callback, $count) {
             foreach ($results as $key => $value) {
                 if ($callback($value, (($page - 1) * $count) + $key) === false) {
                     return false;

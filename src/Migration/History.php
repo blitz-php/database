@@ -16,7 +16,7 @@ use BlitzPHP\Database\DatabaseManager;
 
 /**
  * Gestionnaire de l'historique des migrations
- * 
+ *
  * Cette classe s'occupe de la table de migrations qui enregistre
  * toutes les migrations exécutées.
  */
@@ -27,7 +27,7 @@ class History
      */
     protected BaseConnection $db;
 
-    /** 
+    /**
      * Indique si la table d'historique a été vérifiée/créée
      */
     private bool $tableChecked = false;
@@ -35,7 +35,7 @@ class History
     /**
      * Constructeur
      *
-     * @param string         $table Nom de la table d'historique des migrations
+     * @param string $table Nom de la table d'historique des migrations
      */
     public function __construct(protected DatabaseManager $dbManager, protected string $table = 'migrations')
     {
@@ -62,7 +62,7 @@ class History
         $builder->unsignedInteger('batch');
         $builder->integer('time');
         $builder->createTable(true);
-        
+
         (new Transformer($this->dbManager->creator($this->db)))->process($builder);
 
         $this->tableChecked = true;
@@ -71,14 +71,14 @@ class History
     /**
      * Récupère tout l'historique
      *
-     * @return array<object>
+     * @return list<object>
      */
     public function getAll(?string $group = null): array
     {
         return $this->db->table($this->table)
             ->orderBy('batch', 'ASC')
             ->orderBy('id', 'ASC')
-            ->when($group, function ($query) use ($group) {
+            ->when($group, static function ($query) use ($group) {
                 $query->where('group', $group);
             })
             ->all();
@@ -86,8 +86,8 @@ class History
 
     /**
      * Récupère l'historique d'un lot
-     * 
-     * @return array<object>
+     *
+     * @return list<object>
      */
     public function getBatch(int $batch, string $order = 'asc'): array
     {
@@ -108,7 +108,7 @@ class History
     /**
      * Récupère tous les numéros de lots
      *
-     * @return array<int>
+     * @return list<int>
      */
     public function getBatches(): array
     {

@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * This file is part of Blitz PHP framework - Database Layer.
+ *
+ * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
+ *
+ * For the full copyright and license information, please view
+ * the LICENSE file that was distributed with this source code.
+ */
+
 use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Database\Config\Services;
 use BlitzPHP\Database\Connection\BaseConnection;
@@ -13,9 +22,6 @@ use BlitzPHP\Loader\Load;
  * For the full copyright and license information, please view
  * the LICENSE file that was distributed with this source code.
  */
-
-
-
 if (! function_exists('model')) {
     /**
      * Simple maniere d'obtenir un modele.
@@ -31,7 +37,6 @@ if (! function_exists('model')) {
         return Load::model($name, $conn);
     }
 }
-
 
 if (! function_exists('db')) {
     /**

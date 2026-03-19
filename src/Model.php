@@ -44,96 +44,96 @@ abstract class Model implements RepositoryInterface
      * Nom de la table
      */
     protected string $table = '';
-    
+
     /**
      * Clé primaire
      */
     protected string $primaryKey = 'id';
-    
+
     /**
      * Type de retour par défaut
      */
     protected string $returnType = 'array';
-    
+
     /**
      * Type de retour temporaire
      */
     protected string $tempReturnType;
-    
+
     /**
      * Dernier ID inséré
      */
     protected int|string $lastInsertId = 0;
-    
+
     /**
      * Groupe de connexion
      */
     protected ?string $group = null;
-    
+
     /**
      * Utiliser l'auto-incrément
      */
     protected bool $useAutoIncrement = true;
-    
+
     /**
      * Format des dates (Autorisé: 'datetime', 'date', 'int')
      */
     protected string $dateFormat = 'datetime';
-    
+
     /**
      * Utiliser les soft deletes
      */
     protected bool $useSoftDeletes = false;
-    
+
     /**
      * Champ de suppression logique
      */
     protected string $deletedField = 'deleted_at';
-    
+
     /**
      * Temporaire pour soft deletes
      */
     protected bool $tempUseSoftDeletes;
-    
+
     /**
      * Utiliser les timestamps
      */
     protected bool $useTimestamps = false;
-    
+
     /**
      * Champ de création
      */
     protected string $createdField = 'created_at';
-    
+
     /**
      * Champ de mise à jour
      */
     protected string $updatedField = 'updated_at';
-    
+
     /**
      * Champs autorisés pour l'assignation de masse
-     * 
+     *
      * @var list<string>
      */
     protected array $fillable = [];
-    
+
     /**
      * Champs protégés (non assignables)
-     * 
+     *
      * @var list<string>
      */
     protected array $guarded = ['id'];
-    
+
     /**
      * Règles de validation
-     * 
+     *
      * @var array<string, string>
      */
     protected array $rules = [];
-    
+
     /**
      * Messages de validation personnalisés
-     * 
+     *
      * @var array<string, string>
      */
     protected array $messages = [];
@@ -142,24 +142,24 @@ abstract class Model implements RepositoryInterface
      * Le nombre de données à renvoyer pour la pagination.
      */
     protected int $perPage = 15;
-    
+
     /**
      * Connexion à la base de données
      */
     protected BaseConnection $db;
-    
+
     /**
      * Query Builders par table
-     * 
+     *
      * @var array<string, BaseBuilder>
      */
     protected array $builders = [];
-    
+
     /**
      * Builder actuel
      */
     protected ?BaseBuilder $currentBuilder = null;
-    
+
     /**
      * Alias de la table actuellement utilisée
      */
@@ -169,17 +169,17 @@ abstract class Model implements RepositoryInterface
      * Erreurs de validation
      */
     protected ?ErrorBag $errors = null;
-    
+
     /**
      * Activer les callbacks
      */
     protected bool $allowCallbacks = true;
-    
+
     /**
      * Temporaire pour callbacks
      */
     protected bool $tempAllowCallbacks;
-    
+
     /**
      * Callbacks disponibles
      */
@@ -197,23 +197,23 @@ abstract class Model implements RepositoryInterface
         'beforeBulkUpdate',
         'afterBulkUpdate',
     ];
-    
+
     /**
      * Callbacks enregistrés
      */
     protected array $callbacks = [];
-    
+
     public function __construct(protected ConnectionResolverInterface $resolver, ?ConnectionInterface $db = null)
     {
         $this->db = $db ?: $this->resolver->connection($this->group);
-        
+
         $this->tempReturnType     = $this->returnType;
         $this->tempUseSoftDeletes = $this->useSoftDeletes;
         $this->tempAllowCallbacks = $this->allowCallbacks;
-        
+
         $this->initializeCallbacks();
     }
-    
+
     /**
      * Initialise les callbacks
      */
@@ -225,7 +225,7 @@ abstract class Model implements RepositoryInterface
             }
         }
     }
-    
+
     /**
      * Sélectionne une table spécifique pour les prochaines opérations
      */
@@ -237,27 +237,27 @@ abstract class Model implements RepositoryInterface
             $table = $matches[1];
             $alias = $matches[2];
         }
-        
+
         $key = $alias ?: $table;
-        
-        if (!isset($this->builders[$key])) {
+
+        if (! isset($this->builders[$key])) {
             $this->builders[$key] = $this->db->table($table);
         }
-        
+
         $this->currentBuilder = $this->builders[$key]->reset();
         $this->currentAlias   = $key;
-        
+
         return $this;
     }
-    
+
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function query(): BaseBuilder
     {
         return $this->builder();
     }
-    
+
     /**
      * Récupère le Query Builder pour une table spécifique ou la table par défaut
      */
@@ -271,70 +271,70 @@ abstract class Model implements RepositoryInterface
 
             return $this->currentBuilder;
         }
-        
+
         // Extraire l'alias si présent
         $alias = null;
         if (preg_match('/^(.+?)(?:\s+as\s+|\s+)(\w+)$/i', $table, $matches)) {
             $table = $matches[1];
             $alias = $matches[2];
         }
-        
+
         $key = $alias ?: $table;
-        
-        if (!isset($this->builders[$key])) {
+
+        if (! isset($this->builders[$key])) {
             $this->builders[$key] = $this->db->table($table);
         }
-        
+
         return $this->builders[$key];
     }
-    
+
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      *
      * @param array|int|string|null $id Une clé primaire ou un tableau de clés primaires
      *
-     * @return ($id is int|string ? array|object|null : Collection<int, array|object>) 
+     * @return ($id is int|string ? array|object|null : Collection<int, array|object>)
      */
     public function find($id = null): mixed
     {
         $singleton = is_numeric($id) || is_string($id);
-        
+
         $eventData = $this->fire('beforeFind', [
             'id'        => $id,
             'method'    => 'find',
             'singleton' => $singleton,
         ]);
-        
+
         if ($eventData['cancelled'] ?? false) {
             return $eventData['data'] ?? null;
         }
-        
+
         $builder = $this->query();
-        
+
         $this->applySoftDeleteCondition($builder);
-        
+
         if ($id !== null && $id !== 0 && $id !== '0') {
             $builder->whereIn($this->primaryKey, (array) $id)
-                    ->when($singleton, fn($b) => $b->limit(1));
+                ->when($singleton, static fn ($b) => $b->limit(1));
         }
-        
+
         $results = $builder->collect($this->tempReturnType);
-        $data = $singleton ? $results->first() : $results;
-        
+        $data    = $singleton ? $results->first() : $results;
+
         $eventData = $this->fire('afterFind', [
             'id'        => $id,
             'data'      => $data,
             'method'    => 'find',
             'singleton' => $singleton,
         ]);
-        
+
         $this->resetTemporaryStates();
-        
+
         return $eventData['data'] ?? $data;
     }
-    
+
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function findAll(?int $limit = null, int $offset = 0): Collection
     {
@@ -344,21 +344,21 @@ abstract class Model implements RepositoryInterface
             'offset'    => $offset,
             'singleton' => false,
         ]);
-        
+
         if ($eventData['cancelled'] ?? false) {
             return new Collection($eventData['data'] ?? []);
         }
-        
+
         $builder = $this->query();
-        
+
         $this->applySoftDeleteCondition($builder);
-        
+
         if ($limit !== null) {
             $builder->limit($limit, $offset);
         }
-        
+
         $results = $builder->collect($this->tempReturnType);
-        
+
         $eventData = $this->fire('afterFind', [
             'data'      => $results,
             'limit'     => $limit,
@@ -366,165 +366,162 @@ abstract class Model implements RepositoryInterface
             'method'    => 'findAll',
             'singleton' => false,
         ]);
-        
+
         $this->resetTemporaryStates();
-        
+
         return $eventData['data'] ?? $results;
     }
-    
+
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function create(array|object $data, bool $returnId = true)
     {
         $this->lastInsertId = 0;
-        
+
         // Filtrer les données selon fillable/guarded
         $data = $this->filterFillable($data);
-        
+
         // Valider les données
         if (! $this->validate($data, 'create')) {
             return false;
         }
-        
+
         // Ajouter les timestamps
         $data = $this->addTimestamps($data, 'create');
-        
+
         $eventData = $this->fire('beforeInsert', ['data' => $data]);
-        
+
         if ($eventData['cancelled'] ?? false) {
             return false;
         }
-        
+
         $data = $eventData['data'] ?? $data;
-        
+
         $builder = $this->query();
-        
+
         if ($returnId) {
             $result             = $builder->insertGetId($data);
             $this->lastInsertId = is_numeric($result) ? (int) $result : 0;
         } else {
             $result = $builder->insert($data);
         }
-        
+
         $this->fire('afterInsert', [
-            'id' => $this->lastInsertId,
-            'data' => $data,
+            'id'     => $this->lastInsertId,
+            'data'   => $data,
             'result' => $result,
         ]);
-        
+
         $this->resetTemporaryStates();
-        
-        if (!$result) {
+
+        if (! $result) {
             return false;
         }
-        
+
         return $returnId ? $this->lastInsertId : $result;
     }
-    
+
     /**
-     * {@inheritdoc}
-     * 
-     * @param array|int|string|null $id
-     * 
+     * {@inheritDoc}
+     *
+     * @param array|int|string $id
+     *
      * @return bool|mixed
      */
-    public function modify($id = null, array|object $data)
+    public function modify($id, array|object $data)
     {
-        $id = $id ?: $this->primaryKeyValue;
         $id = $id ?: $this->idValue($data);
-        
+
         // Filtrer les données selon fillable/guarded
         $data = $this->filterFillable($data);
-        
+
         // Ne pas permettre la mise à jour de la clé primaire
         unset($data[$this->primaryKey]);
-        
+
         if ($data === []) {
             return true; // Rien à mettre à jour
         }
-        
+
         // Valider les données
-        if (!$this->validate($data, 'update')) {
+        if (! $this->validate($data, 'update')) {
             return false;
         }
-        
+
         // Ajouter les timestamps
         $data = $this->addTimestamps($data, 'update');
-        
+
         $eventData = $this->fire('beforeUpdate', [
             'id'   => $id,
             'data' => $data,
         ]);
-        
+
         if ($eventData['cancelled'] ?? false) {
             return false;
         }
-        
+
         $data = $eventData['data'] ?? $data;
         $id   = $eventData['id'] ?? $id;
-        
+
         $builder = $this->query();
-        
-        if (!in_array($id, [null, '', 0, '0', []], true)) {
+
+        if (! in_array($id, [null, '', 0, '0', []], true)) {
             $ids = is_array($id) ? $id : [$id];
             $builder->whereIn($this->primaryKey, $ids);
         }
-        
+
         if ($builder->wheres === []) {
             throw new DatabaseException('Updates require a WHERE clause for safety.');
         }
-        
+
         $result = $builder->update($data);
-        
+
         $this->fire('afterUpdate', [
             'id'     => $id,
             'data'   => $data,
             'result' => $result,
         ]);
-        
+
         $this->resetTemporaryStates();
-        
+
         return (bool) $result;
     }
-    
+
     /**
-     * {@inheritdoc}
-     * 
-     * @param array|int|string|null $id
-     * 
+     * {@inheritDoc}
+     *
+     * @param array|int|string $id
+     *
      * @return bool|mixed
      */
-    public function remove($id = null, bool $force = false): bool
+    public function remove($id, bool $force = false): bool
     {
-        $id = $id ?: $this->primaryKeyValue;
-
         $eventData = $this->fire('beforeDelete', [
             'id'    => $id,
             'force' => $force,
         ]);
-        
+
         if ($eventData['cancelled'] ?? false) {
             return false;
         }
-        
-        $id = $eventData['id'] ?? $id;
+
+        $id    = $eventData['id'] ?? $id;
         $force = $eventData['force'] ?? $force;
-        
+
         $builder = $this->query();
-        
-        if (!in_array($id, [null, '', 0, '0', []], true)) {
+
+        if (! in_array($id, [null, '', 0, '0', []], true)) {
             $ids = is_array($id) ? $id : [$id];
             $builder->whereIn($this->primaryKey, $ids);
         }
-        
+
         if ($builder->wheres === []) {
             throw new DatabaseException('Deletes require a WHERE clause for safety.');
         }
-        
-        if ($this->useSoftDeletes && !$force) {
+
+        if ($this->useSoftDeletes && ! $force) {
             $this->applySoftDeleteCondition($builder);
-            
+
             $set = [$this->deletedField => $this->freshTimestamp()];
             if ($this->useTimestamps && $this->updatedField !== '') {
                 $set[$this->updatedField] = $set[$this->deletedField];
@@ -534,27 +531,27 @@ abstract class Model implements RepositoryInterface
         } else {
             $result = $builder->delete();
         }
-        
+
         $this->fire('afterDelete', [
             'id'     => $id,
             'result' => $result,
             'force'  => $force,
         ]);
-        
+
         $this->resetTemporaryStates();
-        
+
         return $result > 0;
     }
-    
+
     /**
      * Purge définitivement les éléments supprimés
      */
     public function purge(): int
     {
-        if (!$this->useSoftDeletes) {
+        if (! $this->useSoftDeletes) {
             return 0;
         }
-        
+
         return $this->query()
             ->whereNotNull($this->deletedField)
             ->delete();
@@ -578,16 +575,16 @@ abstract class Model implements RepositoryInterface
 
         return $response;
     }
-    
+
     /**
      * Pagination
-     * 
+     *
      * @return array{
-     *  data: Collection, 
+     *  data: Collection,
      *  pagination: array{
      *      total: int,
-     *      per_page: int, 
-     *      current_page: int, 
+     *      per_page: int,
+     *      current_page: int,
      *      from: int,
      *      to: int
      *  }
@@ -598,13 +595,13 @@ abstract class Model implements RepositoryInterface
         $page   = max((int) $page, 1);
         $limit  = $limit ?: $this->perPage;
         $offset = ($page - 1) * $limit;
-        
+
         $total = $total ?: $this->countAllResults(false);
-        
+
         $data = $this->limit($limit, $offset)->collect($this->tempReturnType);
-        
+
         $this->resetTemporaryStates();
-        
+
         return [
             'data'       => $data,
             'pagination' => [
@@ -617,51 +614,51 @@ abstract class Model implements RepositoryInterface
             ],
         ];
     }
-    
+
     /**
      * Traitement par lots
      */
     public function chunk(int $size, Closure $callback): bool
     {
-        return $this->query()->chunk($size, function(Collection $rows, int $page) use ($callback) {
+        return $this->query()->chunk($size, function (Collection $rows, int $page) use ($callback) {
             if (class_exists($this->tempReturnType)) {
                 $rows = $rows->mapInto($this->tempReturnType);
             }
-            
+
             $this->resetTemporaryStates();
-            
+
             return $callback($rows, $page);
         });
     }
-    
+
     /**
      * Compte tous les résultats
      */
     public function countAllResults(bool $reset = true): int
     {
         $builder = $this->query();
-        
+
         $this->applySoftDeleteCondition($builder);
-        
+
         $count = $builder->countAllResults();
-        
+
         if ($reset) {
             $this->resetTemporaryStates();
         }
-        
+
         return (int) $count;
     }
-    
+
     /**
      * Active temporairement les soft deletes
      */
     public function withDeleted(bool $enabled = true): static
     {
-        $this->tempUseSoftDeletes = !$enabled;
+        $this->tempUseSoftDeletes = ! $enabled;
 
         return $this;
     }
-    
+
     /**
      * Ne récupère que les éléments supprimés
      */
@@ -670,39 +667,39 @@ abstract class Model implements RepositoryInterface
         $this->tempUseSoftDeletes = false;
 
         $this->query()->whereNotNull($this->deletedField);
-        
+
         return $this;
     }
-    
+
     /**
      * Définit le type de retour
      */
     public function asArray(): static
     {
         $this->tempReturnType = 'array';
-        
+
         return $this;
     }
-    
+
     /**
      * Définit le type de retour comme objet
-     * 
+     *
      * @param 'object'|class-string $class
      */
     public function asObject(string $class = 'object'): static
     {
         $this->tempReturnType = $class;
-        
+
         return $this;
     }
-    
+
     /**
      * Active/désactive les callbacks temporairement
      */
-    public function allowCallbacks(): static
+    public function allowCallbacks(bool $state): static
     {
-        $this->tempAllowCallbacks = false;
-        
+        $this->tempAllowCallbacks = $state;
+
         return $this;
     }
 
@@ -713,7 +710,7 @@ abstract class Model implements RepositoryInterface
     {
         return $this->allowCallbacks(false);
     }
-    
+
     /**
      * Applique la condition de soft delete
      */
@@ -723,39 +720,39 @@ abstract class Model implements RepositoryInterface
             $builder->whereNull($this->deletedField);
         }
     }
-    
+
     /**
      * Ajoute les timestamps
      */
     protected function addTimestamps(array $data, string $action): array
     {
-        if (!$this->useTimestamps) {
+        if (! $this->useTimestamps) {
             return $data;
         }
-        
+
         $timestamp = $this->freshTimestamp();
-        
-        if ($action === 'create' && $this->createdField && !isset($data[$this->createdField])) {
+
+        if ($action === 'create' && $this->createdField && ! isset($data[$this->createdField])) {
             $data[$this->createdField] = $timestamp;
         }
-        
-        if ($this->updatedField && !isset($data[$this->updatedField])) {
+
+        if ($this->updatedField && ! isset($data[$this->updatedField])) {
             $data[$this->updatedField] = $timestamp;
         }
-        
+
         return $data;
     }
-    
+
     /**
      * Timestamp formaté
      */
-    protected function freshTimestamp(): string|int
+    protected function freshTimestamp(): int|string
     {
         $now = Date::now();
-        
-        return match($this->dateFormat) {
-            'int' => $now->getTimestamp(),
-            'date' => $now->format('Y-m-d'),
+
+        return match ($this->dateFormat) {
+            'int'   => $now->getTimestamp(),
+            'date'  => $now->format('Y-m-d'),
             default => $now->format('Y-m-d H:i:s'),
         };
     }
@@ -793,7 +790,7 @@ abstract class Model implements RepositoryInterface
 
         return $this->where($this->primaryKey, $id)->countAllResults() === 1;
     }
-    
+
     /**
      * Filtre les données selon fillable/guarded
      */
@@ -806,18 +803,18 @@ abstract class Model implements RepositoryInterface
         if (is_object($data) && ! $data instanceof stdClass) {
             $data = $this->objectToArray($data);
         }
-        
+
         if (is_object($data)) {
             $data = (array) $data;
         }
 
         if ($this->fillable !== []) {
             return array_intersect_key($data, array_flip($this->fillable));
-        } 
+        }
         if ($this->guarded !== []) {
             return array_diff_key($data, array_flip($this->guarded));
         }
-        
+
         return $data;
     }
 
@@ -836,6 +833,7 @@ abstract class Model implements RepositoryInterface
             $props  = $mirror->getProperties(ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED);
 
             $properties = [];
+
             foreach ($props as $prop) {
                 $properties[$prop->getName()] = $prop->getValue($object);
             }
@@ -843,7 +841,7 @@ abstract class Model implements RepositoryInterface
 
         return $properties;
     }
-    
+
     /**
      * Validation des données
      */
@@ -852,34 +850,34 @@ abstract class Model implements RepositoryInterface
         if ($this->rules === []) {
             return true;
         }
-        
+
         // Si un validateur est disponible
         if (class_exists(Validator::class)) {
             $validator = Validator::make($data, $this->rules, $this->messages);
-            
+
             if ($validator->fails()) {
                 $this->errors = $validator->errors();
 
                 return false;
             }
         }
-        
+
         return true;
     }
-    
+
     /**
      * Déclenche un événement
      */
     protected function fire(string $event, array $payload = []): array
     {
-        if (!$this->tempAllowCallbacks || !isset($this->callbacks[$event])) {
+        if (! $this->tempAllowCallbacks || ! isset($this->callbacks[$event])) {
             return $payload;
         }
-        
+
         foreach ($this->callbacks[$event] as $callback) {
             if (is_string($callback) && method_exists($this, $callback)) {
                 $result = $this->{$callback}($payload);
-                
+
                 if (is_array($result)) {
                     $payload = $result;
                 } elseif ($result === false) {
@@ -888,10 +886,10 @@ abstract class Model implements RepositoryInterface
                 }
             }
         }
-        
+
         return $payload;
     }
-    
+
     /**
      * Réinitialise les états temporaires
      */
@@ -901,7 +899,7 @@ abstract class Model implements RepositoryInterface
         $this->tempUseSoftDeletes = $this->useSoftDeletes;
         $this->tempAllowCallbacks = $this->allowCallbacks;
     }
-    
+
     /**
      * Magic getter
      */
@@ -910,16 +908,16 @@ abstract class Model implements RepositoryInterface
         if (property_exists($this, $name)) {
             return $this->{$name};
         }
-        
+
         if (isset($this->db->{$name})) {
             return $this->db->{$name};
         }
-        
+
         $builder = $this->builder();
-        
+
         return $builder->{$name} ?? null;
     }
-    
+
     /**
      * Magic isset
      */
@@ -928,14 +926,14 @@ abstract class Model implements RepositoryInterface
         if (property_exists($this, $name)) {
             return true;
         }
-        
+
         if (isset($this->db->{$name})) {
             return true;
         }
-        
+
         return isset($this->builder()->{$name});
     }
-    
+
     /**
      * Magic call pour proxy vers le Query Builder
      */
@@ -944,20 +942,20 @@ abstract class Model implements RepositoryInterface
         // Méthodes du Query Builder
         if (method_exists($this->builder(), $name)) {
             $result = $this->builder()->{$name}(...$arguments);
-            
+
             // Si le résultat est une instance du builder, retourner $this pour la fluidité
             if ($result instanceof BaseBuilder) {
                 return $this;
             }
-            
+
             return $result;
         }
-        
+
         // Méthodes de la connexion
         if (method_exists($this->db, $name)) {
             return $this->db->{$name}(...$arguments);
         }
-        
+
         throw new BadMethodCallException("Method {$name} not found in " . static::class);
     }
 }

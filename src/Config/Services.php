@@ -45,14 +45,14 @@ class Services extends BaseServices
 
     /**
      * Récupère une connexion à la base de données
-     * 
+     *
      * @return BaseConnection
      */
     public static function database(?string $group = null, bool $shared = true): ConnectionInterface
     {
         $connection = static::dbManager()->connect($group, $shared);
 
-        if (!$connection instanceof BaseConnection) {
+        if (! $connection instanceof BaseConnection) {
             throw new InvalidArgumentException('La connexion retournée n\'est pas une instance de BaseConnection');
         }
 
@@ -61,9 +61,9 @@ class Services extends BaseServices
 
     /**
      * Récupère un query builder
-     * 
+     *
      * @return BaseBuilder
-     * 
+     *
      * @deprecated 1.0 use static::database()->table($tablename) instead
      */
     public static function builder(?string $group = null, bool $shared = true): BuilderInterface

@@ -64,20 +64,20 @@ class Postgre extends QueryCompiler
     {
         if ($builder->joins === []) {
             $sql = $this->compileUpdateStandard($builder);
-            
+
             return "{$sql} RETURNING *";
         }
 
         return $this->compileUpdateWithFrom($builder);
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function compileTruncate(BaseBuilder $builder): string
     {
         $table = $this->db->escapeIdentifiers($builder->getTable());
-        
+
         return "TRUNCATE TABLE {$table} RESTART IDENTITY";
     }
 
@@ -87,7 +87,7 @@ class Postgre extends QueryCompiler
     public function compileReplace(BaseBuilder $builder): string
     {
         // PostgreSQL n'a pas de REPLACE, on utilise INSERT ... ON CONFLICT
-        
+
         $sql = parent::compileReplace($builder);
 
         return "{$sql} ON CONFLICT DO UPDATE SET " . $this->compileUpdateSet($builder) . ' RETURNING *';
@@ -99,7 +99,7 @@ class Postgre extends QueryCompiler
     protected function compileReplacement(string $table, string $columns, string $values): string
     {
         // PostgreSQL n'a pas de REPLACE, on utilisera INSERT ... ON CONFLICT
-        
+
         return "INSERT INTO {$table} ({$columns}) VALUES {$values}";
     }
 
@@ -109,13 +109,14 @@ class Postgre extends QueryCompiler
     protected function compileUpdateSet(BaseBuilder $builder): string
     {
         $sets = [];
+
         foreach ($builder->values as $column => $value) {
             $column = $this->db->escapeIdentifiers($column);
             $sets[] = "{$column} = EXCLUDED.{$column}";
         }
+
         return implode(', ', $sets);
     }
-
 
     /**
      * {@inheritDoc}
@@ -123,13 +124,14 @@ class Postgre extends QueryCompiler
     protected function compileUpsertment(string $table, string $columns, string $values, BaseBuilder $builder): string
     {
         // Construire la clause ON CONFLICT
-        $uniqueBy = array_map([$this->db, 'escapeIdentifiers'], $builder->uniqueBy);
+        $uniqueBy   = array_map([$this->db, 'escapeIdentifiers'], $builder->uniqueBy);
         $constraint = 'ON CONFLICT (' . implode(', ', $uniqueBy) . ') DO UPDATE SET ';
-        
+
         $updates = [];
+
         foreach ($builder->updateColumns as $column) {
-            if (!in_array($column, $builder->uniqueBy)) {
-                $col = $this->db->escapeIdentifiers($column);
+            if (! in_array($column, $builder->uniqueBy, true)) {
+                $col       = $this->db->escapeIdentifiers($column);
                 $updates[] = $col . ' = EXCLUDED.' . $col;
             }
         }
@@ -144,11 +146,11 @@ class Postgre extends QueryCompiler
     {
         $column = $this->db->escapeIdentifiers($column);
         $notStr = $not ? 'NOT ' : '';
-        
+
         // PostgreSQL utilise l'opérateur @> pour JSON contains
         return "{$column} {$notStr}@> ?::jsonb";
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -156,7 +158,7 @@ class Postgre extends QueryCompiler
     {
         $column = $this->db->escapeIdentifiers($column);
         $notStr = $not ? 'NOT ' : '';
-        
+
         // PostgreSQL utilise l'opérateur ? pour vérifier l'existence d'une clé
         return "{$column} {$notStr}? ?";
     }
@@ -167,7 +169,7 @@ class Postgre extends QueryCompiler
     protected function compileJsonLength(string $column, string $operator, int $value): string
     {
         $column = $this->db->escapeIdentifiers($column);
-        
+
         // PostgreSQL utilise jsonb_array_length() pour les tableaux JSON
         return "jsonb_array_length({$column}) {$operator} ?";
     }
@@ -181,7 +183,7 @@ class Postgre extends QueryCompiler
         // On peut utiliser jsonb_path_exists() pour des recherches avancées
         $column = $this->db->escapeIdentifiers($column);
         $notStr = $not ? 'NOT ' : '';
-        
+
         return "jsonb_path_exists({$column}, ?) IS {$notStr}TRUE";
     }
 
@@ -190,9 +192,9 @@ class Postgre extends QueryCompiler
      */
     protected function compileAnyAll(string $type, string $column, string $operator, array $values): string
     {
-        $column = $this->db->escapeIdentifiers($column);
+        $column       = $this->db->escapeIdentifiers($column);
         $placeholders = implode(', ', array_fill(0, count($values), '?'));
-        
+
         return "{$column} {$operator} {$type} ({$placeholders})";
     }
 
@@ -202,29 +204,30 @@ class Postgre extends QueryCompiler
     protected function compileUpdateWithFrom(BaseBuilder $builder): string
     {
         $table = $this->db->makeTableName($builder->getTable());
-        
+
         $sets = [];
+
         foreach ($builder->values as $column => $value) {
             $column = $this->db->escapeIdentifiers($column);
             $sets[] = "{$column} = " . $this->wrapValue($value);
         }
 
-        $sql = ["UPDATE {$table}"];
-        $sql[] = "SET " . implode(', ', $sets);
+        $sql   = ["UPDATE {$table}"];
+        $sql[] = 'SET ' . implode(', ', $sets);
 
         // Construction de la clause FROM
-        $fromTables = [];
+        $fromTables     = [];
         $joinConditions = [];
 
         foreach ($builder->joins as $join) {
             if ($join instanceof JoinClause) {
                 $fromTables[] = $join->getTable();
-                
+
                 // Convertir les conditions ON en conditions WHERE
                 foreach ($join->getConditions() as $condition) {
                     if ($condition['type'] === 'basic') {
-                        $joinConditions[] = $condition['first'] . ' ' . 
-                                           $condition['operator'] . ' ' . 
+                        $joinConditions[] = $condition['first'] . ' ' .
+                                           $condition['operator'] . ' ' .
                                            $condition['second'];
                     }
                 }
@@ -232,12 +235,12 @@ class Postgre extends QueryCompiler
         }
 
         if ($fromTables !== []) {
-            $sql[] = "FROM " . implode(', ', $fromTables);
+            $sql[] = 'FROM ' . implode(', ', $fromTables);
         }
 
         // Fusionner les conditions WHERE originales avec les conditions de jointure
         $allConditions = array_merge($joinConditions, $builder->wheres);
-        
+
         if ($allConditions !== []) {
             $sql[] = 'WHERE';
             $sql[] = $this->compileWheres($allConditions);

@@ -38,20 +38,20 @@ class Postgre extends BaseConnection
      */
     protected function getDsn(): string
     {
-        if (!empty($this->config['dsn'])) {
+        if (! empty($this->config['dsn'])) {
             return $this->config['dsn'];
         }
 
         $dsn = "pgsql:host={$this->config['hostname']}";
-        
-        if (!empty($this->config['port'])) {
+
+        if (! empty($this->config['port'])) {
             $dsn .= ";port={$this->config['port']}";
         }
-        
-        if (!empty($this->config['database'])) {
+
+        if (! empty($this->config['database'])) {
             $dsn .= ";dbname={$this->config['database']}";
         }
-        
+
         return $dsn;
     }
 
@@ -63,9 +63,9 @@ class Postgre extends BaseConnection
         // Configuration du schéma
         $schema = $this->config['schema'] ?? 'public';
         $this->pdo->exec("SET search_path TO {$schema}");
-        
+
         // Configuration du charset
-        if (!empty($this->config['charset'])) {
+        if (! empty($this->config['charset'])) {
             $this->pdo->exec("SET NAMES '{$this->config['charset']}'");
         }
     }
@@ -76,14 +76,14 @@ class Postgre extends BaseConnection
     public function _listTables(bool $constrainByPrefix = false): string
     {
         $sql = "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('information_schema','pg_catalog')";
-        
+
         if ($constrainByPrefix && $this->getPrefix() !== '') {
             $sql .= " AND tablename LIKE '" . $this->getPrefix() . "%'";
         }
-        
+
         return $sql;
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -99,9 +99,9 @@ class Postgre extends BaseConnection
         $indexes = [];
 
         foreach ($rows as $row) {
-            $index         = new stdClass();
-            $index->name   = $row->indexname;
-            $_columns     = explode(',', preg_replace('/^.*\((.+?)\)$/', '$1', trim($row->indexdef)));
+            $index          = new stdClass();
+            $index->name    = $row->indexname;
+            $_columns       = explode(',', preg_replace('/^.*\((.+?)\)$/', '$1', trim($row->indexdef)));
             $index->columns = array_map(static fn ($v) => trim($v), $_columns);
 
             if (str_starts_with($row->indexdef, 'CREATE UNIQUE INDEX pk')) {
@@ -129,7 +129,7 @@ class Postgre extends BaseConnection
 
         $rows    = $this->query($sql)->resultObject();
         $columns = [];
-    
+
         foreach ($rows as $row) {
             $column             = new stdClass();
             $column->name       = $row->column_name;
@@ -137,10 +137,10 @@ class Postgre extends BaseConnection
             $column->nullable   = $row->is_nullable === 'YES';
             $column->default    = $row->column_default;
             $column->max_length = $row->character_maximum_length > 0 ? $row->character_maximum_length : $row->numeric_precision;
-            
+
             $columns[] = $column;
         }
-        
+
         return $columns;
     }
 

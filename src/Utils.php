@@ -1,4 +1,13 @@
-<?php 
+<?php
+
+/**
+ * This file is part of Blitz PHP framework - Database Layer.
+ *
+ * (c) 2022 Dimitri Sitchet Tomkeu <devcode.dst@gmail.com>
+ *
+ * For the full copyright and license information, please view
+ * the LICENSE file that was distributed with this source code.
+ */
 
 namespace BlitzPHP\Database;
 
@@ -13,15 +22,13 @@ class Utils
         '<=', '>=', '<>', '!=', '<', '>', '=',
         'IS NULL', 'IS NOT NULL', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN',
     ];
-
     public const CUSTOM_OPERATORS_MAP = [
         '%'  => 'LIKE',
         '!%' => 'NOT LIKE',
         '@'  => 'IN',
         '!@' => 'NOT IN',
     ];
-
-    public const SQL_FUNCTIONS =  [
+    public const SQL_FUNCTIONS = [
         /** Agrégations statistique */
         'AVG', 'COUNT', 'MAX', 'MIN', 'SUM', 'EVERY', 'SOME', 'ANY',
         /** Fonctions systeme */
@@ -42,8 +49,7 @@ class Utils
         'NOT EXISTS', 'EXISTS',
     ];
 
-    private static $expressionPattern = null;
-
+    private static ?string $expressionPattern = null;
 
     public static function isSqlFunction(string $value): bool
     {
@@ -57,10 +63,9 @@ class Utils
     {
         return (bool) preg_match(
             '/^\s*"?(SET|INSERT|UPDATE|DELETE|REPLACE|CREATE|DROP|TRUNCATE|LOAD|COPY|ALTER|RENAME|GRANT|REVOKE|LOCK|UNLOCK|REINDEX|MERGE)\s/i',
-            $value
+            $value,
         );
     }
-
 
     /**
      * Vérifie si une chaîne contient un opérateur SQL
@@ -85,18 +90,18 @@ class Utils
      */
     public static function invertOperator(string $operator): string
     {
-        return match($operator) {
-            '='         => '!=',
-            '!='        => '=',
-            '<'         => '>=',
-            '>'         => '<=',
-            '<='        => '>',
-            '>='        => '<',
+        return match ($operator) {
+            '='  => '!=',
+            '!=' => '=',
+            '<'  => '>=',
+            '>'  => '<=',
+            '<=' => '>',
+            '>=' => '<',
             'LIKE', '%' => 'NOT LIKE',
             'NOT LIKE', '!%' => 'LIKE',
-            'IN', '@'   => 'NOT IN',
+            'IN', '@' => 'NOT IN',
             'NOT IN', '!@' => 'IN',
-            default     => $operator
+            default => $operator,
         };
     }
 
@@ -107,7 +112,7 @@ class Utils
     {
         // Un alias peut être précédé ou non de "AS"
         $clean = static::extractAlias($value);
-        
+
         // Un alias valide ne contient que des lettres, chiffres, underscore
         return preg_match('/^[a-zA-Z0-9_]+$/', $clean) === 1;
     }
@@ -126,8 +131,8 @@ class Utils
     public static function isRawExpression(mixed $value): bool
     {
         // Une expression brute est souvent entre parenthèses ou contient des fonctions complexes
-        return $value instanceof Expression 
-            || str_contains($value, '(') && str_contains($value, ')') 
+        return $value instanceof Expression
+            || str_contains($value, '(') && str_contains($value, ')')
             || preg_match('/[+\-*\/<>!=]/', $value);
     }
 
@@ -139,8 +144,8 @@ class Utils
         if (! str_contains($column, '.')) {
             return $db->escapeIdentifiers($column);
         }
-        
-        $parts = explode('.', $column, 2);
+
+        $parts   = explode('.', $column, 2);
         [$table] = $db->getTableAlias($parts[0]);
 
         if (empty($table)) {
@@ -160,7 +165,7 @@ class Utils
         if (empty($operator) || ! in_array($operator, static::OPERATORS, true)) {
             $operator = '=';
         }
-        
+
         $operator = static::translateOperator($operator);
 
         return [$column, $operator];
@@ -169,8 +174,8 @@ class Utils
     public static function parseExpression(string $expression)
     {
         if (self::$expressionPattern === null) {
-            $escaped = array_map(fn($op) => preg_quote($op, '/'), static::OPERATORS);
-            usort($escaped, fn($a, $b) => strlen($b) <=> strlen($a));
+            $escaped = array_map(static fn ($op) => preg_quote($op, '/'), static::OPERATORS);
+            usort($escaped, static fn ($a, $b) => strlen($b) <=> strlen($a));
             self::$expressionPattern = '/^(.*?)\s*(' . implode('|', $escaped) . ')\s*(.*)$/i';
         }
 
@@ -178,7 +183,7 @@ class Utils
             $column   = trim($matches[1]);
             $operator = static::translateOperator($matches[2]);
             $rawValue = $matches[3] ?? '';
-            
+
             // Cas des opérateurs sans valeur
             if (in_array($operator, ['', 'IS NULL', 'IS NOT NULL'], true)) {
                 $value = null;
@@ -194,8 +199,7 @@ class Utils
                 if (preg_match('/^(.*?)\s+AND\s+(.*)$/i', $rawValue, $m)) {
                     $value = [static::castValue($m[1]), static::castValue($m[2])];
                 }
-            }
-            else { // Cas général
+            } else { // Cas général
                 $value = $rawValue === '' ? null : static::castValue($rawValue);
             }
 
@@ -203,7 +207,7 @@ class Utils
         }
 
         return null;
-    } 
+    }
 
     public static function castValue(string $value): mixed
     {

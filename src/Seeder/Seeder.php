@@ -46,7 +46,7 @@ abstract class Seeder
 
     /**
      * Seeders appelés
-     * 
+     *
      * @var list<class-string>
      */
     protected array $called = [];
@@ -63,7 +63,7 @@ abstract class Seeder
 
     /**
      * Constructeur
-     * 
+     *
      * @param BaseConnection $db Connexion à la base de données
      */
     public function __construct(BaseConnection $db)
@@ -98,9 +98,9 @@ abstract class Seeder
      */
     public function setLocale(string $locale): self
     {
-        $this->locale = $locale;
+        $this->locale  = $locale;
         $this->factory = new Factory($locale);
-        
+
         return $this;
     }
 
@@ -114,7 +114,7 @@ abstract class Seeder
 
     /**
      * Récupère les seeders appelés
-     * 
+     *
      * @return list<class-string>
      */
     public function getCalled(): array
@@ -130,7 +130,7 @@ abstract class Seeder
         if ($name === 'faker') {
             return $this->factory;
         }
-        
+
         throw SeederException::propertyNotFound($name);
     }
 
@@ -144,7 +144,7 @@ abstract class Seeder
      */
     protected function table(string $table): Seed
     {
-        if (!isset($this->seeds[$table])) {
+        if (! isset($this->seeds[$table])) {
             $this->seeds[$table] = new Seed($this->db, $table, $this->factory->faker);
         }
 
@@ -158,12 +158,12 @@ abstract class Seeder
     {
         foreach ((array) $seeders as $seeder) {
             $seeder = $this->resolve($seeder);
-            
+
             $seeder->setSilent($this->silent)
-                    ->setCommand($this->command)
-                    ->setLocale($this->locale)
-                    ->run();
-            
+                ->setCommand($this->command)
+                ->setLocale($this->locale)
+                ->run();
+
             $this->called[] = $seeder::class;
         }
 
@@ -175,10 +175,10 @@ abstract class Seeder
      */
     protected function resolve(string $class): self
     {
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             throw SeederException::seederClassDoesNotExist($class);
         }
-        
+
         return new $class($this->db);
     }
 
@@ -207,7 +207,7 @@ abstract class Seeder
 
         if ($this->command) {
             $this->command->{$type}($message);
-        } else if(defined('STDOUT')) {
+        } elseif (defined('STDOUT')) {
             fwrite(STDOUT, $message . PHP_EOL);
         } else {
             echo $message . PHP_EOL;

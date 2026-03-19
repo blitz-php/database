@@ -22,7 +22,7 @@ class BindingCollection
      * Types de bindings supportés
      */
     public const TYPES = [
-        'select', 'from', 'join', 'where', 'having', 
+        'select', 'from', 'join', 'where', 'having',
         'order', 'union', 'values', 'uniqueBy',
     ];
 
@@ -51,20 +51,20 @@ class BindingCollection
     /**
      * Ajoute un binding dans un contexte spécifique
      *
-     * @param mixed $value Valeur à binder
-     * @param string $type Contexte ('where', 'values', etc.)
+     * @param mixed    $value   Valeur à binder
+     * @param string   $type    Contexte ('where', 'values', etc.)
      * @param int|null $pdoType Type PDO (optionnel)
-     * 
+     *
      * @throws InvalidArgumentException
      */
     public function add(mixed $value, string $type = 'where', ?int $pdoType = null): self
     {
-        if (!in_array($type, self::TYPES, true)) {
+        if (! in_array($type, self::TYPES, true)) {
             throw new InvalidArgumentException("Type de binding invalide: {$type}");
         }
 
         $this->bindings[$type][] = $value;
-        $this->types[$type][] = $pdoType ?? $this->guessType($value);
+        $this->types[$type][]    = $pdoType ?? $this->guessType($value);
 
         return $this;
     }
@@ -77,20 +77,20 @@ class BindingCollection
         foreach ($values as $value) {
             $this->add($value, $type);
         }
-        
+
         return $this;
     }
 
     /**
      * (Re)Définit un ensemble de bindings pour un contexte
-     * 
+     *
      * Cet méthode écrase les bindings existants pour le contexte donné
      */
     public function set(array $values, string $context = 'where'): static
     {
         $this->clear($context);
         $this->addMany($values, $context);
-        
+
         return $this;
     }
 
@@ -101,7 +101,7 @@ class BindingCollection
     {
         $this->bindings[$context][$name] = $value;
         $this->types[$context][$name]    = $pdoType ?? $this->guessType($value);
-        
+
         return $this;
     }
 
@@ -121,7 +121,7 @@ class BindingCollection
      * Récupère tous les bindings dans l'ordre de compilation
      *
      * @param list<string> $contexts
-     * 
+     *
      * @return list<mixed>
      */
     public function getOrdered(array $contexts = []): array
@@ -131,18 +131,19 @@ class BindingCollection
         }
 
         $result = [];
+
         foreach ($contexts as $context) {
-            if (!empty($this->bindings[$context])) {
+            if (! empty($this->bindings[$context])) {
                 array_push($result, ...$this->bindings[$context]);
             }
         }
-        
+
         return $result;
     }
 
     /**
      * Récupère tous les types dans l'ordre
-     * 
+     *
      * @param list<string> $types
      *
      * @return list<int>
@@ -154,12 +155,13 @@ class BindingCollection
         }
 
         $result = [];
+
         foreach ($types as $type) {
-            if (!empty($this->types[$type])) {
+            if (! empty($this->types[$type])) {
                 array_push($result, ...$this->types[$type]);
             }
         }
-        
+
         return $result;
     }
 
@@ -168,7 +170,7 @@ class BindingCollection
      */
     public function has(string $context): bool
     {
-        return !empty($this->bindings[$context]);
+        return ! empty($this->bindings[$context]);
     }
 
     /**
@@ -179,7 +181,7 @@ class BindingCollection
         if ($context !== null) {
             return count($this->bindings[$context] ?? []);
         }
-        
+
         return array_sum(array_map('count', $this->bindings));
     }
 
@@ -198,11 +200,11 @@ class BindingCollection
     {
         if ($context !== null) {
             return $this->clearContext($context);
-        } 
-        
+        }
+
         foreach (self::TYPES as $t) {
             $this->bindings[$t] = [];
-            $this->types[$t] = [];
+            $this->types[$t]    = [];
         }
 
         return $this;
@@ -215,7 +217,7 @@ class BindingCollection
     {
         if (isset($this->bindings[$context])) {
             $this->bindings[$context] = [];
-            $this->types[$context] = [];
+            $this->types[$context]    = [];
         }
 
         return $this;
@@ -238,12 +240,12 @@ class BindingCollection
      * Retire les expressions des bindings (elles ne doivent pas être bindées)
      *
      * @param list<mixed> $bindings
-     * 
+     *
      * @return list<mixed>
      */
     public function clean(array $bindings): array
     {
-        return array_filter($bindings, fn($binding) => !$binding instanceof Expression);
+        return array_filter($bindings, static fn ($binding) => ! $binding instanceof Expression);
     }
 
     /**
@@ -251,12 +253,12 @@ class BindingCollection
      */
     protected function guessType(mixed $value): int
     {
-        return match(true) {
-            is_int($value) => PDO::PARAM_INT,
-            is_bool($value) => PDO::PARAM_BOOL,
-            is_null($value) => PDO::PARAM_NULL,
+        return match (true) {
+            is_int($value)                 => PDO::PARAM_INT,
+            is_bool($value)                => PDO::PARAM_BOOL,
+            null === $value                => PDO::PARAM_NULL,
             $value instanceof PDOStatement => PDO::PARAM_STMT,
-            default => PDO::PARAM_STR,
+            default                        => PDO::PARAM_STR,
         };
     }
 

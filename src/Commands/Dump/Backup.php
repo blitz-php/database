@@ -97,7 +97,7 @@ class Backup extends DatabaseCommand
         $ext = match ($option->compress) {
             Option::COMPRESSION_GZIP  => 'gz',
             Option::COMPRESSION_BZIP2 => 'bz2',
-            default                   => 'sql'
+            default                   => 'sql',
         };
 
         $path = $config['path'] ?? storage_path('app/backups');

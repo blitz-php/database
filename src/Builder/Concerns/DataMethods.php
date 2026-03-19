@@ -51,7 +51,6 @@ trait DataMethods
         return $this->aggregate('sum', $column);
     }
 
-
     /**
      * Récupère la moyenne des valeurs d'un champ
      */
@@ -66,7 +65,7 @@ trait DataMethods
     public function count(string $column = '*')
     {
         $builder = $this->clone();
-        $column = $this->buildColumnName($column);
+        $column  = $this->buildColumnName($column);
 
         if ($builder->distinct || $builder->hasGroup()) {
             $builder = $this->fromSubquery($builder, 'count_table')
@@ -101,18 +100,15 @@ trait DataMethods
     }
 
     /**
-     * 
-     * @param string $type
-     * @param string $column
      * @return float|string
      */
     public function aggregate(string $type, string $column)
     {
-        $alias = $type . '_value';
+        $alias  = $type . '_value';
         $column = $this->buildColumnName($column);
 
         $result = $this->clone()->selectRaw(sprintf('%s(%s) AS %s', strtoupper($type), $column, $alias));
-        
+
         return $this->testMode ? $result->sql() : (float) ($result->value($alias) ?? 0);
     }
 
@@ -124,10 +120,10 @@ trait DataMethods
 
     /**
      * Insère en utilisant le résultat d'une sous-requête
-     * 
+     *
      * @return int|string
      */
-    public function insertUsing(array $columns, Closure|BuilderInterface $query)
+    public function insertUsing(array $columns, BuilderInterface|Closure $query)
     {
         $this->crud = 'insert';
 
@@ -138,20 +134,20 @@ trait DataMethods
         }
 
         $this->columns = $columns;
-        $this->values = ['query' => $query];
+        $this->values  = ['query' => $query];
 
         if ($this->testMode) {
             return $this->compiler->compileInsertUsing($this);
         }
 
         $result = $this->execute();
-        
+
         return $result instanceof Result ? $result->affectedRows() : 0;
     }
 
     /**
      * Insère et récupère l'ID généré
-     * 
+     *
      * @return int|static|string|null
      */
     public function insertGetId(array $values, ?string $sequence = null)
@@ -165,7 +161,7 @@ trait DataMethods
 
     /**
      * Insère et récupère l'enregistrement inséré
-     * 
+     *
      * @return object|static|string|null
      */
     public function insertAndGet(array $values)
@@ -202,7 +198,7 @@ trait DataMethods
     /**
      * Ajoute une expression brute dans la clause SELECT
      */
-    public function selectRaw(string|Expression $expression, array $bindings = [])
+    public function selectRaw(Expression|string $expression, array $bindings = [])
     {
         if (is_string($expression)) {
             $expression = new Expression($expression);
@@ -220,9 +216,9 @@ trait DataMethods
     public function whereRaw(string $sql, array $bindings = [], string $boolean = 'and'): self
     {
         $this->wheres[] = [
-            'type' => 'raw',
-            'sql' => $sql,
-            'boolean' => $boolean
+            'type'    => 'raw',
+            'sql'     => $sql,
+            'boolean' => $boolean,
         ];
 
         $this->bindings->addMany($bindings);
@@ -244,13 +240,13 @@ trait DataMethods
     public function havingRaw(string $sql, array $bindings = [], string $boolean = 'and'): static
     {
         $this->havings[] = [
-            'type' => 'raw',
-            'sql' => $sql,
-            'boolean' => $boolean
+            'type'    => 'raw',
+            'sql'     => $sql,
+            'boolean' => $boolean,
         ];
-        
+
         $this->bindings->addMany($bindings);
-        
+
         return $this;
     }
 
@@ -270,11 +266,11 @@ trait DataMethods
         $this->orders[] = [
             'column'    => new Expression($expression),
             'direction' => '',
-            'raw'       => true
+            'raw'       => true,
         ];
-        
+
         $this->bindings->addMany($bindings);
-        
+
         return $this->asCrud('select');
     }
 
@@ -285,7 +281,7 @@ trait DataMethods
     {
         $this->groups[] = new Expression($expression);
         $this->bindings->addMany($bindings);
-        
+
         return $this->asCrud('select');
     }
 
@@ -296,7 +292,7 @@ trait DataMethods
     {
         $this->joins[] = $type . ' JOIN ' . $table . ' ON ' . $on;
         $this->bindings->addMany($bindings);
-        
+
         return $this->asCrud('select');
     }
 

@@ -22,7 +22,7 @@ use Closure;
 
 /**
  * Constructeur de définition de table
- * 
+ *
  * Cette classe permet de définir la structure d'une table de manière fluide.
  * Elle est utilisée par les migrations pour décrire les modifications à apporter.
  *
@@ -40,21 +40,21 @@ class Builder
     /**
      * Liste des colonnes à ajouter/modifier
      *
-     * @var array<Column>
+     * @var list<Column>
      */
     protected array $columns = [];
 
     /**
      * Liste des index à ajouter
      *
-     * @var array<Index>
+     * @var list<Index>
      */
     protected array $indexes = [];
 
     /**
      * Liste des clés étrangères à ajouter
      *
-     * @var array<ForeignKey>
+     * @var list<ForeignKey>
      */
     protected array $foreignKeys = [];
 
@@ -67,11 +67,11 @@ class Builder
      * Éléments à supprimer
      *
      * @var array{
-     *     columns?: array<string>,
+     *     columns?: list<string>,
      *     primary?: string,
-     *     unique?: array<string>,
-     *     index?: array<string>,
-     *     foreign?: array<string>
+     *     unique?: list<string>,
+     *     index?: list<string>,
+     *     foreign?: list<string>
      * }
      */
     protected array $drops = [];
@@ -116,7 +116,7 @@ class Builder
     /**
      * Constructeur
      *
-     * @param string $table Nom de la table
+     * @param string $table  Nom de la table
      * @param string $prefix Préfixe de la table
      */
     public function __construct(protected string $table, protected string $prefix = '')
@@ -125,19 +125,19 @@ class Builder
 
     /**
      * Spécifie la connexion utilisée pour ce builder
-     * 
+     *
      * @internal
      */
     public function setConnection(BaseConnection $db): self
     {
         $this->db = $db;
-     
+
         return $this;
     }
 
     /**
      * Récupère l'instance de la connexion utilisée par ce builder
-     * 
+     *
      * @internal
      */
     public function getConnection(): BaseConnection
@@ -153,7 +153,7 @@ class Builder
 
     /**
      * Indique que la table doit être créée
-     * 
+     *
      * @internal
      */
     public function createTable(bool $ifNotExists = false): void
@@ -163,7 +163,7 @@ class Builder
 
     /**
      * Indique que la table doit être modifiée
-     * 
+     *
      * @internal
      */
     public function alterTable(): void
@@ -173,7 +173,7 @@ class Builder
 
     /**
      * Indique que la table doit être supprimée
-     * 
+     *
      * @internal
      */
     public function dropTable(bool $ifExists = false): void
@@ -183,7 +183,7 @@ class Builder
 
     /**
      * Indique que la table doit être renommée
-     * 
+     *
      * @internal
      */
     public function renameTable(string $to): void
@@ -244,7 +244,7 @@ class Builder
     /**
      * Ajoute un commentaire à la table
      */
-     public function comment(string $comment): static
+    public function comment(string $comment): static
     {
         $this->comment = $comment;
 
@@ -473,7 +473,7 @@ class Builder
     /**
      * Ajoute une colonne de clé étrangère pour le modèle donné
      *
-     * @param string $model Classe du modèle
+     * @param string      $model  Classe du modèle
      * @param string|null $column Nom de la colonne
      */
     public function foreignIdFor(string $model, ?string $column = null): ForeignId
@@ -713,7 +713,7 @@ class Builder
     /**
      * Ajoute une colonne UUID avec contrainte de clé étrangère
      */
-     public function foreignUuid(string $column): ForeignId
+    public function foreignUuid(string $column): ForeignId
     {
         return $this->addColumnDefinition(new ForeignId($this, [
             'type' => 'uuid',
@@ -1015,7 +1015,7 @@ class Builder
      */
     public function dropForeignIdFor(string $model, ?string $column = null): void
     {
-        $column = $column ?? strtolower(basename(str_replace('\\', '/', $model))) . '_id';
+        $column ??= strtolower(basename(str_replace('\\', '/', $model))) . '_id';
 
         $this->dropForeign([$column]);
     }
@@ -1025,8 +1025,8 @@ class Builder
      */
     public function dropConstrainedForeignIdFor(string $model, ?string $column = null): void
     {
-        $column = $column ?? strtolower(basename(str_replace('\\', '/', $model))) . '_id';
-        
+        $column ??= strtolower(basename(str_replace('\\', '/', $model))) . '_id';
+
         $this->dropConstrainedForeignId($column);
     }
 
@@ -1164,7 +1164,7 @@ class Builder
     protected function addColumn(string $type, string $name, array $attributes = []): Column
     {
         return $this->addColumnDefinition(new Column(
-            array_merge(['type' => $type, 'name' => $name], $attributes)
+            array_merge(['type' => $type, 'name' => $name], $attributes),
         ));
     }
 
@@ -1190,8 +1190,8 @@ class Builder
     protected function addIndex(string $type, array|string $columns, ?string $name, ?string $algorithm = null): Index
     {
         $columns = (array) $columns;
-        $name = $name ?? $this->createIndexName($type, $columns);
-        $index = new Index(array_filter(compact('type', 'name', 'columns', 'algorithm')));
+        $name ??= $this->createIndexName($type, $columns);
+        $index           = new Index(array_filter(compact('type', 'name', 'columns', 'algorithm')));
         $this->indexes[] = $index;
 
         return $index;
@@ -1203,8 +1203,8 @@ class Builder
     protected function addForeignKey(array|string $columns, ?string $name): ForeignKey
     {
         $columns = (array) $columns;
-        $name = $name ?? $this->createIndexName('foreign', $columns);
-        $fk = new ForeignKey(compact('name', 'columns'));
+        $name ??= $this->createIndexName('foreign', $columns);
+        $fk                  = new ForeignKey(compact('name', 'columns'));
         $this->foreignKeys[] = $fk;
 
         return $fk;
@@ -1218,22 +1218,22 @@ class Builder
         if (is_string($columns)) {
             $this->drops[$type][] = $columns;
         } else {
-            $name = $this->createIndexName($type, $columns);
+            $name                 = $this->createIndexName($type, $columns);
             $this->drops[$type][] = $name;
         }
     }
 
     /**
      * Crée un nom d'index par défaut
-     * 
+     *
      * Exemple : users_email_unique pour un index unique sur la colonne email de la table users
-     * 
+     *
      * @internal
      */
     public function createIndexName(string $type, array $columns): string
     {
         $index = strtolower($this->table . '_' . implode('_', $columns) . '_' . $type);
-        
+
         return str_replace(['-', '.'], '_', $index);
     }
 
@@ -1242,7 +1242,7 @@ class Builder
      */
     public function removeColumn(string $column): self
     {
-        $this->columns = array_values(array_filter($this->columns, fn($c) => $c->name != $column));
+        $this->columns = array_values(array_filter($this->columns, static fn ($c) => $c->name !== $column));
 
         return $this;
     }
@@ -1280,7 +1280,7 @@ class Builder
     /**
      * Récupère les colonnes
      *
-     * @return array<Column>
+     * @return list<Column>
      */
     public function getColumns(): array
     {
@@ -1290,27 +1290,27 @@ class Builder
     /**
      * Récupère les colonnes ajoutées (non modifiées)
      *
-     * @return array<Column>
+     * @return list<Column>
      */
     public function getAddedColumns(): array
     {
-        return array_filter($this->columns, fn($column) => !$column->change);
+        return array_filter($this->columns, static fn ($column) => ! $column->change);
     }
 
     /**
      * Récupère les colonnes modifiées
      *
-     * @return array<Column>
+     * @return list<Column>
      */
     public function getChangedColumns(): array
     {
-        return array_filter($this->columns, fn($column) => (bool) $column->change);
+        return array_filter($this->columns, static fn ($column) => (bool) $column->change);
     }
 
     /**
      * Récupère les index
      *
-     * @return array<Index>
+     * @return list<Index>
      */
     public function getIndexes(): array
     {
@@ -1320,7 +1320,7 @@ class Builder
     /**
      * Récupère les clés étrangères
      *
-     * @return array<ForeignKey>
+     * @return list<ForeignKey>
      */
     public function getForeignKeys(): array
     {

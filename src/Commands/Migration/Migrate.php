@@ -49,14 +49,14 @@ class Migrate extends DatabaseCommand
      */
     public function handle()
     {
-        if (on_prod() && !$this->option('force')) {
-            if (!$this->confirm('Êtes-vous sûr de vouloir exécuter des migrations en production ?')) {
+        if (on_prod() && ! $this->option('force')) {
+            if (! $this->confirm('Êtes-vous sûr de vouloir exécuter des migrations en production ?')) {
                 return EXIT_SUCCESS;
             }
         }
 
         $this->eol()->info('Recherche des migrations en attente...');
-        
+
         $group     = $this->option('group', 'default');
         $namespace = $this->option('namespace', APP_NAMESPACE);
         $all       = $this->option('all') === true;
@@ -67,56 +67,57 @@ class Migrate extends DatabaseCommand
 
         if ($pretend) {
             $this->pretendMode($runner);
+
             return EXIT_SUCCESS;
         }
 
         $errorCount      = 0;
         $migrationsCount = 0;
 
-        $runner->on('process.empty-migrations', function() {
+        $runner->on('process.empty-migrations', function () {
             $this->warning('Aucune migration en attente.');
         })
-        ->on('process.migrations-disabled', function() {
-            $this->badge()->info('Les migrations sont désactivées dans la configuration.');
-        })
-        ->on('migration.error', function($payload) use(&$errorCount) {
-            ['migration' => $migration, 'exception' => $e] = $payload;
+            ->on('process.migrations-disabled', function () {
+                $this->badge()->info('Les migrations sont désactivées dans la configuration.');
+            })
+            ->on('migration.error', function ($payload) use (&$errorCount) {
+                ['migration' => $migration, 'exception' => $e] = $payload;
 
-            $this->justify(
-                $this->getMigrationName($migration), 
-                $this->color->error('Échec')
-            );
-            
-            if (!$this->option('continue-on-error')) {
-                throw $e;
-            }
+                $this->justify(
+                    $this->getMigrationName($migration),
+                    $this->color->error('Échec'),
+                );
 
-            $errorCount++;
-        })
-        ->on('migration.ignored', function($payload) {
-            ['migration' => $migration] = $payload;
+                if (! $this->option('continue-on-error')) {
+                    throw $e;
+                }
 
-            $this->justify(
-                $this->getMigrationName($migration), 
-                $this->color->warn('Ignoré')
-            );
-        })
-        ->on('migration.done', function($payload) use(&$migrationsCount) {
-            ['migration' => $migration, 'duration' => $duration] = $payload;
-            
-            $this->justify(
-                $this->getMigrationName($migration), 
-                $this->color->comment($duration . ' ms') . ' ' . $this->color->ok('Exécuté')
-            );
-            
-            $migrationsCount++;
-        });
+                $errorCount++;
+            })
+            ->on('migration.ignored', function ($payload) {
+                ['migration' => $migration] = $payload;
+
+                $this->justify(
+                    $this->getMigrationName($migration),
+                    $this->color->warn('Ignoré'),
+                );
+            })
+            ->on('migration.done', function ($payload) use (&$migrationsCount) {
+                ['migration' => $migration, 'duration' => $duration] = $payload;
+
+                $this->justify(
+                    $this->getMigrationName($migration),
+                    $this->color->comment($duration . ' ms') . ' ' . $this->color->ok('Exécuté'),
+                );
+
+                $migrationsCount++;
+            });
 
         $executed = $runner->latest($group);
 
         if ($executed > 0) {
             $this->newLine()->success("{$executed} migration(s) exécutée(s) avec succès.");
-            
+
             if ($this->option('show-stats')) {
                 $this->displayStats($runner, $executed, $errorCount);
             }
@@ -151,7 +152,7 @@ class Migrate extends DatabaseCommand
             '[%s] %s_%s',
             $migration->namespace,
             $migration->version,
-            $migration->migration
+            $migration->migration,
         );
     }
 
@@ -162,25 +163,25 @@ class Migrate extends DatabaseCommand
     {
         $batches = $runner->getLastBatch();
         $history = $runner->getHistory();
-        
+
         $options = ['sep' => '-', 'second' => ['fg' => Color::GREEN]];
-        $data = [
-            'Total dans l\'historique'  => $total = count($history),
-            'Migrations exécutées'      => $executed,
-            'Migrations échouées'       => $errorCount,
-            'Migrations ignorées'       => $total - $executed - $errorCount,
-            'Dernier lot'               => $batches,
-            'Groupe de connexion'       => $this->option('group', 'default'),
-            'Namespace'                 => $this->option('all') ? 'Tous' : $this->option('namespace', APP_NAMESPACE),
+        $data    = [
+            'Total dans l\'historique' => $total = count($history),
+            'Migrations exécutées'     => $executed,
+            'Migrations échouées'      => $errorCount,
+            'Migrations ignorées'      => $total - $executed - $errorCount,
+            'Dernier lot'              => $batches,
+            'Groupe de connexion'      => $this->option('group', 'default'),
+            'Namespace'                => $this->option('all') ? 'Tous' : $this->option('namespace', APP_NAMESPACE),
             // 'Durée totale d\'éxécution' => $duration . ' ms',
         ];
-        
+
         $this->eol()->border(char: '*');
-        
+
         foreach ($data as $k => $v) {
             $this->justify($k, (string) $v, $options);
-        } 
-        
+        }
+
         $this->border(char: '*');
     }
 }

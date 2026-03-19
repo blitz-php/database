@@ -23,14 +23,14 @@ class SQLite extends QueryCompiler
     {
         if ($builder->joins !== []) {
             throw new DatabaseException(
-                "SQLite ne supporte pas les jointures dans les requêtes UPDATE. " .
-                "Utilisez des sous-requêtes à la place."
+                'SQLite ne supporte pas les jointures dans les requêtes UPDATE. ' .
+                'Utilisez des sous-requêtes à la place.',
             );
         }
 
         return $this->compileUpdateStandard($builder);
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -64,13 +64,13 @@ class SQLite extends QueryCompiler
     public function compileTruncate(BaseBuilder $builder): string
     {
         $table = $this->db->escapeIdentifiers($builder->getTable());
-        
+
         // SQLite n'a pas de TRUNCATE, on utilise DELETE
         $sql = "DELETE FROM {$table}";
-        
+
         // Réinitialiser l'auto-increment
         $sql .= "; DELETE FROM sqlite_sequence WHERE name = '" . str_replace("'", "''", $builder->getTable()) . "'";
-        
+
         return $sql;
     }
 
@@ -100,15 +100,15 @@ class SQLite extends QueryCompiler
         if (version_compare($this->db->getVersion(), '3.38', '>=')) {
             $column = $this->db->escapeIdentifiers($column);
             $notStr = $not ? 'NOT ' : '';
-            
+
             // Utiliser json_each ou json_extract pour simuler JSON_CONTAINS
             return "json_each({$column}) IS {$notStr}NULL";
         }
-        
+
         // Version plus ancienne, pas de support JSON
         return $not ? '0' : '1';
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -118,10 +118,10 @@ class SQLite extends QueryCompiler
         if (version_compare($this->db->getVersion(), '3.38', '>=')) {
             $column = $this->db->escapeIdentifiers($column);
             $notStr = $not ? 'NOT ' : '';
-            
+
             return "json_extract({$column}, ?) IS {$notStr}NULL";
         }
-        
+
         return $not ? '0' : '1';
     }
 
@@ -132,10 +132,10 @@ class SQLite extends QueryCompiler
     {
         if (version_compare($this->db->getVersion(), '3.38', '>=')) {
             $column = $this->db->escapeIdentifiers($column);
-            
+
             return "json_array_length({$column}) {$operator} ?";
         }
-        
+
         return '1';
     }
 
@@ -148,11 +148,11 @@ class SQLite extends QueryCompiler
         if (version_compare($this->db->getVersion(), '3.38', '>=')) {
             $column = $this->db->escapeIdentifiers($column);
             $notStr = $not ? 'NOT ' : '';
-            
+
             // Utiliser json_each pour rechercher dans les tableaux
             return "EXISTS (SELECT 1 FROM json_each({$column}) WHERE value = ?) IS {$notStr}TRUE";
         }
-        
+
         return $not ? '0' : '1';
     }
 
@@ -162,13 +162,13 @@ class SQLite extends QueryCompiler
     protected function compileAnyAll(string $type, string $column, string $operator, array $values): string
     {
         // SQLite ne supporte pas ANY/ALL, on simule avec IN/NOT IN
-        $column = $this->db->escapeIdentifiers($column);
+        $column       = $this->db->escapeIdentifiers($column);
         $placeholders = implode(', ', array_fill(0, count($values), '?'));
-        
+
         if ($type === 'ANY') {
             return "{$column} {$operator} ({$placeholders})";
         }
-        
+
         // Pour ALL, c'est plus complexe - on utilise une sous-requête
         return "NOT EXISTS (SELECT 1 WHERE {$column} NOT {$operator} ({$placeholders}))";
     }

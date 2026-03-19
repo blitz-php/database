@@ -11,6 +11,7 @@
 
 namespace BlitzPHP\Database\Listeners;
 
+use BlitzPHP\Cli\Commands\Config\About;
 use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Contracts\Database\ConnectionResolverInterface;
 use BlitzPHP\Contracts\Event\EventInterface;
@@ -37,11 +38,11 @@ class DatabaseListener implements EventListenerInterface
 
     private function addInfoToAboutCommand()
     {
-        if (! class_exists(\BlitzPHP\Cli\Commands\Config\About::class)) {
+        if (! class_exists(About::class)) {
             return;
         }
 
-        \BlitzPHP\Cli\Commands\Config\About::add('Gestionnaires', static fn (ConnectionResolverInterface $connectionResolver) => array_filter([
+        About::add('Gestionnaires', static fn (ConnectionResolverInterface $connectionResolver) => array_filter([
             'Base de données' => static function () use ($connectionResolver) {
                 [$group, $config] = $connectionResolver->connectionInfo();
 
@@ -72,7 +73,7 @@ class DatabaseListener implements EventListenerInterface
 
     private function extendsFramework()
     {
-        FileLocator::macro('model', function(string $model, ?ConnectionInterface $connection = null) {
+        FileLocator::macro('model', static function (string $model, ?ConnectionInterface $connection = null) {
             if (! class_exists($model) && ! str_ends_with($model, 'Model')) {
                 $model .= 'Model';
             }
@@ -89,7 +90,7 @@ class DatabaseListener implements EventListenerInterface
             return service('container')->make($model, ['db' => $connection]);
         });
 
-        Load::macro('model', function(array|string $model, ?ConnectionInterface $connection = null) {
+        Load::macro('model', static function (array|string $model, ?ConnectionInterface $connection = null) {
             if ($model === '' || $model === '0' || $model === []) {
                 throw new LoadException('Veuillez specifier le modele à charger');
             }
@@ -99,13 +100,13 @@ class DatabaseListener implements EventListenerInterface
 
             foreach ($models as $model) {
                 if (null === $result = self::getLoaded('models', $model)) {
-                   $result =  FileLocator::model($model, $connection);
-                   self::loaded('models', $model, $result);
+                    $result = FileLocator::model($model, $connection);
+                    self::loaded('models', $model, $result);
                 }
 
                 $results[] = $result;
             }
-            
+
             return count($results) === 1 ? $results[0] : $results;
         });
     }

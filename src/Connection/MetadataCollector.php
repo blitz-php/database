@@ -18,8 +18,8 @@ class MetadataCollector
 {
     /**
      * Cache des métadonnées
-     * 
-     * @var array{table: array, columns: array[], indexes: array, foreign_keys: array}
+     *
+     * @var array{table: array, columns: list<array>, indexes: array, foreign_keys: array}
      */
     protected array $cache = [
         'tables'       => [],
@@ -30,7 +30,7 @@ class MetadataCollector
 
     /**
      * Constructeur
-     * 
+     *
      * @param BaseConnection $db Instance de connexion
      */
     public function __construct(protected BaseConnection $db)
@@ -48,7 +48,7 @@ class MetadataCollector
             'indexes'      => [],
             'foreign_keys' => [],
         ];
-        
+
         return $this;
     }
 
@@ -62,14 +62,15 @@ class MetadataCollector
         }
 
         $result = $this->db->query($this->db->_listTables($constrainByPrefix));
-        
+
         $tables = [];
+
         foreach ($result->resultArray() as $row) {
             $tables[] = current($row);
         }
-        
+
         $this->cache['tables'] = $tables;
-        
+
         return $this->filterTables($tables, $constrainByPrefix);
     }
 
@@ -79,10 +80,10 @@ class MetadataCollector
     public function tableExists(string $tableName, bool $cached = true): bool
     {
         $tables = $this->listTables(false);
-        
+
         $tableName = str_replace($this->db->getPrefix(), '', $tableName);
-        
-        return in_array($tableName, $tables, true) 
+
+        return in_array($tableName, $tables, true)
             || in_array($this->db->getPrefix() . $tableName, $tables, true);
     }
 
@@ -92,7 +93,7 @@ class MetadataCollector
     public function getColumnNames(string $table): array
     {
         $data = $this->getColumnData($table);
-        
+
         return array_column($data, 'name');
     }
 
@@ -102,7 +103,7 @@ class MetadataCollector
     public function columnExists(string $column, string $table): bool
     {
         $columns = $this->getColumnNames($table);
-        
+
         return in_array($column, $columns, true);
     }
 
@@ -116,9 +117,9 @@ class MetadataCollector
         }
 
         $columns = $this->db->_listColumns($table);
-        
+
         $this->cache['columns'][$table] = $columns;
-        
+
         return $columns;
     }
 
@@ -132,9 +133,9 @@ class MetadataCollector
         }
 
         $indexes = $this->db->_listIndexes($table);
-        
+
         $this->cache['indexes'][$table] = $indexes;
-        
+
         return $indexes;
     }
 
@@ -148,9 +149,9 @@ class MetadataCollector
         }
 
         $keys = $this->db->_listForeignKeys($table);
-        
+
         $this->cache['foreign_keys'][$table] = $keys;
-        
+
         return $keys;
     }
 
@@ -159,10 +160,10 @@ class MetadataCollector
      */
     protected function filterTables(array $tables, bool $constrainByPrefix): array
     {
-        if (!$constrainByPrefix || $this->db->getPrefix() === '') {
+        if (! $constrainByPrefix || $this->db->getPrefix() === '') {
             return $tables;
         }
-        
-        return array_filter($tables, fn($table) => str_starts_with($table, $this->db->getPrefix()));
+
+        return array_filter($tables, fn ($table) => str_starts_with($table, $this->db->getPrefix()));
     }
 }

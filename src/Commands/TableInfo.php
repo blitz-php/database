@@ -11,6 +11,7 @@
 
 namespace BlitzPHP\Database\Commands;
 
+use BlitzPHP\Database\Result\BaseResult;
 use InvalidArgumentException;
 use PDO;
 
@@ -189,7 +190,7 @@ class TableInfo extends DatabaseCommand
 
         foreach ($tables  as $id => $tableName) {
             $table = $this->db->protectIdentifiers($tableName);
-            /** @var \BlitzPHP\Database\Result\BaseResult $db */
+            /** @var BaseResult $db */
             $db = $this->db->query("SELECT * FROM {$table}");
 
             $this->tbody[] = [
@@ -218,7 +219,7 @@ class TableInfo extends DatabaseCommand
         string $tableName,
         int $limitRows,
         int $limitFieldValue,
-        ?string $sortField = null
+        ?string $sortField = null,
     ): array {
         $this->tbody = [];
 
@@ -236,7 +237,7 @@ class TableInfo extends DatabaseCommand
                 static fn ($item): string => mb_strlen((string) $item) > $limitFieldValue
                     ? mb_substr((string) $item, 0, $limitFieldValue) . '...'
                     : (string) $item,
-                $row
+                $row,
             );
             $this->tbody[] = $row;
         }

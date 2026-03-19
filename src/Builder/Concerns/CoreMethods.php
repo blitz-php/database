@@ -11,10 +11,10 @@
 
 namespace BlitzPHP\Database\Builder\Concerns;
 
-use BlitzPHP\Database\Builder\JoinClause;
-use BlitzPHP\Database\Query\Expression;
 use BlitzPHP\Contracts\Database\BuilderInterface;
 use BlitzPHP\Database\Builder\BaseBuilder;
+use BlitzPHP\Database\Builder\JoinClause;
+use BlitzPHP\Database\Query\Expression;
 use BlitzPHP\Database\Utils;
 use BlitzPHP\Utilities\Iterable\Collection;
 use Closure;
@@ -36,7 +36,7 @@ trait CoreMethods
      * Liste des conditions HAVING
      */
     protected array $havings = [];
-    
+
     /**
      * Propriété pour stocker les clauses ORDER BY
      */
@@ -46,6 +46,25 @@ trait CoreMethods
      * Propriété pour stocker les clauses GROUP BY
      */
     protected array $groups = [];
+
+    /*
+    |--------------------------------------------------------------------------
+    | JOIN CLAUSES
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Liste des jointures
+     */
+    protected array $joins = [];
+
+    /**
+     * Type de jointures entre tables
+     */
+    protected array $joinTypes = [
+        'INNER', 'LEFT', 'RIGHT', 'FULL OUTER',
+        'CROSS', 'LEFT OUTER', 'RIGHT OUTER',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -60,8 +79,10 @@ trait CoreMethods
      * - where(string $column, mixed $value) // operator = '='
      * - where(array $conditions)
      * - where(Closure $callback)
-     * 
+     *
      * @param array|Closure|Expression|string $column
+     * @param mixed|null                      $operator
+     * @param mixed|null                      $value
      */
     public function where($column, $operator = null, $value = null, string $boolean = 'and'): static
     {
@@ -86,7 +107,7 @@ trait CoreMethods
                 'column'   => $column,
                 'operator' => $operator,
                 'value'    => $value,
-                'boolean'  => $boolean
+                'boolean'  => $boolean,
             ]);
         }
 
@@ -94,21 +115,21 @@ trait CoreMethods
             $value = $value->format('Y-m-d H:i:s');
         }
 
-        if (in_array($operator, ['IN', 'NOT IN', '@', '!@'])) {
+        if (in_array($operator, ['IN', 'NOT IN', '@', '!@'], true)) {
             $values = is_array($value) ? $value : [$value];
 
             return $this->whereIn($column, $values, $boolean, $operator === 'NOT IN' || $operator === '!@');
         }
 
-        if (in_array($operator, ['BETWEEN', 'NOT BETWEEN'])) {
+        if (in_array($operator, ['BETWEEN', 'NOT BETWEEN'], true)) {
             if (! is_array($value) || count($value) !== 2) {
-                throw new InvalidArgumentException("BETWEEN requires an array with exactly 2 values");
+                throw new InvalidArgumentException('BETWEEN requires an array with exactly 2 values');
             }
 
             return $this->whereBetween($column, $value[0], $value[1], $boolean, $operator === 'NOT BETWEEN');
         }
 
-        if (in_array($operator, ['LIKE', 'NOT LIKE', '%', '!%'])) {
+        if (in_array($operator, ['LIKE', 'NOT LIKE', '%', '!%'], true)) {
             return $this->whereLike($column, $value, $boolean, $operator === 'NOT LIKE' || $operator === '!%', false);
         }
 
@@ -116,12 +137,16 @@ trait CoreMethods
             'column'   => $column,
             'operator' => $operator,
             'value'    => $value,
-            'boolean'  => $boolean
+            'boolean'  => $boolean,
         ]);
     }
 
     /**
      * Ajoute une clause WHERE NOT
+     *
+     * @param mixed      $column
+     * @param mixed|null $operator
+     * @param mixed|null $value
      */
     public function whereNot($column, $operator = null, $value = null, string $boolean = 'and'): static
     {
@@ -134,15 +159,19 @@ trait CoreMethods
         }
 
         [$column, $operator, $value] = $this->normalizeWhereParameters($column, $operator, $value);
-        
+
         // Inverser l'opérateur
         $operator = $this->invertOperator($operator);
-        
+
         return $this->where($column, $operator, $value, $boolean);
     }
 
     /**
      * Ajoute une clause WHERE avec OR
+     *
+     * @param mixed      $column
+     * @param mixed|null $operator
+     * @param mixed|null $value
      */
     public function orWhere($column, $operator = null, $value = null): static
     {
@@ -151,6 +180,10 @@ trait CoreMethods
 
     /**
      * Ajoute une clause WHERE NOT avec OR
+     *
+     * @param mixed      $column
+     * @param mixed|null $operator
+     * @param mixed|null $value
      */
     public function orWhereNot($column, $operator = null, $value = null): static
     {
@@ -167,9 +200,9 @@ trait CoreMethods
         }
 
         return $this->addCondition('wheres', 'in', [
-            'column' => $column,
-            'values' => $values,
-            'boolean' => $boolean,
+            'column'   => $column,
+            'values'   => $values,
+            'boolean'  => $boolean,
             'operator' => $not ? 'NOT IN' : 'IN',
         ]);
     }
@@ -207,10 +240,10 @@ trait CoreMethods
         $callback($query);
 
         $this->addCondition('wheres', 'insub', [
-            'column' => $column,
-            'query' => $query,
+            'column'  => $column,
+            'query'   => $query,
             'boolean' => $boolean,
-            'not' => $not,
+            'not'     => $not,
         ]);
 
         $this->bindings->merge($query->bindings);
@@ -220,14 +253,17 @@ trait CoreMethods
 
     /**
      * Ajoute une clause WHERE BETWEEN
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     public function whereBetween(string $column, $value1, $value2, string $boolean = 'and', bool $not = false): static
     {
         return $this->addCondition('wheres', 'between', [
-            'column' => $column, 
-            'values' => [$value1, $value2],
+            'column'  => $column,
+            'values'  => [$value1, $value2],
             'boolean' => $boolean,
-            'not' => $not,
+            'not'     => $not,
         ]);
     }
 
@@ -237,19 +273,22 @@ trait CoreMethods
     public function whereBetweenColumns(string $column, array $values, string $boolean = 'and', bool $not = false): static
     {
         if (count($values) !== 2) {
-            throw new InvalidArgumentException("whereBetweenColumns requires an array with exactly 2 columns");
+            throw new InvalidArgumentException('whereBetweenColumns requires an array with exactly 2 columns');
         }
 
         return $this->addCondition('wheres', 'betweencolumns', [
-            'column' => $column,
-            'values' => $values,
+            'column'  => $column,
+            'values'  => $values,
             'boolean' => $boolean,
-            'not' => $not,
+            'not'     => $not,
         ]);
     }
 
     /**
      * Ajoute une clause WHERE NOT BETWEEN
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     public function whereNotBetween(string $column, $value1, $value2, string $boolean = 'and'): static
     {
@@ -266,6 +305,9 @@ trait CoreMethods
 
     /**
      * Ajoute une clause WHERE BETWEEN avec OR
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     public function orWhereBetween(string $column, $value1, $value2): static
     {
@@ -274,6 +316,9 @@ trait CoreMethods
 
     /**
      * Ajoute une clause WHERE NOT BETWEEN avec OR
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     public function orWhereNotBetween(string $column, $value1, $value2): static
     {
@@ -294,9 +339,9 @@ trait CoreMethods
         }
 
         return $this->addCondition('wheres', 'null', [
-            'column' => $column, 
+            'column'  => $column,
             'boolean' => $boolean,
-            'not' => $not,
+            'not'     => $not,
         ]);
     }
 
@@ -330,7 +375,7 @@ trait CoreMethods
     public function whereLike(string $column, string $value, string $boolean = 'and', bool $not = false, bool $caseSensitive = false, string $side = 'both'): static
     {
         $operator = $not ? 'NOT LIKE' : 'LIKE';
-        
+
         if ($caseSensitive && $this->db->getDriver() === 'pgsql') {
             $operator = $not ? 'NOT ILIKE' : 'ILIKE';
         } elseif ($caseSensitive && $this->db->getDriver() === 'mysql') {
@@ -347,15 +392,15 @@ trait CoreMethods
             $value = str_replace('%', '', $value);
         }
 
-        $value = match($side) {
+        $value = match ($side) {
             'before' => "%{$value}",
             'after'  => "{$value}%",
             'both'   => "%{$value}%",
-            default  => $value
+            default  => $value,
         };
 
         return $this->addCondition('wheres', 'basic', [
-            'column' => $column,
+            'column'   => $column,
             'operator' => $operator,
             'value'    => $value,
             'boolean'  => $boolean,
@@ -395,9 +440,9 @@ trait CoreMethods
         $callback($query);
 
         return $this->addCondition('wheres', 'exists', [
-            'query' => $query,
+            'query'   => $query,
             'boolean' => $boolean,
-            'not' => $not,
+            'not'     => $not,
         ]);
     }
 
@@ -435,15 +480,15 @@ trait CoreMethods
         }
 
         if ($second === null) {
-            $second = $operator;
+            $second   = $operator;
             $operator = '=';
         }
 
         return $this->addCondition('wheres', 'column', [
-            'first' => $first,
+            'first'    => $first,
             'operator' => $operator,
-            'second' => $second,
-            'boolean' => $boolean,
+            'second'   => $second,
+            'boolean'  => $boolean,
         ]);
     }
 
@@ -465,7 +510,7 @@ trait CoreMethods
         }
 
         if ($second === null) {
-            $second = $operator;
+            $second   = $operator;
             $operator = '=';
         }
 
@@ -489,10 +534,10 @@ trait CoreMethods
     public function whereAny(string $column, string $operator, array $values, string $boolean = 'and'): static
     {
         return $this->addCondition('wheres', 'any', [
-            'column' => $column,
+            'column'   => $column,
             'operator' => $operator,
-            'values' => $values,
-            'boolean' => $boolean,
+            'values'   => $values,
+            'boolean'  => $boolean,
         ]);
     }
 
@@ -502,10 +547,10 @@ trait CoreMethods
     public function whereAll(string $column, string $operator, array $values, string $boolean = 'and'): static
     {
         return $this->addCondition('wheres', 'all', [
-            'column' => $column,
+            'column'   => $column,
             'operator' => $operator,
-            'values' => $values,
-            'boolean' => $boolean,
+            'values'   => $values,
+            'boolean'  => $boolean,
         ]);
     }
 
@@ -519,18 +564,20 @@ trait CoreMethods
 
     /**
      * Ajoute une clause WHERE VALUE BETWEEN (WHERE ? BETWEEN column1 AND column2)
+     *
+     * @param mixed $value
      */
     public function whereValueBetween($value, string $column1, string $column2, string $boolean = 'and', bool $not = false): static
     {
         return $this->addCondition('wheres', 'valuebetween', [
-            'value' => $value,
+            'value'   => $value,
             'column1' => $column1,
             'column2' => $column2,
             'boolean' => $boolean,
-            'not' => $not
+            'not'     => $not,
         ]);
     }
-    
+
     /**
      * Add another query builder as a nested where to the query builder.
      */
@@ -538,9 +585,9 @@ trait CoreMethods
     {
         if (count($query->wheres)) {
             $this->wheres[] = [
-                'type' => 'nested',
-                'query' => $query,
-                'boolean' => $boolean
+                'type'    => 'nested',
+                'query'   => $query,
+                'boolean' => $boolean,
             ];
 
             $this->bindings->merge($query->bindings);
@@ -551,13 +598,15 @@ trait CoreMethods
 
     /**
      * Ajoute une clause HAVING
-     * 
+     *
      * Supporte les signatures :
      * - having(string $column, string $operator, mixed $value)
      * - having(string $column, mixed $value) // operator = '='
      * - having(array $conditions)
-     * 
+     *
      * @param array|Closure|Expression|string $column
+     * @param mixed|null                      $operator
+     * @param mixed|null                      $value
      */
     public function having($column, $operator = null, $value = null, string $boolean = 'and'): static
     {
@@ -569,6 +618,7 @@ trait CoreMethods
             foreach ($column as $key => $val) {
                 $this->having($key, '=', $val, $boolean);
             }
+
             return $this;
         }
 
@@ -580,10 +630,10 @@ trait CoreMethods
 
         if ($value instanceof Expression) {
             return $this->addCondition('havings', 'basic', [
-                'column' => $column,
+                'column'   => $column,
                 'operator' => $operator,
-                'value' => $value,
-                'boolean' => $boolean
+                'value'    => $value,
+                'boolean'  => $boolean,
             ]);
         }
 
@@ -591,34 +641,38 @@ trait CoreMethods
             $value = $value->format('Y-m-d H:i:s');
         }
 
-        if (in_array($operator, ['IN', 'NOT IN', '@', '!@'])) {
+        if (in_array($operator, ['IN', 'NOT IN', '@', '!@'], true)) {
             $values = is_array($value) ? $value : [$value];
-        
+
             return $this->havingIn($column, $values, $boolean, $operator === 'NOT IN' || $operator === '!@');
         }
 
-        if (in_array($operator, ['BETWEEN', 'NOT BETWEEN'])) {
-            if (!is_array($value) || count($value) !== 2) {
-                throw new InvalidArgumentException("BETWEEN requires an array with exactly 2 values");
+        if (in_array($operator, ['BETWEEN', 'NOT BETWEEN'], true)) {
+            if (! is_array($value) || count($value) !== 2) {
+                throw new InvalidArgumentException('BETWEEN requires an array with exactly 2 values');
             }
 
             return $this->havingBetween($column, $value[0], $value[1], $boolean, $operator === 'NOT BETWEEN');
         }
 
-        if (in_array($operator, ['LIKE', 'NOT LIKE', '%', '!%'])) {
+        if (in_array($operator, ['LIKE', 'NOT LIKE', '%', '!%'], true)) {
             return $this->havingLike($column, $value, $boolean, $operator === 'NOT LIKE' || $operator === '!%');
         }
 
         return $this->addCondition('havings', 'basic', [
-            'column' => $column,
+            'column'   => $column,
             'operator' => $operator,
-            'value' => $value,
-            'boolean' => $boolean
+            'value'    => $value,
+            'boolean'  => $boolean,
         ])->asCrud('select');
     }
 
     /**
      * Ajoute une clause HAVING avec OR
+     *
+     * @param mixed      $column
+     * @param mixed|null $operator
+     * @param mixed|null $value
      */
     public function orHaving($column, $operator = null, $value = null): static
     {
@@ -635,10 +689,10 @@ trait CoreMethods
         }
 
         return $this->addCondition('havings', 'in', [
-            'column' => $column,
-            'values' => $values,
-            'boolean' => $boolean,
-            'operator' => $not ? 'NOT IN' : 'IN'
+            'column'   => $column,
+            'values'   => $values,
+            'boolean'  => $boolean,
+            'operator' => $not ? 'NOT IN' : 'IN',
         ]);
     }
 
@@ -675,32 +729,38 @@ trait CoreMethods
         $callback($query);
 
         $this->addCondition('havings', 'insub', [
-            'column' => $column,
-            'query' => $query,
+            'column'  => $column,
+            'query'   => $query,
             'boolean' => $boolean,
-            'not' => $not
+            'not'     => $not,
         ]);
 
         $this->bindings->merge($query->bindings);
 
         return $this;
     }
-    
+
     /**
      * Ajoute une clause HAVING BETWEEN
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     public function havingBetween(string $column, $value1, $value2, string $boolean = 'and', bool $not = false): static
     {
         return $this->addCondition('havings', 'between', [
-            'column' => $column,
-            'values' => [$value1, $value2],
+            'column'  => $column,
+            'values'  => [$value1, $value2],
             'boolean' => $boolean,
-            'not' => $not
+            'not'     => $not,
         ]);
     }
 
     /**
      * Ajoute une clause HAVING NOT BETWEEN
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     public function havingNotBetween(string $column, $value1, $value2, string $boolean = 'and'): static
     {
@@ -709,6 +769,9 @@ trait CoreMethods
 
     /**
      * Ajoute une clause HAVING BETWEEN avec OR
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     public function orHavingBetween(string $column, $value1, $value2): static
     {
@@ -717,6 +780,9 @@ trait CoreMethods
 
     /**
      * Ajoute une clause HAVING NOT BETWEEN avec OR
+     *
+     * @param mixed $value1
+     * @param mixed $value2
      */
     public function orHavingNotBetween(string $column, $value1, $value2): static
     {
@@ -729,9 +795,9 @@ trait CoreMethods
     public function havingNull(string $column, string $boolean = 'and', bool $not = false): static
     {
         return $this->addCondition('havings', 'null', [
-            'column' => $column,
+            'column'  => $column,
             'boolean' => $boolean,
-            'not' => $not
+            'not'     => $not,
         ]);
     }
 
@@ -765,7 +831,7 @@ trait CoreMethods
     public function havingLike(string $column, string $value, string $boolean = 'and', bool $not = false, bool $caseSensitive = false, string $side = 'both'): static
     {
         $operator = $not ? 'NOT LIKE' : 'LIKE';
-        
+
         if ($caseSensitive && $this->db->getDriver() === 'pgsql') {
             $operator = $not ? 'NOT ILIKE' : 'ILIKE';
         } elseif ($caseSensitive && $this->db->getDriver() === 'mysql') {
@@ -782,11 +848,11 @@ trait CoreMethods
             $value = str_replace('%', '', $value);
         }
 
-        $value = match($side) {
+        $value = match ($side) {
             'before' => "%{$value}",
             'after'  => "{$value}%",
             'both'   => "%{$value}%",
-            default  => $value
+            default  => $value,
         };
 
         return $this->addCondition('havings', 'basic', [
@@ -830,9 +896,9 @@ trait CoreMethods
         $callback($query);
 
         return $this->addCondition('havings', 'exists', [
-            'query' => $query,
+            'query'   => $query,
             'boolean' => $boolean,
-            'not' => $not
+            'not'     => $not,
         ]);
     }
 
@@ -860,30 +926,14 @@ trait CoreMethods
         return $this->havingNotExists($callback, 'or');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | JOIN CLAUSES
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Liste des jointures
-     */
-    protected array $joins = [];
-
-    /**
-     * Type de jointures entre tables
-     */
-    protected array $joinTypes = [
-        'INNER', 'LEFT', 'RIGHT', 'FULL OUTER',
-        'CROSS', 'LEFT OUTER', 'RIGHT OUTER',
-    ];
-
     /**
      * Ajoute une jointure à la requête
      * Supporte les anciennes et nouvelles syntaxes
+     *
+     * @param mixed      $first
+     * @param mixed|null $second
      */
-    public function join(string $table, $first, ?string $operator = null, $second = null, string $type = 'INNER'): self
+    public function join(string $table, $first, ?string $operator = null, $second = null, string $type = 'INNER'): static
     {
         // Ancienne syntaxe : join(table, array|string $fields, string $type) ou avec un tableau associatif
         if ((is_string($first) && $second === null) || is_array($first)) {
@@ -907,24 +957,33 @@ trait CoreMethods
 
     /**
      * Génère la partie JOIN (de type FULL OUTER) de la requête
+     *
+     * @param mixed      $first
+     * @param mixed|null $second
      */
-    public function fullJoin(string $table, $first, ?string $operator = null, $second = null): self
+    public function fullJoin(string $table, $first, ?string $operator = null, $second = null): static
     {
         return $this->join($table, $first, $operator, $second, 'FULL OUTER');
     }
 
     /**
      * Génère la partie JOIN (de type INNER) de la requête
+     *
+     * @param mixed      $first
+     * @param mixed|null $second
      */
-    public function innerJoin(string $table, $first, ?string $operator = null, $second = null): self
+    public function innerJoin(string $table, $first, ?string $operator = null, $second = null): static
     {
         return $this->join($table, $first, $operator, $second, 'INNER');
     }
 
     /**
      * Génère la partie JOIN (de type LEFT) de la requête
+     *
+     * @param mixed      $first
+     * @param mixed|null $second
      */
-    public function leftJoin(string $table, $first, ?string $operator = null, $second = null, bool $outer = false): self
+    public function leftJoin(string $table, $first, ?string $operator = null, $second = null, bool $outer = false): static
     {
         $type = 'LEFT' . ($outer ? ' OUTER' : '');
 
@@ -933,16 +992,22 @@ trait CoreMethods
 
     /**
      * Génère la partie JOIN (de type LEFT OUTER) de la requête
+     *
+     * @param mixed      $first
+     * @param mixed|null $second
      */
-    public function leftOuterJoin(string $table, $first, ?string $operator = null, $second = null): self
+    public function leftOuterJoin(string $table, $first, ?string $operator = null, $second = null): static
     {
         return $this->leftJoin($table, $first, $operator, $second, true);
     }
 
     /**
      * Génère la partie JOIN (de type RIGHT) de la requête
+     *
+     * @param mixed      $first
+     * @param mixed|null $second
      */
-    public function rightJoin(string $table, $first, ?string $operator = null, $second = null, bool $outer = false): self
+    public function rightJoin(string $table, $first, ?string $operator = null, $second = null, bool $outer = false): static
     {
         $type = 'RIGHT' . ($outer ? ' OUTER' : '');
 
@@ -951,8 +1016,11 @@ trait CoreMethods
 
     /**
      * Génère la partie JOIN (de type RIGHT OUTER) de la requête
+     *
+     * @param mixed      $first
+     * @param mixed|null $second
      */
-    public function rightOuterJoin(string $table, $first, ?string $operator = null, $second = null): self
+    public function rightOuterJoin(string $table, $first, ?string $operator = null, $second = null): static
     {
         return $this->rightJoin($table, $first, $operator, $second, true);
     }
@@ -960,7 +1028,7 @@ trait CoreMethods
     /**
      * Génère la partie JOIN (de type CROSS JOIN) de la requête
      */
-    public function crossJoin(string $table, ?Closure $first = null, ?string $operator = null, ?string $second = null): self
+    public function crossJoin(string $table, ?Closure $first = null, ?string $operator = null, ?string $second = null): static
     {
         if ($first instanceof Closure) {
             return $this->join($table, $first, null, null, 'CROSS');
@@ -971,25 +1039,25 @@ trait CoreMethods
 
     /**
      * Ajoute une jointure avec une sous-requête
-     * 
+     *
      * @param (Closure(JoinClause): void) $callback
      */
-    public function joinSub(Closure|BuilderInterface $query, string $as, Closure $callback, string $type = 'INNER'): self
+    public function joinSub(BuilderInterface|Closure $query, string $as, Closure $callback, string $type = 'INNER'): static
     {
         $subquery = $this->buildSubquery($query, true, $as);
-        
+
         $join = new JoinClause($this->db, $type, $subquery);
         $callback($join);
-        
+
         $this->joins[] = $join;
-        
+
         return $this->asCrud('select');
     }
 
     /**
      * Ajoute une jointure avec conditions complexes
      */
-    public function joinComplex(string $table, Closure $callback, string $type = 'INNER'): self
+    public function joinComplex(string $table, Closure $callback, string $type = 'INNER'): static
     {
         return $this->join($table, $callback, $type);
     }
@@ -997,29 +1065,29 @@ trait CoreMethods
     /**
      * Ajoute une jointure avec des conditions supplémentaires
      */
-    public function joinWhere(string $table, string $first, string $operator, string $second, string $type = 'INNER'): self
+    public function joinWhere(string $table, string $first, string $operator, string $second, string $type = 'INNER'): static
     {
         $join = new JoinClause($this->db, $type, $this->db->makeTableName($table));
         $join->on($first, $operator, $second);
-        
+
         $this->joins[] = $join;
-        
+
         return $this->asCrud('select');
     }
 
     /**
      * Ajoute une jointure LATERAL
      */
-    public function joinLateral(Closure|BuilderInterface $query, string $as, Closure $callback, string $type = 'INNER'): self
+    public function joinLateral(BuilderInterface|Closure $query, string $as, Closure $callback, string $type = 'INNER'): static
     {
         $subquery = $this->buildSubquery($query, true, $as);
         $subquery = 'LATERAL ' . $subquery;
-        
+
         $join = new JoinClause($this->db, $type, $subquery);
         $callback($join);
-        
+
         $this->joins[] = $join;
-        
+
         return $this->asCrud('select');
     }
 
@@ -1030,27 +1098,27 @@ trait CoreMethods
     */
 
     /**
-     * 
-     * 
      * Supporte les signatures :
      * - orderBy(string $column, string $direction = 'ASC')
      * - orderBy(array $columns, string $direction = 'ASC')
      * - orderBy(Expression $expression)
      * - orderBy(Closure $closure)
+     *
+     * @param mixed $column
      */
-    public function orderBy($column, string $direction = 'ASC'): self
+    public function orderBy($column, string $direction = 'ASC'): static
     {
         $direction = strtoupper(trim($direction));
-        
-        if (!in_array($direction, ['ASC', 'DESC', 'RANDOM'], true)) {
+
+        if (! in_array($direction, ['ASC', 'DESC', 'RANDOM'], true)) {
             throw new InvalidArgumentException("Invalid direction: {$direction}");
         }
 
         if ($column instanceof Expression) {
             return $this->addCondition('orders', [
-                'column' => $column,
+                'column'    => $column,
                 'direction' => '',
-                'raw' => true
+                'raw'       => true,
             ])->asCrud('select');
         }
 
@@ -1063,7 +1131,7 @@ trait CoreMethods
         }
 
         $column = trim($column);
-        
+
         if ($direction === 'RANDOM') {
             return $this->orderByRandom($column);
         }
@@ -1071,14 +1139,14 @@ trait CoreMethods
         return $this->addCondition('orders', [
             'column'    => $column,
             'direction' => in_array($direction, ['ASC', 'DESC'], true) ? ' ' . $direction : '',
-            'raw'       => false
+            'raw'       => false,
         ])->asCrud('select');
     }
 
     /**
      * Ajoute un tri aléatoire
      */
-    public function rand(?int $digit = null): self
+    public function rand(?int $digit = null): static
     {
         if ($digit === null) {
             $digit = '';
@@ -1090,7 +1158,7 @@ trait CoreMethods
     /**
      * Ajoute plusieurs ORDER BY à la fois
      */
-    public function orderByMultiple(array $orders, string $direction = 'ASC'): self
+    public function orderByMultiple(array $orders, string $direction = 'ASC'): static
     {
         foreach ($orders as $key => $value) {
             if (is_int($key)) {
@@ -1101,65 +1169,65 @@ trait CoreMethods
                 $this->orderBy($key, $value);
             }
         }
-        
+
         return $this;
     }
 
     /**
      * Ajoute une clause ORDER BY avec une sous-requête
      */
-    public function orderBySub(Closure|BuilderInterface $query, string $direction = 'ASC'): self
+    public function orderBySub(BuilderInterface|Closure $query, string $direction = 'ASC'): static
     {
-        $subquery = $this->buildSubquery($query, true);
+        $subquery       = $this->buildSubquery($query, true);
         $this->orders[] = [
             'column'    => new Expression($subquery),
             'direction' => ' ' . $direction,
-            'raw'       => true
+            'raw'       => true,
         ];
-        
+
         return $this->asCrud('select');
     }
 
     /**
      * Ajoute une clause ORDER BY NULLS FIRST/LAST (PostgreSQL)
      */
-    public function orderByNulls(string $column, string $direction = 'ASC', string $nulls = 'LAST'): self
+    public function orderByNulls(string $column, string $direction = 'ASC', string $nulls = 'LAST'): static
     {
-        $column = $this->buildParseField($column);
+        $column    = $this->buildParseField($column);
         $direction = strtoupper($direction);
-        $nulls = strtoupper($nulls);
-        
-        if (!in_array($nulls, ['FIRST', 'LAST'])) {
+        $nulls     = strtoupper($nulls);
+
+        if (! in_array($nulls, ['FIRST', 'LAST'], true)) {
             $nulls = 'LAST';
         }
-        
+
         $this->orders[] = [
             'column'    => new Expression("{$column} {$direction} NULLS {$nulls}"),
             'direction' => '',
-            'raw'       => true
+            'raw'       => true,
         ];
-        
+
         return $this->asCrud('select');
     }
 
     /**
      * Réinitialise les clauses ORDER BY
      */
-    public function reorder(?string $column = null, string $direction = 'ASC'): self
+    public function reorder(?string $column = null, string $direction = 'ASC'): static
     {
         $this->orders = [];
-        
+
         if ($column !== null) {
             $this->orderBy($column, $direction);
         }
-        
+
         return $this;
     }
 
     /**
      * Ajoute une clause ORDER BY en dernier
      */
-    public function orderByAppend(string $column, string $direction = 'ASC'): self
+    public function orderByAppend(string $column, string $direction = 'ASC'): static
     {
         return $this->orderBy($column, $direction);
     }
@@ -1167,28 +1235,28 @@ trait CoreMethods
     /**
      * Ajoute une clause ORDER BY en premier
      */
-    public function orderByPrepend(string $column, string $direction = 'ASC'): self
+    public function orderByPrepend(string $column, string $direction = 'ASC'): static
     {
         $direction = in_array($direction, ['ASC', 'DESC'], true) ? ' ' . $direction : '';
-        
+
         $order = [
-            'column' => $this->buildColumnName($column),
+            'column'    => $this->buildColumnName($column),
             'direction' => $direction,
-            'raw' => false
+            'raw'       => false,
         ];
-        
+
         array_unshift($this->orders, $order);
-        
+
         return $this->asCrud('select');
     }
 
     /**
      * Supprime toutes les clauses ORDER BY
      */
-    public function withoutOrder(): self
+    public function withoutOrder(): static
     {
         $this->orders = [];
-        
+
         return $this;
     }
 
@@ -1216,7 +1284,7 @@ trait CoreMethods
         $column = $this->buildColumnName($column);
 
         return (new Collection($this->orders))
-            ->reject(fn ($order) => isset($order['column']) && $order['column'] === $column)
+            ->reject(static fn ($order) => isset($order['column']) && $order['column'] === $column)
             ->values()
             ->all();
     }
@@ -1235,16 +1303,18 @@ trait CoreMethods
 
     /**
      * Ajoute une clause GROUP BY
-     * 
+     *
      * Supporte les signatures :
      * - groupBy(string|array $column)
      * - groupBy(Expression $expression)
+     *
+     * @param mixed $column
      */
-    public function groupBy($column): self
+    public function groupBy($column): static
     {
         if ($column instanceof Expression) {
             $this->groups[] = $column;
-            
+
             return $this->asCrud('select');
         }
 
@@ -1265,21 +1335,21 @@ trait CoreMethods
     /**
      * Ajoute une clause GROUP BY avec une sous-requête
      */
-    public function groupBySub(Closure|BuilderInterface $query): self
+    public function groupBySub(BuilderInterface|Closure $query): static
     {
-        $subquery = $this->buildSubquery($query, true);
+        $subquery       = $this->buildSubquery($query, true);
         $this->groups[] = new Expression($subquery);
-        
+
         return $this->asCrud('select');
     }
 
     /**
      * Supprime toutes les clauses GROUP BY
      */
-    public function withoutGroup(): self
+    public function withoutGroup(): static
     {
         $this->groups = [];
-        
+
         return $this;
     }
 
@@ -1321,7 +1391,7 @@ trait CoreMethods
      */
     protected function whereArray(array $conditions, string $boolean = 'and', bool $not = false, string $function = 'where'): static
     {
-        if (! in_array($function, ['where', 'whereColumn', 'whereDate'])) {
+        if (! in_array($function, ['where', 'whereColumn', 'whereDate'], true)) {
             $function = 'where';
         }
 
@@ -1335,7 +1405,7 @@ trait CoreMethods
                 $this->{$function}($key, $val[0], $val[1], $boolean);
             } else {
                 [$key, $operator, $val] = $this->normalizeWhereParameters($key, $val, null);
-                $operator = $not ? $this->invertOperator($operator) : $operator;
+                $operator               = $not ? $this->invertOperator($operator) : $operator;
                 $this->{$function}($key, $operator, $val, $boolean);
             }
         }
@@ -1353,16 +1423,16 @@ trait CoreMethods
 
         if (count($query->havings)) {
             $this->havings[] = [
-                'type' => 'nested',
-                'query' => $query,
-                'boolean' => $boolean
+                'type'    => 'nested',
+                'query'   => $query,
+                'boolean' => $boolean,
             ];
         }
 
         return $this;
     }
-    
-    protected function addCondition(string $property, array|string $type, ?array $condition = null): self
+
+    protected function addCondition(string $property, array|string $type, ?array $condition = null): static
     {
         if (! in_array($property, ['wheres', 'havings', 'orders'], true)) {
             throw new InvalidArgumentException();
@@ -1370,13 +1440,13 @@ trait CoreMethods
 
         if (is_array($type)) {
             $condition = $type;
-            $type = null;
+            $type      = null;
         }
 
         if ($type !== null) {
             $condition['type'] = $type;
         }
-        
+
         foreach (['column', 'column1', 'column2', 'first', 'second'] as $column) {
             if (isset($condition[$column]) && is_string($condition[$column])) {
                 $condition[$column] = $this->buildColumnName($condition[$column]);
@@ -1384,16 +1454,16 @@ trait CoreMethods
         }
 
         // Ajouter les bindings dans le contexte approprié
-        $context = match($property) {
+        $context = match ($property) {
             'wheres'  => 'where',
             'havings' => 'having',
             'orders'  => 'order',
-            default   => 'where'
+            default   => 'where',
         };
-        
+
         if (isset($condition['values'])) {
             $this->bindings->addMany($condition['values'], $context);
-        } else if (isset($condition['value']) && !$condition['value'] instanceof Expression) {
+        } elseif (isset($condition['value']) && ! $condition['value'] instanceof Expression) {
             $this->bindings->add($condition['value'], $context);
         }
 
@@ -1410,10 +1480,10 @@ trait CoreMethods
         if ($value === null) {
             // Si seulement 2 paramètres sont fournis, le deuxième est la valeur
             if ($operator !== null) {
-                $value    = $operator;
+                $value               = $operator;
                 [$column, $operator] = Utils::extractOperatorFromColumn($column, $operator);
-            } else if (null !== $parsed = Utils::parseExpression($column)) {
-                [$column, $operator, $value] = $parsed; 
+            } elseif (null !== $parsed = Utils::parseExpression($column)) {
+                [$column, $operator, $value] = $parsed;
             }
         }
 
@@ -1426,7 +1496,7 @@ trait CoreMethods
 
     /**
      * Normalise les opérateurs personnalisés
-     * 
+     *
      * @deprecated use Utils::translateOperator() instead
      */
     protected function normalizeOperator(string $operator): string
@@ -1441,13 +1511,14 @@ trait CoreMethods
     {
         return Utils::invertOperator($operator);
     }
+
     /**
      * Support de l'ancienne syntaxe de jointure
      */
-    protected function legacyJoin(string $table, array|string $fields, string $type = 'INNER'): self
+    protected function legacyJoin(string $table, array|string $fields, string $type = 'INNER'): static
     {
         $type = strtoupper(trim($type));
-        if (!in_array($type, $this->joinTypes, true)) {
+        if (! in_array($type, $this->joinTypes, true)) {
             $type = 'INNER';
         }
 
@@ -1471,11 +1542,12 @@ trait CoreMethods
                 } else {
                     // Tableau associatif
                     [$key, $operator, $value] = $this->normalizeWhereParameters($key, $value, null);
-                    
-                    $join->on($this->buildColumnName($key), 
-                        $operator, 
+
+                    $join->on(
+                        $this->buildColumnName($key),
+                        $operator,
                         $this->buildColumnName($value),
-                        $key[0] === '|' ? 'or' : 'and'  
+                        $key[0] === '|' ? 'or' : 'and',
                     );
                 }
             }
@@ -1489,22 +1561,22 @@ trait CoreMethods
     /**
      * Gère le tri aléatoire
      */
-    protected function orderByRandom(string $column): self
+    protected function orderByRandom(string $column): static
     {
         $driver = $this->db->getDriver();
-        
+
         // Si le champ est numérique, c'est une seed
         if (ctype_digit($column)) {
             $seed = (int) $column;
-            
+
             if ($driver === 'mysql') {
                 $column = "RAND({$seed})";
             } elseif ($driver === 'pgsql') {
                 // Pour PostgreSQL, on utilise SET SEED d'abord
                 $this->db->query("SELECT setseed({$seed})");
-                $column = "RANDOM()";
+                $column = 'RANDOM()';
             } else {
-                $column = "RANDOM()";
+                $column = 'RANDOM()';
             }
         } else {
             $column = $driver === 'mysql' ? 'RAND()' : 'RANDOM()';
@@ -1513,7 +1585,7 @@ trait CoreMethods
         $this->orders[] = [
             'column'    => new Expression($column),
             'direction' => '',
-            'raw'       => true
+            'raw'       => true,
         ];
 
         return $this;

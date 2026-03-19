@@ -16,7 +16,7 @@ use Faker\Generator as FakerGenerator;
 
 /**
  * Générateur de configurations pour les seeders
- * 
+ *
  * @mixin FakerGenerator
  */
 class Factory
@@ -71,6 +71,7 @@ class Factory
             // Si pas de valeur fournie, on utilisera une closure
             return ['optional', $weight, $default];
         }
+
         return ['optional', $weight, $default, $value];
     }
 

@@ -14,6 +14,7 @@ namespace BlitzPHP\Database\Collectors;
 use BlitzPHP\Contracts\Event\EventInterface;
 use BlitzPHP\Database\Connection\BaseConnection;
 use BlitzPHP\Database\ConnectionResolver;
+use BlitzPHP\Database\Result\BaseResult;
 use BlitzPHP\Debug\Toolbar\Collectors\BaseCollector;
 use BlitzPHP\Utilities\Date;
 use BlitzPHP\Utilities\String\Text;
@@ -76,7 +77,7 @@ class DatabaseCollector extends BaseCollector
     public static function collect(EventInterface $event)
     {
         /**
-         * @var \BlitzPHP\Database\Result\BaseResult
+         * @var BaseResult
          */
         $result = $event->getTarget();
 

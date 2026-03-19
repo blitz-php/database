@@ -44,19 +44,19 @@ class Refresh extends DatabaseCommand
      */
     public function handle()
     {
-        if (on_prod() && !$this->option('force')) {
+        if (on_prod() && ! $this->option('force')) {
             if (! $this->confirm('Êtes-vous sûr de vouloir réinitialiser toutes les migrations en production ?')) {
                 return EXIT_SUCCESS;
             }
         }
 
         $this->eol()->info('Réinitialisation et réexécution des migrations...');
-        
+
         $group = $this->option('group', 'default');
         $seed  = $this->option('seed') === true;
 
         $this->newLine()->comment('Étape 1/2: Annulation de toutes les migrations');
-        
+
         $rollbackResult = $this->call('migrate:rollback', options: [
             '--group' => $group,
             '--all'   => true,
@@ -70,14 +70,14 @@ class Refresh extends DatabaseCommand
         }
 
         $this->newLine()->comment('Étape 2/2: Réexécution des migrations');
-        
+
         $migrateResult = $this->call('migrate', options: [
             '--group' => $group,
         ]);
 
         if ($migrateResult !== EXIT_SUCCESS) {
             $this->error('Échec de l\'exécution des migrations.');
-            
+
             return $migrateResult;
         }
 
@@ -89,7 +89,6 @@ class Refresh extends DatabaseCommand
         }
 
         $this->newLine()->success('Refresh terminé avec succès !');
-
 
         return EXIT_SUCCESS;
     }

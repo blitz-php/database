@@ -21,7 +21,7 @@ class MySQL extends QueryCompiler
     public function compileUpdate(BaseBuilder $builder): string
     {
         $table = $this->db->makeTableName($builder->getTable());
-        
+
         $sql = ["UPDATE {$table}"];
 
         if ([] !== $builder->joins) {
@@ -29,12 +29,13 @@ class MySQL extends QueryCompiler
         }
 
         $sets = [];
+
         foreach ($builder->values as $column => $value) {
             $column = $this->db->escapeIdentifiers($column);
             $sets[] = "{$column} = " . $this->wrapValue($value);
         }
 
-        $sql[] = "SET " . implode(', ', $sets);
+        $sql[] = 'SET ' . implode(', ', $sets);
 
         if ([] !== $builder->wheres) {
             $sql[] = 'WHERE';
@@ -85,7 +86,7 @@ class MySQL extends QueryCompiler
     public function compileTruncate(BaseBuilder $builder): string
     {
         $table = $this->db->escapeIdentifiers($builder->getTable());
-        
+
         return "TRUNCATE TABLE {$table}";
     }
 
@@ -104,14 +105,15 @@ class MySQL extends QueryCompiler
     {
         // Construire la partie ON DUPLICATE KEY UPDATE
         $updates = [];
+
         foreach ($builder->updateColumns as $column) {
-            if (!in_array($column, $builder->uniqueBy)) {
+            if (! in_array($column, $builder->uniqueBy, true)) {
                 $escapedColumn = $this->db->escapeIdentifiers($column);
-                $updates[] = "{$escapedColumn} = VALUES({$escapedColumn})";
+                $updates[]     = "{$escapedColumn} = VALUES({$escapedColumn})";
             }
         }
 
-        $updateSql = !empty($updates) ? ' ON DUPLICATE KEY UPDATE ' . implode(', ', $updates) : '';
+        $updateSql = ! empty($updates) ? ' ON DUPLICATE KEY UPDATE ' . implode(', ', $updates) : '';
 
         return "INSERT INTO {$table} ({$columns}) VALUES {$values}{$updateSql}";
     }
@@ -123,7 +125,7 @@ class MySQL extends QueryCompiler
     {
         $column = $this->db->escapeIdentifiers($column);
         $notStr = $not ? 'NOT ' : '';
-        
+
         return "{$notStr}JSON_CONTAINS({$column}, ?)";
     }
 
@@ -134,7 +136,7 @@ class MySQL extends QueryCompiler
     {
         $column = $this->db->escapeIdentifiers($column);
         $notStr = $not ? 'NOT ' : '';
-        
+
         return "JSON_CONTAINS_PATH({$column}, 'one', ?) {$notStr}= 1";
     }
 
@@ -144,7 +146,7 @@ class MySQL extends QueryCompiler
     protected function compileJsonLength(string $column, string $operator, int $value): string
     {
         $column = $this->db->escapeIdentifiers($column);
-        
+
         return "JSON_LENGTH({$column}) {$operator} ?";
     }
 
@@ -155,7 +157,7 @@ class MySQL extends QueryCompiler
     {
         $column = $this->db->escapeIdentifiers($column);
         $notStr = $not ? 'NOT ' : '';
-        
+
         return "JSON_SEARCH({$column}, 'one', ?) IS {$notStr}NULL";
     }
 
@@ -164,9 +166,9 @@ class MySQL extends QueryCompiler
      */
     protected function compileAnyAll(string $type, string $column, string $operator, array $values): string
     {
-        $column = $this->db->escapeIdentifiers($column);
+        $column       = $this->db->escapeIdentifiers($column);
         $placeholders = implode(', ', array_fill(0, count($values), '?'));
-        
+
         return "{$column} {$operator} {$type} ({$placeholders})";
     }
 }
