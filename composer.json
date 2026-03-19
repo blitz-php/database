@@ -30,7 +30,10 @@
     "autoload": {
         "psr-4": {
             "BlitzPHP\\Database\\": "src/"
-        }
+        },
+        "files": [
+            "src/Config/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

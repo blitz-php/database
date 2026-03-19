@@ -14,12 +14,15 @@ namespace BlitzPHP\Database;
 use BadMethodCallException;
 use BlitzPHP\Contracts\Database\ConnectionInterface;
 use BlitzPHP\Contracts\Database\ConnectionResolverInterface;
+use BlitzPHP\Contracts\Database\RepositoryInterface;
 use BlitzPHP\Database\Builder\BaseBuilder;
 use BlitzPHP\Database\Connection\BaseConnection;
-use BlitzPHP\Database\Exceptions\DataException;
+use BlitzPHP\Database\Exceptions\DatabaseException;
 use BlitzPHP\Utilities\DateTime\Date;
+use BlitzPHP\Utilities\Iterable\Collection;
+use BlitzPHP\Validation\ErrorBag;
+use BlitzPHP\Validation\Validator;
 use Closure;
-use InvalidArgumentException;
 use ReflectionClass;
 use ReflectionProperty;
 use stdClass;
@@ -33,478 +36,532 @@ use stdClass;
  * - autoriser les appels croisés au constructeur
  * - supprime le besoin d'utiliser directement l'objet Result dans la plupart des cas
  *
- * @method array                                                       all(int|string $type = \PDO::FETCH_OBJ, ?string $key = null, int $expire = 0)
- * @method float                                                       avg(string $field, ?string $key = null, int $expire = 0)
- * @method $this                                                       between(string $field, $value1, $value2)
- * @method array                                                       bulckInsert(array $data, ?string $table = null)
- * @method int                                                         count(string $field = '*', ?string $key = null, int $expire = 0)
- * @method ConnectionInterface                                         db()
- * @method $this|\BlitzPHP\Database\BaseResult|string                  delete(?array $where = null, ?int $limit = null, bool $execute = true)
- * @method $this                                                       distinct()
- * @method \BlitzPHP\Database\BaseResult|\BlitzPHP\Database\Query|bool execute(?string $key = null, int $expire = 0)
- * @method array                                                       findAll(array|string $fields = '*', array $options = [], int|string $type = \PDO::FETCH_OBJ)
- * @method mixed                                                       findOne(array|string $fields = '*', array $options = [], int|string $type = \PDO::FETCH_OBJ)
- * @method mixed                                                       first(int|string $type = \PDO::FETCH_OBJ, ?string $key = null, int $expire = 0)
- * @method $this                                                       from(string|string[]|null $from, bool $overwrite = false)
- * @method $this                                                       fromSubquery(self $builder, string $alias = '')
- * @method $this                                                       fullJoin(string $table, array|string $fields)
- * @method string                                                      getTable()
- * @method $this                                                       group(string|string[] $field, ?bool $escape = null)
- * @method $this                                                       groupBy(string|string[] $field, ?bool $escape = null)
- * @method $this                                                       having(array|string $field, $values = null, ?bool $escape = null)
- * @method $this                                                       havingIn(string $field, array|callable|self $param)
- * @method $this                                                       havingLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false)
- * @method $this                                                       havingNotIn(string $field, array|callable|self $param)
- * @method $this                                                       havingNotLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false)
- * @method $this                                                       in(string $key, array|callable|self $param)
- * @method $this                                                       innerJoin(string $table, array|string $fields)
- * @method $this|\BlitzPHP\Database\BaseResult|string                  insert(array $data, bool $execute = true)
- * @method $this                                                       into(string $table)
- * @method $this                                                       join(string $table, array|string $fields, string $type = 'INNER')
- * @method $this                                                       leftJoin(string $table, array|string $fields, bool $outer = false)
- * @method $this                                                       like(array|string $field, $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
- * @method $this                                                       limit(int $limit, ?int $offset = null)
- * @method float                                                       max(string $field, ?string $key = null, int $expire = 0)
- * @method float                                                       min(string $field, ?string $key = null, int $expire = 0)
- * @method $this                                                       naturalJoin(array|string $table)
- * @method $this                                                       notBetween(string $field, $value1, $value2)
- * @method $this                                                       notHavingLike($field, string $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
- * @method $this                                                       notIn(string $key, array|callable|self $param)
- * @method $this                                                       notLike(array|string $field, $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
- * @method $this                                                       notWhere(array|string $key, $value = null, ?bool $escape = null)
- * @method $this                                                       offset(int $offset, ?int $limit = null)
- * @method mixed                                                       one(int|string $type = \PDO::FETCH_OBJ, ?string $key = null, int $expire = 0)
- * @method $this                                                       orBetween(string $field, $value1, $value2)
- * @method $this                                                       order(string|string[] $field, string $direction = 'ASC', ?bool $escape = null)
- * @method $this                                                       orderBy(string|string[] $field, string $direction = 'ASC', ?bool $escape = null)
- * @method $this                                                       orHaving(array|string $field, $values = null, ?bool $escape = null)
- * @method $this                                                       orHavingIn(string $field, array|callable|self $param)
- * @method $this orHavingLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
- * @method $this orHavingNotIn(string $field, array|callable|self $param)
- * @method $this orHavingNotLike(array|string $field, $match = '', string $side = 'both', bool $escape = true, bool $insensitiveSearch = false): self
- * @method $this                                                       orIn(string $key, array|callable|self $param)
- * @method $this                                                       orLike(array|string $field, string $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
- * @method $this                                                       orNotBetween(string $field, $value1, $value2)
- * @method $this                                                       orNotHavingLike($field, string $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
- * @method $this                                                       orNotIn(string $key, array|callable|self $param)
- * @method $this                                                       orNotLike(array|string $field, string $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
- * @method $this                                                       orNotWhere(array|string $key, $value = null, ?bool $escape = null)
- * @method $this                                                       orWhere(array|string $key, $value = null, ?bool $escape = null)
- * @method $this                                                       orWhereBetween(string $field, $value1, $value2)
- * @method $this                                                       orWhereExists(Closure|self $callback)
- * @method $this                                                       orWhereIn(string $key, array|callable|self $param)
- * @method $this                                                       orWhereLike(array|string $field, string $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
- * @method $this                                                       orWhereNotBetween(string $field, $value1, $value2)
- * @method $this                                                       orWhereNotExists(Closure|self $callback)
- * @method $this                                                       orWhereNotIn(string $key, array|callable|self $param)
- * @method $this                                                       orWhereNotLike(array|string $field, string $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
- * @method $this                                                       orWhereNotNull(string|string[] $field)
- * @method $this                                                       orWhereNull(string|string[] $field)
- * @method $this                                                       params(array $params)
- * @method \BlitzPHP\Database\BaseResult|\BlitzPHP\Database\Query|bool query(string $sql, array $params = [])
- * @method $this                                                       rand(?int $digit = null)
- * @method array                                                       result(int|string $type = \PDO::FETCH_OBJ, ?string $key = null, int $expire = 0)
- * @method $this                                                       rightJoin(string $table, array|string $fields, bool $outer = false)
- * @method mixed                                                       row(int $index, int|string $type = \PDO::FETCH_OBJ, ?string $key = null, int $expire = 0)
- * @method $this                                                       select(array|string $fields = '*', ?int $limit = null, ?int $offset = null)
- * @method $this                                                       set(array|object|string $key, mixed $value = '', ?bool $escape = null)
- * @method $this                                                       sortAsc(string|string[] $field, ?bool $escape = null)
- * @method $this                                                       sortDesc(string|string[] $field, ?bool $escape = null)
- * @method $this                                                       sortRand(?int $digit = null)
- * @method string                                                      sql()
- * @method float                                                       sum(string $field, ?string $key = null, int $expire = 0)
- * @method $this                                                       table(string|string[]|null $table)
- * @method self                                                        testMode(bool $mode = true)
- * @method $this                                                       unless($value = null, ?callable $callback = null, ?callable $default = null)
- * @method $this|\BlitzPHP\Database\BaseResult                         update(array|string $data, bool $execute = true)
- * @method list<mixed>|mixed                                           value(string|string[] $name, ?string $key = null, int $expire = 0)
- * @method list<mixed>                                                 values(string|string[] $name, ?string $key = null, int $expire = 0)
- * @method $this                                                       when($value = null, ?callable $callback = null, ?callable $default = null)
- * @method $this                                                       where(array|string $key, $value = null, ?bool $escape = null)
- * @method $this                                                       whereBetween(string $field, $value1, $value2)
- * @method $this                                                       whereExists(Closure|self $callback)
- * @method $this                                                       whereIn(string $key, array|callable|self $param)
- * @method $this                                                       whereLike(array|string $field, $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
- * @method $this                                                       whereNotBetween(string $field, $value1, $value2)
- * @method $this                                                       whereNotExists(Closure|self $callback)
- * @method $this                                                       whereNotIn(string $key, array|callable|self $param)
- * @method $this                                                       whereNotLike(array|string $field, $match = '', string $side = 'both', ?bool $escape = null, bool $insensitiveSearch = false)
- * @method $this                                                       whereNotNull(string|string[] $field)
- * @method $this                                                       whereNull(string|string[] $field)
+ * @mixin BaseBuilder
  */
-abstract class Model
+abstract class Model implements RepositoryInterface
 {
     /**
      * Nom de la table
-     *
-     * @var string
      */
-    protected $table;
-
+    protected string $table = '';
+    
     /**
-     * Cle primaire.
+     * Clé primaire
      */
     protected string $primaryKey = 'id';
-
+    
     /**
-     * Le format dans lequel les résultats doivent être renvoyés.
-     * Ce format sera surchargé si les méthodes as* sont utilisées.
+     * Type de retour par défaut
      */
     protected string $returnType = 'array';
-
+    
     /**
-     * Utilié pour fournir une surchage temporaire pour le format de retour des resultats.
-     *
-     * @var string
+     * Type de retour temporaire
      */
-    protected $tempReturnType;
-
+    protected string $tempReturnType;
+    
     /**
-     * Primary Key value when inserting and useAutoIncrement is false.
-     *
-     * @var int|string|null
+     * Dernier ID inséré
      */
-    private $primaryKeyValue;
-
+    protected int|string $lastInsertId = 0;
+    
     /**
-     * Groupe de la base de données a utiliser
-     *
-     * @var string
+     * Groupe de connexion
      */
-    protected $group;
-
+    protected ?string $group = null;
+    
     /**
-     * Doit-on utiliser l'auto increment.
+     * Utiliser l'auto-incrément
      */
     protected bool $useAutoIncrement = true;
-
+    
     /**
-     * Le type de colonne que created_at et updated_at sont censés avoir.
-     *
-     * Autorisé: 'datetime', 'date', 'int'
+     * Format des dates (Autorisé: 'datetime', 'date', 'int')
      */
     protected string $dateFormat = 'datetime';
-
+    
     /**
-     * Si ce modèle doit utiliser "softDeletes" et définir simplement une date à laquelle les lignes sont supprimées,
-     * ou effectuer des suppressions réelles.
+     * Utiliser les soft deletes
      */
     protected bool $useSoftDeletes = false;
-
+    
     /**
-     * Un tableau de noms de champs qui peuvent être définis par l'utilisateur dans les insertions/mises à jour.
-     *
-     * @var list<string>
-     */
-    protected array $allowedFields = [];
-
-    /**
-     * Si c'est vrai, définira les valeurs Created_at et Updated_at pendant les routines d'insertion et de mise à jour.
-     */
-    protected bool $useTimestamps = false;
-
-    /**
-     * La colonne utilisée pour insérer les horodatages
-     */
-    protected string $createdField = 'created_at';
-
-    /**
-     * La colonne utilisée pour modifier les horodatages
-     */
-    protected string $updatedField = 'updated_at';
-
-    /**
-     * Utilisé par withDeleted pour remplacer le paramètre softDelete du modèle.
-     *
-     * @var bool
-     */
-    protected $tempUseSoftDeletes;
-
-    /**
-     * La colonne utilisée pour enregistrer l'état de suppression réversible.
+     * Champ de suppression logique
      */
     protected string $deletedField = 'deleted_at';
+    
+    /**
+     * Temporaire pour soft deletes
+     */
+    protected bool $tempUseSoftDeletes;
+    
+    /**
+     * Utiliser les timestamps
+     */
+    protected bool $useTimestamps = false;
+    
+    /**
+     * Champ de création
+     */
+    protected string $createdField = 'created_at';
+    
+    /**
+     * Champ de mise à jour
+     */
+    protected string $updatedField = 'updated_at';
+    
+    /**
+     * Champs autorisés pour l'assignation de masse
+     * 
+     * @var list<string>
+     */
+    protected array $fillable = [];
+    
+    /**
+     * Champs protégés (non assignables)
+     * 
+     * @var list<string>
+     */
+    protected array $guarded = ['id'];
+    
+    /**
+     * Règles de validation
+     * 
+     * @var array<string, string>
+     */
+    protected array $rules = [];
+    
+    /**
+     * Messages de validation personnalisés
+     * 
+     * @var array<string, string>
+     */
+    protected array $messages = [];
 
     /**
      * Le nombre de données à renvoyer pour la pagination.
      */
     protected int $perPage = 15;
-
+    
     /**
      * Connexion à la base de données
-     *
-     * @var BaseConnection
      */
-    protected $db;
+    protected BaseConnection $db;
+    
+    /**
+     * Query Builders par table
+     * 
+     * @var array<string, BaseBuilder>
+     */
+    protected array $builders = [];
+    
+    /**
+     * Builder actuel
+     */
+    protected ?BaseBuilder $currentBuilder = null;
+    
+    /**
+     * Alias de la table actuellement utilisée
+     */
+    protected ?string $currentAlias = null;
 
     /**
-     * Query Builder
-     *
-     * @var BaseBuilder|null
+     * Erreurs de validation
      */
-    protected $builder;
-
+    protected ?ErrorBag $errors = null;
+    
     /**
-     * Contient les informations transmises via 'set' afin que nous puissions les capturer (pas le constructeur) et nous assurer qu'elles sont validées en premier.
-     *
-     * @var array
-     */
-    protected $tempData = [];
-
-    /**
-     * Tableau d'échappement qui mappe l'utilisation de l'indicateur d'échappement pour chaque paramètre.
-     *
-     * @var array
-     */
-    protected $escape = [];
-
-    /**
-     * Methodes du builder qui ne doivent pas etre utilisees dans le model.
-     *
-     * @var list<string> method name
-     */
-    private array $builderMethodsNotAvailable = [
-        'getCompiledInsert',
-        'getCompiledSelect',
-        'getCompiledUpdate',
-    ];
-
-    /**
-     * Callbacks.
-     *
-     * Chaque tableau doit contenir les noms de méthodes (au sein du modèle) qui doivent
-     * être appelées lorsque ces événements sont déclenchés.
-     *
-     * Les méthodes « Update » et « Delete » reçoivent les mêmes éléments que ceux attribués
-     * à leur méthode respective.
-     *
-     * Les méthodes "Find" reçoivent l'ID recherché (s'il est présent),
-     * et "afterFind" reçoit en outre les résultats trouvés.
-     */
-
-    /**
-     * S'il faut déclencher les callbacks définis
+     * Activer les callbacks
      */
     protected bool $allowCallbacks = true;
-
+    
     /**
-     * Utilisé par AllowCallbacks() pour remplacer le paramètre allowCallbacks du modèle.
-     *
-     * @var bool
+     * Temporaire pour callbacks
      */
-    protected $tempAllowCallbacks;
-
+    protected bool $tempAllowCallbacks;
+    
     /**
-     * Callbacks pour beforeInsert
-     *
-     * @var list<string>
+     * Callbacks disponibles
      */
-    protected array $beforeInsert = [];
-
+    protected array $events = [
+        'beforeInsert',
+        'afterInsert',
+        'beforeUpdate',
+        'afterUpdate',
+        'beforeDelete',
+        'afterDelete',
+        'beforeFind',
+        'afterFind',
+        'beforeBulkInsert',
+        'afterBulkInsert',
+        'beforeBulkUpdate',
+        'afterBulkUpdate',
+    ];
+    
     /**
-     * Callbacks pour afterInsert
-     *
-     * @var list<string>
+     * Callbacks enregistrés
      */
-    protected array $afterInsert = [];
-
-    /**
-     * Callbacks pour beforeUpdate
-     *
-     * @var list<string>
-     */
-    protected array $beforeUpdate = [];
-
-    /**
-     * Callbacks pour afterUpdate
-     *
-     * @var list<string>
-     */
-    protected array $afterUpdate = [];
-
-    /**
-     * Callbacks pour beforeInsertBatch
-     *
-     * @var list<string>
-     */
-    protected array $beforeInsertBatch = [];
-
-    /**
-     * Callbacks pour afterInsertBatch
-     *
-     * @var list<string>
-     */
-    protected array $afterInsertBatch = [];
-
-    /**
-     * Callbacks pour beforeUpdateBatch
-     *
-     * @var list<string>
-     */
-    protected array $beforeUpdateBatch = [];
-
-    /**
-     * Callbacks pour afterUpdateBatch
-     *
-     * @var list<string>
-     */
-    protected array $afterUpdateBatch = [];
-
-    /**
-     * Callbacks pour beforeFind
-     *
-     * @var list<string>
-     */
-    protected array $beforeFind = [];
-
-    /**
-     * Callbacks pour afterFind
-     *
-     * @var list<string>
-     */
-    protected array $afterFind = [];
-
-    /**
-     * Callbacks pour beforeDelete
-     *
-     * @var list<string>
-     */
-    protected array $beforeDelete = [];
-
-    /**
-     * Callbacks pour afterDelete
-     *
-     * @var list<string>
-     */
-    protected array $afterDelete = [];
-
+    protected array $callbacks = [];
+    
     public function __construct(protected ConnectionResolverInterface $resolver, ?ConnectionInterface $db = null)
     {
         $this->db = $db ?: $this->resolver->connection($this->group);
-
+        
         $this->tempReturnType     = $this->returnType;
         $this->tempUseSoftDeletes = $this->useSoftDeletes;
         $this->tempAllowCallbacks = $this->allowCallbacks;
+        
+        $this->initializeCallbacks();
     }
-
+    
     /**
-     * Fourni une instance partagee du Query Builder.
-     *
-     * @throws ModelException
+     * Initialise les callbacks
+     */
+    protected function initializeCallbacks(): void
+    {
+        foreach ($this->events as $event) {
+            if (isset($this->{$event}) && is_array($this->{$event})) {
+                $this->callbacks[$event] = $this->{$event};
+            }
+        }
+    }
+    
+    /**
+     * Sélectionne une table spécifique pour les prochaines opérations
+     */
+    public function table(string $table): static
+    {
+        // Extraire l'alias si présent (ex: "factureachat As fa")
+        $alias = null;
+        if (preg_match('/^(.+?)(?:\s+as\s+|\s+)(\w+)$/i', $table, $matches)) {
+            $table = $matches[1];
+            $alias = $matches[2];
+        }
+        
+        $key = $alias ?: $table;
+        
+        if (!isset($this->builders[$key])) {
+            $this->builders[$key] = $this->db->table($table);
+        }
+        
+        $this->currentBuilder = $this->builders[$key]->reset();
+        $this->currentAlias   = $key;
+        
+        return $this;
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function query(): BaseBuilder
+    {
+        return $this->builder();
+    }
+    
+    /**
+     * Récupère le Query Builder pour une table spécifique ou la table par défaut
      */
     public function builder(?string $table = null): BaseBuilder
     {
-        if ($this->builder instanceof BaseBuilder) {
-            // S'assurer que la table utilisee differe de celle du builder
-            $builderTable = $this->builder->getTable();
-            if ($table && $builderTable !== $this->db->prefixTable($table)) {
-                return $this->db->table($table);
+        if ($table === null) {
+            // Si aucun builder actif, utiliser la table par défaut
+            if ($this->currentBuilder === null) {
+                $this->table($this->table);
             }
 
-            if (empty($builderTable) && ! empty($this->table)) {
-                $this->builder = $this->builder->table($this->table);
-            }
-
-            return $this->builder;
+            return $this->currentBuilder;
         }
-
-        // S'assurer qu'on a une bonne connxion a la base de donnees
-        if (! $this->db instanceof ConnectionInterface) {
-            $this->db = $this->resolver->connection($this->group);
+        
+        // Extraire l'alias si présent
+        $alias = null;
+        if (preg_match('/^(.+?)(?:\s+as\s+|\s+)(\w+)$/i', $table, $matches)) {
+            $table = $matches[1];
+            $alias = $matches[2];
         }
-
-        $table = empty($table) ? $this->table : $table;
-
-        if (empty($table)) {
-            $builder = $this->db->table('.')->from([], true);
-        } else {
-            $builder = $this->db->table($table);
+        
+        $key = $alias ?: $table;
+        
+        if (!isset($this->builders[$key])) {
+            $this->builders[$key] = $this->db->table($table);
         }
-
-        // Considerer que c'est partagee seulement si la table est correct
-        if ($table === $this->table) {
-            $this->builder = $builder;
-        }
-
-        return $builder;
+        
+        return $this->builders[$key];
     }
-
+    
     /**
-     * Insere les données dans la base de données.
-     * Si un objet est fourni, il tentera de le convertir en un tableau.
+     * {@inheritdoc}
      *
-     * @param bool $returnID Si l'ID de l'element inséré doit être retourné ou non.
+     * @param array|int|string|null $id Une clé primaire ou un tableau de clés primaires
      *
-     * @return bool|int|null
-     *
-     * @throws ReflectionException
+     * @return ($id is int|string ? array|object|null : Collection<int, array|object>) 
      */
-    public function create(array|object|null $data = null, bool $returnID = true)
+    public function find($id = null): mixed
     {
-        if (! empty($this->tempData['data'])) {
-            if (empty($data)) {
-                $data = $this->tempData['data'];
-            } else {
-                $data = $this->transformDataToArray($data, 'insert');
-                $data = array_merge($this->tempData['data'], $data);
-            }
+        $singleton = is_numeric($id) || is_string($id);
+        
+        $eventData = $this->fire('beforeFind', [
+            'id'        => $id,
+            'method'    => 'find',
+            'singleton' => $singleton,
+        ]);
+        
+        if ($eventData['cancelled'] ?? false) {
+            return $eventData['data'] ?? null;
         }
-
-        if ($this->useAutoIncrement === false) {
-            if (is_array($data) && isset($data[$this->primaryKey])) {
-                $this->primaryKeyValue = $data[$this->primaryKey];
-            } elseif (is_object($data) && isset($data->{$this->primaryKey})) {
-                $this->primaryKeyValue = $data->{$this->primaryKey};
-            }
+        
+        $builder = $this->query();
+        
+        $this->applySoftDeleteCondition($builder);
+        
+        if ($id !== null && $id !== 0 && $id !== '0') {
+            $builder->whereIn($this->primaryKey, (array) $id)
+                    ->when($singleton, fn($b) => $b->limit(1));
         }
-
-        $this->escape   = $this->tempData['escape'] ?? [];
-        $this->tempData = [];
-
-        $builder  = $this->builder();
-        $inserted = $builder->insert($data);
-
-        if ($returnID && true === $inserted) {
-            return $this->db->lastId($builder->getTable());
-        }
-
-        return $inserted;
+        
+        $results = $builder->collect($this->tempReturnType);
+        $data = $singleton ? $results->first() : $results;
+        
+        $eventData = $this->fire('afterFind', [
+            'id'        => $id,
+            'data'      => $data,
+            'method'    => 'find',
+            'singleton' => $singleton,
+        ]);
+        
+        $this->resetTemporaryStates();
+        
+        return $eventData['data'] ?? $data;
     }
-
+    
     /**
-     * Met à jour un seul enregistrement dans la base de données.
-     * Si un objet est fourni, il tentera de le convertir en tableau.
-     *
-     * @param array|int|string|null $id
-     * @param array|object|null     $data
-     *
-     * @throws ReflectionException
+     * {@inheritdoc}
      */
-    public function modify($id = null, $data = null): bool
+    public function findAll(?int $limit = null, int $offset = 0): Collection
+    {
+        $eventData = $this->fire('beforeFind', [
+            'method'    => 'findAll',
+            'limit'     => $limit,
+            'offset'    => $offset,
+            'singleton' => false,
+        ]);
+        
+        if ($eventData['cancelled'] ?? false) {
+            return new Collection($eventData['data'] ?? []);
+        }
+        
+        $builder = $this->query();
+        
+        $this->applySoftDeleteCondition($builder);
+        
+        if ($limit !== null) {
+            $builder->limit($limit, $offset);
+        }
+        
+        $results = $builder->collect($this->tempReturnType);
+        
+        $eventData = $this->fire('afterFind', [
+            'data'      => $results,
+            'limit'     => $limit,
+            'offset'    => $offset,
+            'method'    => 'findAll',
+            'singleton' => false,
+        ]);
+        
+        $this->resetTemporaryStates();
+        
+        return $eventData['data'] ?? $results;
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function create(array|object $data, bool $returnId = true)
+    {
+        $this->lastInsertId = 0;
+        
+        // Filtrer les données selon fillable/guarded
+        $data = $this->filterFillable($data);
+        
+        // Valider les données
+        if (! $this->validate($data, 'create')) {
+            return false;
+        }
+        
+        // Ajouter les timestamps
+        $data = $this->addTimestamps($data, 'create');
+        
+        $eventData = $this->fire('beforeInsert', ['data' => $data]);
+        
+        if ($eventData['cancelled'] ?? false) {
+            return false;
+        }
+        
+        $data = $eventData['data'] ?? $data;
+        
+        $builder = $this->query();
+        
+        if ($returnId) {
+            $result             = $builder->insertGetId($data);
+            $this->lastInsertId = is_numeric($result) ? (int) $result : 0;
+        } else {
+            $result = $builder->insert($data);
+        }
+        
+        $this->fire('afterInsert', [
+            'id' => $this->lastInsertId,
+            'data' => $data,
+            'result' => $result,
+        ]);
+        
+        $this->resetTemporaryStates();
+        
+        if (!$result) {
+            return false;
+        }
+        
+        return $returnId ? $this->lastInsertId : $result;
+    }
+    
+    /**
+     * {@inheritdoc}
+     * 
+     * @param array|int|string|null $id
+     * 
+     * @return bool|mixed
+     */
+    public function modify($id = null, array|object $data)
+    {
+        $id = $id ?: $this->primaryKeyValue;
+        $id = $id ?: $this->idValue($data);
+        
+        // Filtrer les données selon fillable/guarded
+        $data = $this->filterFillable($data);
+        
+        // Ne pas permettre la mise à jour de la clé primaire
+        unset($data[$this->primaryKey]);
+        
+        if ($data === []) {
+            return true; // Rien à mettre à jour
+        }
+        
+        // Valider les données
+        if (!$this->validate($data, 'update')) {
+            return false;
+        }
+        
+        // Ajouter les timestamps
+        $data = $this->addTimestamps($data, 'update');
+        
+        $eventData = $this->fire('beforeUpdate', [
+            'id'   => $id,
+            'data' => $data,
+        ]);
+        
+        if ($eventData['cancelled'] ?? false) {
+            return false;
+        }
+        
+        $data = $eventData['data'] ?? $data;
+        $id   = $eventData['id'] ?? $id;
+        
+        $builder = $this->query();
+        
+        if (!in_array($id, [null, '', 0, '0', []], true)) {
+            $ids = is_array($id) ? $id : [$id];
+            $builder->whereIn($this->primaryKey, $ids);
+        }
+        
+        if ($builder->wheres === []) {
+            throw new DatabaseException('Updates require a WHERE clause for safety.');
+        }
+        
+        $result = $builder->update($data);
+        
+        $this->fire('afterUpdate', [
+            'id'     => $id,
+            'data'   => $data,
+            'result' => $result,
+        ]);
+        
+        $this->resetTemporaryStates();
+        
+        return (bool) $result;
+    }
+    
+    /**
+     * {@inheritdoc}
+     * 
+     * @param array|int|string|null $id
+     * 
+     * @return bool|mixed
+     */
+    public function remove($id = null, bool $force = false): bool
     {
         $id = $id ?: $this->primaryKeyValue;
 
-        if (! empty($this->tempData['data'])) {
-            if (empty($data)) {
-                $data = $this->tempData['data'];
-            } else {
-                $data = $this->transformDataToArray($data, 'update');
-                $data = array_merge($this->tempData['data'], $data);
+        $eventData = $this->fire('beforeDelete', [
+            'id'    => $id,
+            'force' => $force,
+        ]);
+        
+        if ($eventData['cancelled'] ?? false) {
+            return false;
+        }
+        
+        $id = $eventData['id'] ?? $id;
+        $force = $eventData['force'] ?? $force;
+        
+        $builder = $this->query();
+        
+        if (!in_array($id, [null, '', 0, '0', []], true)) {
+            $ids = is_array($id) ? $id : [$id];
+            $builder->whereIn($this->primaryKey, $ids);
+        }
+        
+        if ($builder->wheres === []) {
+            throw new DatabaseException('Deletes require a WHERE clause for safety.');
+        }
+        
+        if ($this->useSoftDeletes && !$force) {
+            $this->applySoftDeleteCondition($builder);
+            
+            $set = [$this->deletedField => $this->freshTimestamp()];
+            if ($this->useTimestamps && $this->updatedField !== '') {
+                $set[$this->updatedField] = $set[$this->deletedField];
             }
 
-            $id = $id ?: $this->idValue($data);
+            $result = $builder->update($set);
+        } else {
+            $result = $builder->delete();
         }
-
-        $this->escape   = $this->tempData['escape'] ?? [];
-        $this->tempData = [];
-
-        return $this->builder()->whereIn($this->primaryKey, (array) $id)->update($data);
+        
+        $this->fire('afterDelete', [
+            'id'     => $id,
+            'result' => $result,
+            'force'  => $force,
+        ]);
+        
+        $this->resetTemporaryStates();
+        
+        return $result > 0;
+    }
+    
+    /**
+     * Purge définitivement les éléments supprimés
+     */
+    public function purge(): int
+    {
+        if (!$this->useSoftDeletes) {
+            return 0;
+        }
+        
+        return $this->query()
+            ->whereNotNull($this->deletedField)
+            ->delete();
     }
 
     /**
-     * Une méthode pratique qui tentera de déterminer si les données doivent être insérées ou mises à jour.
-     * Fonctionnera avec un tableau ou un objet.
-     * Lors de l'utilisation avec des objets de classe personnalisés, vous devez vous assurer que la classe fournira l'accès aux variables de classe, même via une méthode magique.
+     * Méthode pratique qui tentera de déterminer si les données doivent être insérées ou mises à jour.
      */
     public function save(array|object $data): bool
     {
@@ -516,181 +573,191 @@ abstract class Model
             $response = $this->modify($this->idValue($data), $data);
         } else {
             $response = $this->create($data, false);
-
-            if ($response !== false) {
-                $response = true;
-            }
+            $response = $response !== false;
         }
 
         return $response;
     }
-
+    
     /**
-     * Boucle sur les enregistrements par lots, ce qui vous permet d'opérer sur eux.
-     * Fonctionne avec $this->builder pour obtenir la sélection compilée afin de déterminer les lignes sur lesquelles opérer.
-     * Cette méthode ne fonctionne qu'avec les dbCalls.
-     *
-     * @throws DataException
+     * Pagination
+     * 
+     * @return array{
+     *  data: Collection, 
+     *  pagination: array{
+     *      total: int,
+     *      per_page: int, 
+     *      current_page: int, 
+     *      from: int,
+     *      to: int
+     *  }
+     * }
      */
-    public function chunk(int $size, Closure $userFunc)
-    {
-        $total  = $this->builder()->countAllResults();
-        $offset = 0;
-
-        while ($offset <= $total) {
-            $builder = clone $this->builder();
-            $rows    = $builder->limit($size, $offset)->all($this->returnType);
-
-            if (! $rows) {
-                throw DataException::emptyDataset('chunk');
-            }
-
-            $offset += $size;
-
-            if (empty($rows)) {
-                continue;
-            }
-
-            foreach ($rows as $row) {
-                if ($userFunc($row) === false) {
-                    return;
-                }
-            }
-        }
-    }
-
-    /**
-     * Remplacez countAllResults pour tenir compte des lignes supprimés de manière logique (softdeletes).
-     *
-     * @return int|string
-     */
-    public function countAllResults(bool $reset = true, bool $test = false)
-    {
-        if ($this->tempUseSoftDeletes) {
-            $this->builder()->whereNull($this->table . '.' . $this->deletedField);
-        }
-
-        // Lorsque $reset === false, $tempUseSoftDeletes dépendra de la valeur $useSoftDeletes
-        // car nous ne voulons pas ajouter la même condition "where" pour la deuxième fois.
-        $this->tempUseSoftDeletes = $reset
-            ? $this->useSoftDeletes
-            : ($this->useSoftDeletes ? false : $this->useSoftDeletes);
-
-        return $this->builder()->testMode($test)->countAllResults($reset);
-    }
-
     public function paginate(?int $limit = null, ?int $page = null, ?int $total = null): array
     {
         $page   = max((int) $page, 1);
-        $total  = $total ?: $this->countAllResults(false);
         $limit  = $limit ?: $this->perPage;
         $offset = ($page - 1) * $limit;
-
-        return $this->findAll($limit, $offset);
-    }
-
-    /**
-     * Récupère tous les résultats, tout en les limitant éventuellement.
-     */
-    public function findAll(int $limit = 0, int $offset = 0): array
-    {
-        if ($this->tempAllowCallbacks) {
-            // Call the before event and check for a return
-            $eventData = $this->trigger('beforeFind', [
-                'method'    => 'findAll',
-                'limit'     => $limit,
-                'offset'    => $offset,
-                'singleton' => false,
-            ]);
-
-            if (isset($eventData['returnData']) && $eventData['returnData'] === true) {
-                return $eventData['data'];
-            }
-        }
-
-        $eventData = [
-            'data'      => $this->builder()->findAll('*', compact('limit', 'offset'), $this->returnType),
-            'limit'     => $limit,
-            'offset'    => $offset,
-            'method'    => 'findAll',
-            'singleton' => false,
+        
+        $total = $total ?: $this->countAllResults(false);
+        
+        $data = $this->limit($limit, $offset)->collect($this->tempReturnType);
+        
+        $this->resetTemporaryStates();
+        
+        return [
+            'data'       => $data,
+            'pagination' => [
+                'total'        => $total,
+                'per_page'     => $limit,
+                'current_page' => $page,
+                'last_page'    => (int) ceil($total / $limit),
+                'from'         => $offset + 1,
+                'to'           => min($offset + $limit, $total),
+            ],
         ];
-
-        if ($this->tempAllowCallbacks) {
-            $eventData = $this->trigger('afterFind', $eventData);
+    }
+    
+    /**
+     * Traitement par lots
+     */
+    public function chunk(int $size, Closure $callback): bool
+    {
+        return $this->query()->chunk($size, function(Collection $rows, int $page) use ($callback) {
+            if (class_exists($this->tempReturnType)) {
+                $rows = $rows->mapInto($this->tempReturnType);
+            }
+            
+            $this->resetTemporaryStates();
+            
+            return $callback($rows, $page);
+        });
+    }
+    
+    /**
+     * Compte tous les résultats
+     */
+    public function countAllResults(bool $reset = true): int
+    {
+        $builder = $this->query();
+        
+        $this->applySoftDeleteCondition($builder);
+        
+        $count = $builder->countAllResults();
+        
+        if ($reset) {
+            $this->resetTemporaryStates();
         }
+        
+        return (int) $count;
+    }
+    
+    /**
+     * Active temporairement les soft deletes
+     */
+    public function withDeleted(bool $enabled = true): static
+    {
+        $this->tempUseSoftDeletes = !$enabled;
 
-        $this->tempReturnType     = $this->returnType;
-        $this->tempUseSoftDeletes = $this->useSoftDeletes;
-        $this->tempAllowCallbacks = $this->allowCallbacks;
+        return $this;
+    }
+    
+    /**
+     * Ne récupère que les éléments supprimés
+     */
+    public function onlyDeleted(): static
+    {
+        $this->tempUseSoftDeletes = false;
 
-        return $eventData['data'];
+        $this->query()->whereNotNull($this->deletedField);
+        
+        return $this;
+    }
+    
+    /**
+     * Définit le type de retour
+     */
+    public function asArray(): static
+    {
+        $this->tempReturnType = 'array';
+        
+        return $this;
+    }
+    
+    /**
+     * Définit le type de retour comme objet
+     * 
+     * @param 'object'|class-string $class
+     */
+    public function asObject(string $class = 'object'): static
+    {
+        $this->tempReturnType = $class;
+        
+        return $this;
+    }
+    
+    /**
+     * Active/désactive les callbacks temporairement
+     */
+    public function allowCallbacks(): static
+    {
+        $this->tempAllowCallbacks = false;
+        
+        return $this;
     }
 
     /**
-     * Fournit/instancie la connexion builder/db et les noms de table/clé primaire du modèle et le type de retour.
-     *
-     * @return mixed
+     * Désactive les callbacks temporairement
      */
-    public function __get(string $name)
+    public function withoutCallbacks(): static
     {
-        if (property_exists($this, $name)) {
-            return $this->{$name};
-        }
-
-        if (isset($this->db->{$name})) {
-            return $this->db->{$name};
-        }
-
-        if (isset($this->builder()->{$name})) {
-            return $this->builder()->{$name};
-        }
-
-        return null;
+        return $this->allowCallbacks(false);
     }
-
+    
     /**
-     * Verifie si une propriete existe dans le modele, le builder, et la db connection.
+     * Applique la condition de soft delete
      */
-    public function __isset(string $name): bool
+    protected function applySoftDeleteCondition(BaseBuilder $builder): void
     {
-        if (property_exists($this, $name)) {
-            return true;
+        if ($this->tempUseSoftDeletes && $this->useSoftDeletes) {
+            $builder->whereNull($this->deletedField);
         }
-
-        if (isset($this->db->{$name})) {
-            return true;
-        }
-
-        return isset($this->builder()->{$name});
     }
-
+    
     /**
-     * Fourni un acces direct a une methode du builder (si disponible)
-     * et la database connection.
-     *
-     * @return mixed
+     * Ajoute les timestamps
      */
-    public function __call(string $name, array $params)
+    protected function addTimestamps(array $data, string $action): array
     {
-        $builder = $this->builder();
-        $result  = null;
-
-        if (method_exists($this->db, $name)) {
-            $result = $this->db->{$name}(...$params);
-        } elseif (method_exists($builder, $name)) {
-            $this->checkBuilderMethod($name);
-
-            $result = $builder->{$name}(...$params);
-        } else {
-            throw new BadMethodCallException('Call to undefined method ' . static::class . '::' . $name);
+        if (!$this->useTimestamps) {
+            return $data;
         }
-
-        if ($result instanceof BaseBuilder) {
-            return $this;
+        
+        $timestamp = $this->freshTimestamp();
+        
+        if ($action === 'create' && $this->createdField && !isset($data[$this->createdField])) {
+            $data[$this->createdField] = $timestamp;
         }
-
-        return $result;
+        
+        if ($this->updatedField && !isset($data[$this->updatedField])) {
+            $data[$this->updatedField] = $timestamp;
+        }
+        
+        return $data;
+    }
+    
+    /**
+     * Timestamp formaté
+     */
+    protected function freshTimestamp(): string|int
+    {
+        $now = Date::now();
+        
+        return match($this->dateFormat) {
+            'int' => $now->getTimestamp(),
+            'date' => $now->format('Y-m-d'),
+            default => $now->format('Y-m-d H:i:s'),
+        };
     }
 
     /**
@@ -704,7 +771,7 @@ abstract class Model
             return $data->{$this->primaryKey};
         }
 
-        if (is_array($data) && ! empty($data[$this->primaryKey])) {
+        if (is_array($data) && isset($data[$this->primaryKey])) {
             return $data[$this->primaryKey];
         }
 
@@ -713,186 +780,184 @@ abstract class Model
 
     /**
      * Cette méthode est appelée lors de la sauvegarde pour déterminer si l'entrée doit être mise à jour.
-     * Si cette méthode renvoie une opération d'insertion fausse, elle sera exécutée
      */
     protected function shouldUpdate(array|object $data): bool
     {
-        return ! empty($this->idValue($data));
-    }
-
-    /**
-     * Prend une classe et retourne un tableau de ses propriétés publiques et protégées sous la forme d'un tableau adapté à une utilisation dans les créations et les mises à jour.
-     * Cette méthode utilise objectToRawArray() en interne et effectue la conversion en chaîne sur toutes les instances Time
-     *
-     * @param bool $onlyChanged Propriété modifiée uniquement
-     * @param bool $recursive   Si vrai, les entités internes seront également converties en tableau
-     *
-     * @throws ReflectionException
-     */
-    protected function objectToArray(object|string $data, bool $onlyChanged = true, bool $recursive = false): array
-    {
-        $properties = $this->objectToRawArray($data, $onlyChanged, $recursive);
-
-        // Convertissez toutes les instances de Date en $dateFormat approprié
-        if ($properties) {
-            $properties = array_map(function ($value) {
-                if ($value instanceof Date) {
-                    return $this->timeToDate($value);
-                }
-
-                return $value;
-            }, $properties);
+        if (empty($id = $this->idValue($data))) {
+            return false;
         }
 
-        return $properties;
-    }
-
-    /**
-     * Prend une classe et renvoie un tableau de ses propriétés publiques et protégées sous la forme d'un tableau avec des valeurs brutes.
-     *
-     * @param bool $onlyChanged Propriété modifiée uniquement
-     * @param bool $recursive   Si vrai, les entités internes seront également converties en tableau
-     *
-     * @throws ReflectionException
-     */
-    protected function objectToRawArray(object|string $data, bool $onlyChanged = true, bool $recursive = false): ?array
-    {
-        if (method_exists($data, 'toRawArray')) {
-            $properties = $data->toRawArray($onlyChanged, $recursive);
-        } elseif (method_exists($data, 'toArray')) {
-            $properties = $data->toArray();
-        } else {
-            $mirror = new ReflectionClass($data);
-            $props  = $mirror->getProperties(ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED);
-
-            $properties = [];
-
-            // Boucle sur chaque propriété, en enregistrant le nom/valeur dans un nouveau tableau
-            // que nous pouvons retourner.
-            foreach ($props as $prop) {
-                // Doit rendre les valeurs protégées accessibles.
-                $prop->setAccessible(true);
-                $properties[$prop->getName()] = $prop->getValue($data);
-            }
+        if ($this->useAutoIncrement === true) {
+            return true;
         }
 
-        return $properties;
+        return $this->where($this->primaryKey, $id)->countAllResults() === 1;
     }
-
+    
     /**
-     * Convertit la valeur Date en chaîne en utilisant $this->dateFormat.
-     *
-     * Les formats disponibles sont :
-     * - 'int' - Stocke la date sous la forme d'un horodatage entier
-     * - 'datetime' - Stocke les données au format datetime SQL
-     * - 'date' - Stocke la date (uniquement) au format de date SQL.
-     *
-     * @return int|string
+     * Filtre les données selon fillable/guarded
      */
-    protected function timeToDate(Date $value)
+    protected function filterFillable(array|object $data): array
     {
-        switch ($this->dateFormat) {
-            case 'datetime':
-                return $value->format('Y-m-d H:i:s');
-
-            case 'date':
-                return $value->format('Y-m-d');
-
-            case 'int':
-                return $value->getTimestamp();
-
-            default:
-                return (string) $value;
-        }
-    }
-
-    /**
-     * Transformer les données en tableau.
-     *
-     * @param string $type Type de donnees (insert|update)
-     *
-     * @throws DataException
-     * @throws InvalidArgumentException
-     * @throws ReflectionException
-     */
-    protected function transformDataToArray(array|object|null $data, string $type): array
-    {
-        if (! in_array($type, ['insert', 'update'], true)) {
-            throw new InvalidArgumentException(sprintf('Invalid type "%s" used upon transforming data to array.', $type));
-        }
-
         if (empty($data)) {
-            throw DataException::emptyDataset($type);
+            return [];
         }
 
-        // Si $data utilise une classe personnalisée avec des propriétés publiques ou protégées représentant
-        // les éléments de la collection, nous devons les saisir sous forme de tableau.
         if (is_object($data) && ! $data instanceof stdClass) {
-            $data = $this->objectToArray($data, $type === 'update', true);
+            $data = $this->objectToArray($data);
         }
-
-        // S'il s'agit toujours d'une stdClass, continuez et convertissez en un tableau afin que
-        // les autres méthodes de modèle n'aient pas à effectuer de vérifications spéciales.
+        
         if (is_object($data)) {
             $data = (array) $data;
         }
 
-        // S'il est toujours vide ici, cela signifie que $data n'a pas changé ou est un objet vide
-        if (! $this->allowEmptyInserts && empty($data)) {
-            throw DataException::emptyDataset($type);
+        if ($this->fillable !== []) {
+            return array_intersect_key($data, array_flip($this->fillable));
+        } 
+        if ($this->guarded !== []) {
+            return array_diff_key($data, array_flip($this->guarded));
         }
-
+        
         return $data;
     }
 
     /**
-     * Définit la valeur $tempAllowCallbacks afin que nous puissions temporairement remplacer le paramètre.
-     * Se réinitialise après la prochaine méthode utilisant des déclencheurs.
+     * Takes a class and returns an array of its public and protected
+     * properties as an array suitable for use in creates and updates.
+     *
+     * @return array<string, mixed>
      */
-    public function allowCallbacks(bool $val = true): self
+    protected function objectToArray(object $object): array
     {
-        $this->tempAllowCallbacks = $val;
+        if (method_exists($object, 'toArray')) {
+            $properties = $object->toArray();
+        } else {
+            $mirror = new ReflectionClass($object);
+            $props  = $mirror->getProperties(ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED);
 
-        return $this;
-    }
-
-    /**
-     * Un simple déclencheur d'événement pour les événements de modèle qui permet une manipulation supplémentaire des données au sein du modèle.
-     * Spécifiquement destiné à être utilisé par les modèles enfants, il peut être utilisé pour formater des données, enregistrer/charger des classes associées, etc.
-     *
-     * Il est de la responsabilité des méthodes de rappel de renvoyer les données elles-mêmes.
-     *
-     * Chaque tableau $eventData DOIT avoir une clé 'data' avec les données pertinentes pour les méthodes de rappel (comme un tableau de paires clé/valeur à insérer ou à mettre à jour, un tableau de résultats, etc.)
-     *
-     * Si les rappels ne sont pas autorisés, renvoie immédiatement $eventData.
-     *
-     * @throws DataException
-     */
-    protected function trigger(string $event, array $eventData): array
-    {
-        // S'assurer que c'est un evenement valide
-        if (! isset($this->{$event}) || $this->{$event} === []) {
-            return $eventData;
-        }
-
-        foreach ($this->{$event} as $callback) {
-            if (! method_exists($this, $callback)) {
-                throw DataException::invalidMethodTriggered($callback);
+            $properties = [];
+            foreach ($props as $prop) {
+                $properties[$prop->getName()] = $prop->getValue($object);
             }
-
-            $eventData = $this->{$callback}($eventData);
         }
 
-        return $eventData;
+        return $properties;
     }
-
+    
     /**
-     * Verifie si la methode du builder peut etre utilisee dans le modele.
+     * Validation des données
      */
-    private function checkBuilderMethod(string $name): void
+    protected function validate(array $data, string $action): bool
     {
-        if (in_array($name, $this->builderMethodsNotAvailable, true)) {
-            //   throw ModelException::forMethodNotAvailable(static::class, $name . '()');
+        if ($this->rules === []) {
+            return true;
         }
+        
+        // Si un validateur est disponible
+        if (class_exists(Validator::class)) {
+            $validator = Validator::make($data, $this->rules, $this->messages);
+            
+            if ($validator->fails()) {
+                $this->errors = $validator->errors();
+
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Déclenche un événement
+     */
+    protected function fire(string $event, array $payload = []): array
+    {
+        if (!$this->tempAllowCallbacks || !isset($this->callbacks[$event])) {
+            return $payload;
+        }
+        
+        foreach ($this->callbacks[$event] as $callback) {
+            if (is_string($callback) && method_exists($this, $callback)) {
+                $result = $this->{$callback}($payload);
+                
+                if (is_array($result)) {
+                    $payload = $result;
+                } elseif ($result === false) {
+                    $payload['cancelled'] = true;
+                    break;
+                }
+            }
+        }
+        
+        return $payload;
+    }
+    
+    /**
+     * Réinitialise les états temporaires
+     */
+    protected function resetTemporaryStates(): void
+    {
+        $this->tempReturnType     = $this->returnType;
+        $this->tempUseSoftDeletes = $this->useSoftDeletes;
+        $this->tempAllowCallbacks = $this->allowCallbacks;
+    }
+    
+    /**
+     * Magic getter
+     */
+    public function __get(string $name)
+    {
+        if (property_exists($this, $name)) {
+            return $this->{$name};
+        }
+        
+        if (isset($this->db->{$name})) {
+            return $this->db->{$name};
+        }
+        
+        $builder = $this->builder();
+        
+        return $builder->{$name} ?? null;
+    }
+    
+    /**
+     * Magic isset
+     */
+    public function __isset(string $name): bool
+    {
+        if (property_exists($this, $name)) {
+            return true;
+        }
+        
+        if (isset($this->db->{$name})) {
+            return true;
+        }
+        
+        return isset($this->builder()->{$name});
+    }
+    
+    /**
+     * Magic call pour proxy vers le Query Builder
+     */
+    public function __call(string $name, array $arguments)
+    {
+        // Méthodes du Query Builder
+        if (method_exists($this->builder(), $name)) {
+            $result = $this->builder()->{$name}(...$arguments);
+            
+            // Si le résultat est une instance du builder, retourner $this pour la fluidité
+            if ($result instanceof BaseBuilder) {
+                return $this;
+            }
+            
+            return $result;
+        }
+        
+        // Méthodes de la connexion
+        if (method_exists($this->db, $name)) {
+            return $this->db->{$name}(...$arguments);
+        }
+        
+        throw new BadMethodCallException("Method {$name} not found in " . static::class);
     }
 }
