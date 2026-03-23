@@ -75,7 +75,7 @@ class TableInfo extends DatabaseCommand
     public function handle()
     {
         try {
-            $this->db = $this->resolver->connection($this->option('group'));
+            $this->db = $this->resolver->connection($this->option('group', config('database.connection', 'default')));
         } catch (InvalidArgumentException $e) {
             $this->fail($e->getMessage());
 

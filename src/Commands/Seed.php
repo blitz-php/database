@@ -53,7 +53,7 @@ class Seed extends DatabaseCommand
      */
     public function handle()
     {
-        $group  = $this->option('group');
+        $group  = $this->option('group', config('database.connection', 'default'));
         $silent = $this->option('silent') !== null;
         $locale = $this->option('locale', config('app.language', 'fr_FR'));
 

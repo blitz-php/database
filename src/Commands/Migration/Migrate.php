@@ -57,7 +57,7 @@ class Migrate extends DatabaseCommand
 
         $this->eol()->info('Recherche des migrations en attente...');
 
-        $group     = $this->option('group', 'default');
+        $group     = $this->option('group', config('database.connection', 'default'));
         $namespace = $this->option('namespace', APP_NAMESPACE);
         $all       = $this->option('all') === true;
         $pretend   = $this->option('pretend') === true;

@@ -49,7 +49,7 @@ class Reset extends DatabaseCommand
 
         $this->eol()->info('Réinitialisation de toutes les migrations...');
 
-        $group = $this->option('group', 'default');
+        $group = $this->option('group', config('database.connection', 'default'));
 
         return $this->call('migrate:rollback', [
             '--group' => $group,
