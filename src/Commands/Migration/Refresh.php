@@ -52,7 +52,7 @@ class Refresh extends DatabaseCommand
 
         $this->eol()->info('Réinitialisation et réexécution des migrations...');
 
-        $group = $this->option('group', 'default');
+        $group = $this->option('group', config('database.connection', 'default'));
         $seed  = $this->option('seed') === true;
 
         $this->newLine()->comment('Étape 1/2: Annulation de toutes les migrations');

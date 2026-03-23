@@ -43,7 +43,7 @@ class Status extends DatabaseCommand
     {
         $this->eol()->info('Récupération du statut des migrations...');
 
-        $group  = $this->option('group', 'default');
+        $group  = $this->option('group', config('database.connection', 'default'));
         $runner = $this->runner('ALL', $group);
 
         $history = $runner->getHistory($group);
