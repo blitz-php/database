@@ -149,6 +149,52 @@ abstract class QueryCompiler
         return $this->compileUpdateStandard($builder);
     }
 
+	/**
+	 * Compile une requête de mise à jour en masse
+	 *
+	 * @param array $chunk Données du lot
+	 * @param string $column Colonne d'identification
+	 * @param array $updateColumns Colonnes à mettre à jour
+	 */
+	public function compileBulkUpdate(BaseBuilder $builder, array $chunk, string $column, array $updateColumns): string
+	{
+		$table = $this->db->escapeIdentifiers($builder->getTable());
+		$columnEscaped = $this->db->escapeIdentifiers($column);
+
+		// Construction du CASE WHEN pour chaque colonne à mettre à jour
+		$updateParts = [];
+		foreach ($updateColumns as $updateColumn) {
+			$caseStatement = $this->buildCaseStatement($chunk, $updateColumn, $column);
+			$updateParts[] = $this->db->escapeIdentifiers($updateColumn) . ' = ' . $caseStatement;
+		}
+
+		// Construction de la clause WHERE IN
+		$ids = array_column($chunk, $column);
+		$placeholders = implode(', ', array_fill(0, count($ids), '?'));
+
+		return "UPDATE {$table} SET " . implode(', ', $updateParts) . " WHERE {$columnEscaped} IN ({$placeholders})";
+	}
+
+	/**
+	 * Construit une clause CASE WHEN pour une colonne spécifique
+	 *
+	 * @param array $chunk Données du lot
+	 * @param string $updateColumn Colonne à mettre à jour
+	 * @param string $column Colonne d'identification
+	 */
+	protected function buildCaseStatement(array $chunk, string $updateColumn, string $column): string
+	{
+		$cases  = [];
+		$column = $this->db->escapeIdentifiers($column);
+
+		foreach ($chunk as $row) {
+			$value   = $this->wrapValue($row[$updateColumn]);
+			$cases[] = "WHEN {$column} = ? THEN {$value}";
+		}
+
+		return "CASE " . implode(' ', $cases) . " END";
+	}
+
     /**
      * Compilation standard sans jointure
      */
