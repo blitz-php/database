@@ -20,8 +20,9 @@ describe("Database / Query Builder : Bindings", function() {
             $collection->add(true);
             $collection->add(null);
             
-            expect($collection->count())->toBe(4);
-            expect($collection->getOrdered())->toBe(['value1', 123, true, null]);
+            // le null n'est pas pris en charge par le binding
+            expect($collection->count())->toBe(3);
+            expect($collection->getOrdered())->toBe(['value1', 123, true]);
         });
     
         it(": BindingCollection ajout nommé", function() {

@@ -434,6 +434,9 @@ abstract class QueryCompiler
                 $column   = $this->db->escapeIdentifiers($where['column']);
                 $operator = $this->translateOperator($where['operator']);
 
+                if (isset($where['value']) && $where['value'] === null) {
+                    return "{$column} IS NULL";
+                }
                 if (isset($where['value']) && $where['value'] instanceof Expression) {
                     return "{$column} {$operator} {$where['value']}";
                 }
@@ -441,9 +444,28 @@ abstract class QueryCompiler
                 return "{$column} {$operator} ?";
 
             case 'in':
-                $column       = $this->db->escapeIdentifiers($where['column']);
-                $placeholders = implode(', ', array_fill(0, count($where['values']), '?'));
+                $column  = $this->db->escapeIdentifiers($where['column']);
+                $hasNull = false;
+                $values  = [];
 
+                foreach ($where['values'] as $value) {
+                    if ($value === null) {
+                        $hasNull = true;
+                    } else {
+                        $values[] = $value;
+                    }
+                }
+                
+                if ($values === [] && $hasNull) {
+                    return "{$column} IS NULL";
+                }
+                
+                if ($hasNull) {
+                    $placeholders = implode(', ', array_fill(0, count($values), '?'));
+                    return "({$column} IN ({$placeholders}) OR {$column} IS NULL)";
+                }
+                
+                $placeholders = implode(', ', array_fill(0, count($values), '?'));
                 return "{$column} {$where['operator']} ({$placeholders})";
 
             case 'insub':
@@ -633,6 +655,10 @@ abstract class QueryCompiler
     {
         if ($value instanceof Expression) {
             return (string) $value;
+        }
+        
+        if ($value === null) {
+            return 'NULL';
         }
 
         return '?';

@@ -488,6 +488,8 @@ class BaseBuilder implements BuilderInterface
         foreach ($key as $k => $v) {
             if ($v instanceof Expression) {
                 $this->values[$k] = $v;
+            } elseif ($v === null) {
+                $this->values[$k] = null;
             } else {
                 $this->values[$k] = $v;
                 $this->bindings->add($v, 'values');
@@ -1134,9 +1136,16 @@ class BaseBuilder implements BuilderInterface
             default    => [], // Fallback à tous
         };
 
-        return $types === null
-            ? []
-            : $this->db->prepareBindings($this->bindings->getOrdered($types));
+        if($types === null) {
+            return [];
+        }
+
+        $bindings = $this->bindings->getOrdered($types);
+        $bindings = array_filter($bindings, function($binding) {
+            return $binding !== '__NULL__' && !($binding instanceof Expression);
+        });
+        
+        return $this->db->prepareBindings(array_values($bindings));
     }
 
     /**
