@@ -488,6 +488,8 @@ class BaseBuilder implements BuilderInterface
         foreach ($key as $k => $v) {
             if ($v instanceof Expression) {
                 $this->values[$k] = $v;
+            } elseif ($v === null) {
+                $this->values[$k] = null;
             } else {
                 $this->values[$k] = $v;
                 $this->bindings->add($v, 'values');
@@ -642,6 +644,107 @@ class BaseBuilder implements BuilderInterface
             }
         });
     }
+
+	/**
+	 * Met à jour plusieurs enregistrements en une seule requête
+	 *
+	 * @param list<array|object> 		$data Tableau de données à mettre à jour, où chaque élément est un tableau associatif
+	 * @param array|Expression|string 	$constraints Colonne utilisée pour identifier les enregistrements à mettre à jour (par défaut 'id')
+	 * @param int 					$chunkSize Taille des lots pour le traitement
+	 *
+	 * @return int|string Nombre de lignes affectées ou la requête SQL en mode test
+	 *
+	 * @throws BadMethodCallException
+	 * @throws InvalidArgumentException
+	 *
+	 * @example
+	 * // Mise à jour simple
+	 * $builder->bulkUpdate([
+	 *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com'],
+	 *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com'],
+	 * ]);
+	 *
+	 * // Mise à jour avec colonne personnalisée
+	 * $builder->bulkUpdate([
+	 *     ['code' => 'ABC', 'price' => 100],
+	 *     ['code' => 'DEF', 'price' => 150],
+	 * ], 'code');
+	 */
+	public function bulkUpdate(array $data, string $column = 'id', int $chunkSize = 100): int|string
+	{
+		if ($data === []) {
+			return 0;
+		}
+
+		// Vérifier la structure des données
+		$firstRow = reset($data);
+		if (!is_array($firstRow)) {
+			throw new InvalidArgumentException('Each row must be an associative array.');
+		}
+
+		// Vérifier que la colonne d'identification existe dans chaque ligne
+		foreach ($data as $index => $row) {
+			if (!array_key_exists($column, $row)) {
+				throw new InvalidArgumentException(
+					"Column '{$column}' not found in row at index {$index}. Each row must contain the identifier column."
+				);
+			}
+		}
+
+		// Extraire les colonnes à mettre à jour (toutes sauf la colonne d'identification)
+		$updateColumns = array_diff(array_keys($firstRow), [$column]);
+
+		if (empty($updateColumns)) {
+			return 0; // Rien à mettre à jour
+		}
+
+		// Traitement par lots
+		$totalAffected = 0;
+		$chunks = array_chunk($data, $chunkSize);
+		$allSql = [];
+
+		$callback = function() use ($chunks, $column, $updateColumns, &$totalAffected, &$allSql) {
+			foreach ($chunks as $chunk) {
+				$sql = $this->compiler->compileBulkUpdate($this, $chunk, $column, $updateColumns);
+
+				if ($this->testMode) {
+					$allSql[] = $sql;
+				} else {
+					$bindings       = $this->buildBulkUpdateBindings($chunk, $column, $updateColumns);
+					$totalAffected += $this->db->affectingStatement($sql, $bindings);
+				}
+			}
+
+			return [$allSql, $totalAffected];
+		};
+
+		[$allSql, $totalAffected] = $this->db->transaction($callback);
+
+		return $this->testMode ? implode('; ', $allSql) : $totalAffected;
+	}
+
+	/**
+	 * Construit les bindings pour une requête bulk update
+	 */
+	protected function buildBulkUpdateBindings(array $chunk, string $column, array $updateColumns): array
+	{
+		$bindings = [];
+
+		foreach ($updateColumns as $updateColumn) {
+			foreach ($chunk as $row) {
+				$value = $row[$updateColumn];
+				if (!($value instanceof Expression) && $value !== null) {
+					$bindings[] = $value;
+				}
+				$bindings[] = $row[$column];
+			}
+		}
+
+		$ids      = array_column($chunk, $column);
+		$bindings = array_merge($bindings, $ids);
+
+		return $bindings;
+	}
 
     /**
      * Exécute une requête de remplacement.
@@ -1134,9 +1237,16 @@ class BaseBuilder implements BuilderInterface
             default    => [], // Fallback à tous
         };
 
-        return $types === null
-            ? []
-            : $this->db->prepareBindings($this->bindings->getOrdered($types));
+        if($types === null) {
+            return [];
+        }
+
+        $bindings = $this->bindings->getOrdered($types);
+        $bindings = array_filter($bindings, function($binding) {
+            return $binding !== '__NULL__' && !($binding instanceof Expression);
+        });
+        
+        return $this->db->prepareBindings(array_values($bindings));
     }
 
     /**

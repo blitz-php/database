@@ -149,6 +149,52 @@ abstract class QueryCompiler
         return $this->compileUpdateStandard($builder);
     }
 
+	/**
+	 * Compile une requête de mise à jour en masse
+	 *
+	 * @param array $chunk Données du lot
+	 * @param string $column Colonne d'identification
+	 * @param array $updateColumns Colonnes à mettre à jour
+	 */
+	public function compileBulkUpdate(BaseBuilder $builder, array $chunk, string $column, array $updateColumns): string
+	{
+		$table = $this->db->escapeIdentifiers($builder->getTable());
+		$columnEscaped = $this->db->escapeIdentifiers($column);
+
+		// Construction du CASE WHEN pour chaque colonne à mettre à jour
+		$updateParts = [];
+		foreach ($updateColumns as $updateColumn) {
+			$caseStatement = $this->buildCaseStatement($chunk, $updateColumn, $column);
+			$updateParts[] = $this->db->escapeIdentifiers($updateColumn) . ' = ' . $caseStatement;
+		}
+
+		// Construction de la clause WHERE IN
+		$ids = array_column($chunk, $column);
+		$placeholders = implode(', ', array_fill(0, count($ids), '?'));
+
+		return "UPDATE {$table} SET " . implode(', ', $updateParts) . " WHERE {$columnEscaped} IN ({$placeholders})";
+	}
+
+	/**
+	 * Construit une clause CASE WHEN pour une colonne spécifique
+	 *
+	 * @param array $chunk Données du lot
+	 * @param string $updateColumn Colonne à mettre à jour
+	 * @param string $column Colonne d'identification
+	 */
+	protected function buildCaseStatement(array $chunk, string $updateColumn, string $column): string
+	{
+		$cases  = [];
+		$column = $this->db->escapeIdentifiers($column);
+
+		foreach ($chunk as $row) {
+			$value   = $this->wrapValue($row[$updateColumn]);
+			$cases[] = "WHEN {$column} = ? THEN {$value}";
+		}
+
+		return "CASE " . implode(' ', $cases) . " END";
+	}
+
     /**
      * Compilation standard sans jointure
      */
@@ -434,6 +480,9 @@ abstract class QueryCompiler
                 $column   = $this->db->escapeIdentifiers($where['column']);
                 $operator = $this->translateOperator($where['operator']);
 
+                if (isset($where['value']) && $where['value'] === null) {
+                    return "{$column} IS NULL";
+                }
                 if (isset($where['value']) && $where['value'] instanceof Expression) {
                     return "{$column} {$operator} {$where['value']}";
                 }
@@ -441,9 +490,28 @@ abstract class QueryCompiler
                 return "{$column} {$operator} ?";
 
             case 'in':
-                $column       = $this->db->escapeIdentifiers($where['column']);
-                $placeholders = implode(', ', array_fill(0, count($where['values']), '?'));
+                $column  = $this->db->escapeIdentifiers($where['column']);
+                $hasNull = false;
+                $values  = [];
 
+                foreach ($where['values'] as $value) {
+                    if ($value === null) {
+                        $hasNull = true;
+                    } else {
+                        $values[] = $value;
+                    }
+                }
+                
+                if ($values === [] && $hasNull) {
+                    return "{$column} IS NULL";
+                }
+                
+                if ($hasNull) {
+                    $placeholders = implode(', ', array_fill(0, count($values), '?'));
+                    return "({$column} IN ({$placeholders}) OR {$column} IS NULL)";
+                }
+                
+                $placeholders = implode(', ', array_fill(0, count($values), '?'));
                 return "{$column} {$where['operator']} ({$placeholders})";
 
             case 'insub':
@@ -633,6 +701,10 @@ abstract class QueryCompiler
     {
         if ($value instanceof Expression) {
             return (string) $value;
+        }
+        
+        if ($value === null) {
+            return 'NULL';
         }
 
         return '?';

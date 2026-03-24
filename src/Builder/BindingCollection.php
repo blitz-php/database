@@ -63,6 +63,20 @@ class BindingCollection
             throw new InvalidArgumentException("Type de binding invalide: {$type}");
         }
 
+        if ($value === null) {
+            $this->bindings[$type][] = '__NULL__';
+            $this->types[$type][] = PDO::PARAM_NULL;
+            
+            return $this;
+        }
+        
+        if ($value instanceof Expression) {
+            $this->bindings[$type][] = $value;
+            $this->types[$type][] = null;
+            
+            return $this;
+        }
+        
         $this->bindings[$type][] = $value;
         $this->types[$type][]    = $pdoType ?? $this->guessType($value);
 
@@ -134,7 +148,12 @@ class BindingCollection
 
         foreach ($contexts as $context) {
             if (! empty($this->bindings[$context])) {
-                array_push($result, ...$this->bindings[$context]);
+                foreach ($this->bindings[$context] as $binding) {
+                    if ($binding === '__NULL__' || $binding instanceof Expression) {
+                        continue;
+                    }
+                    $result[] = $binding;
+                }
             }
         }
 
@@ -142,26 +161,32 @@ class BindingCollection
     }
 
     /**
-     * Récupère tous les types dans l'ordre
-     *
-     * @param list<string> $types
+     * Récupère les types PDO dans l'ordre
+     * 
+     * @param list<string> $contexts
      *
      * @return list<int>
      */
-    public function getTypesOrdered(array $types = []): array
+    public function getTypesOrdered(array $contexts = []): array
     {
-        if ($types === []) {
-            $types = self::TYPES;
+        if ($contexts === []) {
+            $contexts = self::TYPES;
         }
 
         $result = [];
-
-        foreach ($types as $type) {
-            if (! empty($this->types[$type])) {
-                array_push($result, ...$this->types[$type]);
+        foreach ($contexts as $context) {
+            if (!empty($this->types[$context])) {
+                foreach ($this->types[$context] as $index => $type) {
+                    $binding = $this->bindings[$context][$index] ?? null;
+                    if ($binding === '__NULL__') {
+                        $result[] = PDO::PARAM_NULL;
+                    } elseif ($type !== null) {
+                        $result[] = $type;
+                    }
+                }
             }
         }
-
+        
         return $result;
     }
 
@@ -178,11 +203,11 @@ class BindingCollection
      */
     public function count(?string $context = null): int
     {
-        if ($context !== null) {
-            return count($this->bindings[$context] ?? []);
-        }
+        $context = $context === null ? [] : [$context];
 
-        return array_sum(array_map('count', $this->bindings));
+        $bindings = $this->getOrdered($context);
+
+        return count($bindings);
     }
 
     /**
