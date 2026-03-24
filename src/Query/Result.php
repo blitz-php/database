@@ -219,6 +219,11 @@ class Result implements ResultInterface
      */
     public function get(int|string $type = PDO::FETCH_OBJ): array
     {
+		$type = match($type) {
+			'array'  => PDO::FETCH_ASSOC,
+			'object' => PDO::FETCH_OBJ,
+			default  => $type,
+		};
         $data = is_string($type) ? $this->resultClass($type) : $this->result($type);
 
         $this->details['num_rows'] = count($data);
