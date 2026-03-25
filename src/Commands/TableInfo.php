@@ -11,7 +11,8 @@
 
 namespace BlitzPHP\Database\Commands;
 
-use BlitzPHP\Database\Result\BaseResult;
+use BlitzPHP\Database\Connection\BaseConnection;
+use BlitzPHP\Database\Query\Result;
 use InvalidArgumentException;
 use PDO;
 
@@ -72,10 +73,12 @@ class TableInfo extends DatabaseCommand
 
     private string $prefix = '';
 
+    private BaseConnection $db;
+
     public function handle()
     {
         try {
-            $this->db = $this->resolver->connection($this->option('group', config('database.connection', 'default')));
+            $this->db = $this->db($this->option('group'));
         } catch (InvalidArgumentException $e) {
             $this->fail($e->getMessage());
 
@@ -109,15 +112,7 @@ class TableInfo extends DatabaseCommand
         $limitFieldValue = (int) $this->option('limit-field-value', 15);
 
         while (! in_array($tableName, $tables, true)) {
-            $tabs   = $tables;
-            $tables = [];
-
-            foreach ($tabs as $key => $tab) {
-                $tables[$key + 1] = $tab;
-            }
-
-            $tableNameNo = $this->choice("Voici les tables disponible dans votre base de données. \n Quelle table souhaitez-vous afficher?", $tables);
-            $tableName   = $tables[$tableNameNo] ?? null;
+            $tableName = $this->choice("Voici les tables disponible dans votre base de données. \nQuelle table souhaitez-vous afficher?", $tables);
         }
 
         if (true === $this->option('metadata')) {
@@ -133,13 +128,15 @@ class TableInfo extends DatabaseCommand
 
     private function showDBConfig(): void
     {
+        $config = $this->db->getConfig();
+
         $this->table([[
-            'hostname' => $this->db->hostname,
+            'hostname' => $config['hostname'],
             'database' => $this->db->getDatabase(),
-            'username' => $this->db->username,
+            'username' => $config['username'],
             'driver'   => $this->db->getPlatform(),
             'prefix'   => $this->prefix,
-            'port'     => $this->db->port,
+            'port'     => $config['port'],
         ]]);
     }
 
@@ -158,7 +155,7 @@ class TableInfo extends DatabaseCommand
         $this->newLine()->io->blackBgYellow("Données de la table \"{$tableName}\":", true);
 
         $this->removeDBPrefix();
-        $thead = $this->db->getFieldNames($tableName);
+        $thead = $this->db->getColumnNames($tableName);
         $this->restoreDBPrefix();
 
         // Si on a un champ id, on trie en fonction de lui.
@@ -189,15 +186,15 @@ class TableInfo extends DatabaseCommand
         $this->removeDBPrefix();
 
         foreach ($tables  as $id => $tableName) {
-            $table = $this->db->protectIdentifiers($tableName);
-            /** @var BaseResult $db */
+            $table = $this->db->escapeIdentifiers($tableName);
+            /** @var Result $db */
             $db = $this->db->query("SELECT * FROM {$table}");
 
             $this->tbody[] = [
                 'ID'                       => $id + 1,
                 'Nom de la table'          => $tableName,
                 'Nombre d\'enregistrement' => $db->numRows(),
-                'Nombre de champs'         => $db->countField(),
+                'Nombre de champs'         => $db->countColumn(),
             ];
         }
 
@@ -254,7 +251,7 @@ class TableInfo extends DatabaseCommand
         $this->newLine()->io->blackBgYellow("Liste des informations de métadonnées dans la table \"{$tableName}\"\u{a0}:", true);
 
         $this->removeDBPrefix();
-        $fields = $this->db->getFieldData($tableName);
+        $fields = $this->db->getColumnData($tableName);
         $this->restoreDBPrefix();
 
         foreach ($fields as $row) {

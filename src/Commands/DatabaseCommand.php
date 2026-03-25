@@ -27,16 +27,22 @@ abstract class DatabaseCommand extends Command
      */
     protected string $group = 'Base de données';
 
+    /**
+     * @deprecated
+     */
     protected ConnectionResolverInterface $resolver;
+
+    protected DatabaseManager $dbManager;
 
     public function __construct(protected ContainerInterface $container)
     {
-        $this->resolver = $container->get(ConnectionResolverInterface::class);
+        $this->dbManager = $this->container->get(DatabaseManager::class);
+        $this->resolver  = $this->dbManager;
     }
 
     protected function db(array|string|null $group = null, bool $shared = true): BaseConnection
     {
-        return $this->resolver->connect($group, $shared);
+        return $this->dbManager->connect($group, $shared);
     }
 
     /**
@@ -46,7 +52,7 @@ abstract class DatabaseCommand extends Command
      */
     public function connectionInfo(array|string|null $group = null): array
     {
-        return $this->resolver->connectionInfo($group);
+        return $this->dbManager->connectionInfo($group);
     }
 
     /**
@@ -67,7 +73,7 @@ abstract class DatabaseCommand extends Command
         }
 
         return new Runner(
-            $this->container->get(DatabaseManager::class),
+            $this->dbManager,
             $group,
             $files,
             config('migrations'),

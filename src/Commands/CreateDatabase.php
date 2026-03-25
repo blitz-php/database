@@ -12,7 +12,7 @@
 namespace BlitzPHP\Database\Commands;
 
 use BlitzPHP\Database\Connection\SQLite;
-use BlitzPHP\Database\Database;
+use BlitzPHP\Database\Exceptions\CreatorException;
 use InvalidArgumentException;
 
 class CreateDatabase extends DatabaseCommand
@@ -46,7 +46,13 @@ class CreateDatabase extends DatabaseCommand
      */
     public function handle()
     {
+        [$group, $config] = $this->connectionInfo(on_test() ? 'tests' : null);
+
         if (empty($name = $this->argument('name'))) {
+            $name = $config['database'];
+        }
+
+        if (empty($name)) {
             $name = $this->prompt('Nom de la base de données', null, static function ($val) {
                 if (empty($val)) {
                     throw new InvalidArgumentException('Veuillez entrer le nom de la base de données.');
@@ -56,12 +62,10 @@ class CreateDatabase extends DatabaseCommand
             });
         }
 
-        [$group, $config] = $this->resolver->connectionInfo(on_test() ? 'tests' : null);
-
         $config['database'] = '';
         $config['debug']    = false;
 
-        $db = $this->resolver->connect($config);
+        $db = $this->db($config);
 
         // Specialement pour SQLite3
         if ($db instanceof SQLite) {
@@ -75,7 +79,7 @@ class CreateDatabase extends DatabaseCommand
                 $name = str_replace(['.db', '.sqlite'], '', $name) . ".{$ext}";
             }
 
-            $config['driver']   = 'pdosqlite';
+            $config['driver']   = 'sqlite';
             $config['database'] = $name;
 
             if ($name !== ':memory:') {
@@ -91,22 +95,32 @@ class CreateDatabase extends DatabaseCommand
             }
 
             // Connection a un nouveau SQLite3 pour creer la bd
-            $db = $this->resolver->connect($config, false);
+            $db = $this->db($config, false);
             $db->connect();
 
             if (! is_file($db->getDatabase()) && $name !== ':memory:') {
-                // @codeCoverageIgnoreStart
                 $this->error('Echec de la création de la base de données');
 
                 return;
-                // @codeCoverageIgnoreEnd
             }
-        } elseif (! Database::creator($db)->createDatabase($name)) {
-            // @codeCoverageIgnoreStart
-            $this->error('Echec de la création de la base de données');
+        } else {
+            try {
+                if (! $this->dbManager->creator($db)->createDatabase($name)) {
+                    $this->error('Echec de la création de la base de données');
 
-            return;
-            // @codeCoverageIgnoreEnd
+                    return;
+                }
+            } catch (CreatorException $e) {
+                $previous = $e->getPrevious();
+                $self     = $previous === null ? $this : $this->badge();
+
+                $self->error($e->getMessage());
+                if (null !== $previous) {
+                    $this->error($previous->getMessage());
+                }
+
+                return;
+            }
         }
 
         $this->success("Base de données \"{$name}\" créée avec succès.");
