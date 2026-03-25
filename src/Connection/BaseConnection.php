@@ -139,6 +139,11 @@ abstract class BaseConnection implements ConnectionInterface
     protected array $escapeCache = [];
 
     /**
+     * Cache des colones et tables déséchappé
+     */
+    protected array $unescapeCache = [];
+
+    /**
      * Requête SQL pour désactiver les contraintes
      */
     protected string $disableForeignKeyChecks = '';
@@ -815,6 +820,96 @@ abstract class BaseConnection implements ConnectionInterface
         return str_starts_with($value, $this->escapeChar)
             // && str_contains($value, '.')
             && str_ends_with($value, $this->escapeChar);
+    }
+
+    /**
+     * Enlève les caractères d'échappement des identifiants SQL
+     * 
+     * @param mixed $item Identifiant(s) à déséchapper
+     * 
+     * @return mixed Identifiant(s) déséchappé(s)
+     * 
+     * @example
+     * // Simple
+     * $unescaped = $db->unescapeIdentifiers('`users`.`name`');
+     * // Résultat: 'users.name'
+     * 
+     * // Tableau
+     * $unescaped = $db->unescapeIdentifiers(['`users`.`name`', '`email`']);
+     * // Résultat: ['users.name', 'email']
+     * 
+     * // Sans échappement
+     * $unescaped = $db->unescapeIdentifiers('users.name');
+     * // Résultat: 'users.name' (inchangé)
+     */
+    public function unescapeIdentifiers(mixed $item): mixed
+    {
+        if (is_array($item)) {
+            return array_map([$this, 'unescapeIdentifiers'], $item);
+        }
+        
+        if (! is_string($item)) {
+            return $item;
+        }
+        
+        if (! isset($this->unescapeCache[$item])) {
+            $this->unescapeCache[$item] = $this->doUnescapeIdentifiers($item);
+        }
+
+        return $this->unescapeCache[$item];
+    }
+
+    /**
+     * Déséchappe un identifiant SQL
+     */
+    protected function doUnescapeIdentifiers(string $item): string
+    {
+        // Si l'item est vide, on retourne tel quel
+        if ($item === '') {
+            return $item;
+        }
+        
+        // Si l'item contient un point, on traite chaque partie séparément
+        if (str_contains($item, '.')) {
+            $parts          = explode('.', $item);
+            $unescapedParts = array_map([$this, 'unescapeIdentifier'], $parts);
+            return implode('.', $unescapedParts);
+        }
+        
+        // Sinon, on déséchappe l'identifiant simple
+        return $this->unescapeIdentifier($item);
+    }
+
+    /**
+     * Déséchappe un identifiant simple
+     */
+    protected function unescapeIdentifier(string $item): string
+    {
+        $item = trim($item);
+        
+        // Si l'identifiant est échappé, on enlève les caractères d'échappement
+        if ($this->isEscapedIdentifier($item)) {
+            $item = trim($item, $this->escapeChar);
+        }
+        
+        // Retirer les guillemets simples (pour les alias)
+        $item = trim($item, "'\"");
+        
+        return $item;
+    }
+
+    /**
+     * Normalise un identifiant (enlève les guillemets et normalise le format)
+     */
+    public function normalizeIdentifier(string $item): string
+    {
+        // Déséchapper d'abord
+        $normalized = $this->unescapeIdentifiers($item);
+        
+        // Normaliser les espaces
+        $normalized = preg_replace('/\s+/', ' ', $normalized);
+        
+        return trim($normalized);
     }
 
     /**

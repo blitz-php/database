@@ -380,10 +380,14 @@ class BaseBuilder implements BuilderInterface
 
     /**
      * Sélectionne avec un alias explicite
+     * 
+     * @param Expression|string $column Colonnes à sélectionner
      */
-    public function selectAs(string $column, string $alias): static
+    public function selectAs($column, string $alias): static
     {
-        $this->columns[] = $this->buildColumnName($column) . ' AS ' . $this->db->escapeIdentifiers($alias);
+        $column = $column instanceof Expression ? $column : $this->buildColumnName($column);
+
+        $this->columns[] =  $column . ' AS ' . $this->db->escapeIdentifiers($alias);
 
         return $this->asCrud('select');
     }
@@ -947,53 +951,6 @@ class BaseBuilder implements BuilderInterface
     }
 
     /**
-     * Récupère une valeur spécifique
-     *
-     * @return list<mixed>|mixed
-     */
-    public function value(array|string $name)
-    {
-        $names  = (array) $name;
-        $values = [];
-
-        $row = $this->select($names)->first(PDO::FETCH_OBJ);
-
-        foreach ($names as $v) {
-            if (is_string($v)) {
-                $values[] = $row->{$v} ?? null;
-            }
-        }
-
-        return is_string($name) ? $values[0] : $values;
-    }
-
-    /**
-     * Récupère plusieurs valeurs
-     *
-     * @return list<mixed>
-     */
-    public function values(array|string $name): array
-    {
-        $names   = (array) $name;
-        $columns = [];
-
-        $rows = $this->select($names)->all(PDO::FETCH_OBJ);
-
-        foreach ($rows as $row) {
-            $values = [];
-
-            foreach ($names as $v) {
-                if (is_string($v)) {
-                    $values[$v] = $row->{$v} ?? null;
-                }
-            }
-            $columns[] = is_string($name) ? ($values[$name] ?? null) : $values;
-        }
-
-        return $columns;
-    }
-
-    /**
      * Vérifie si des enregistrements existent
      */
     public function exists(): bool
@@ -1305,6 +1262,8 @@ class BaseBuilder implements BuilderInterface
         $this->lock          = null;
         $this->uniqueBy      = [];
         $this->updateColumns = [];
+
+        $this->clearSelectedColumnsCache();
         $this->db->setAliasedTables([]);
 
         return $this->asCrud('select');

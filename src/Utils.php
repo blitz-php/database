@@ -49,6 +49,20 @@ class Utils
         'NOT EXISTS', 'EXISTS',
     ];
 
+    public const SQL_KEYWORDS = [
+        'SELECT', 'DISTINCT', 'FROM', 'AS',
+        'WHERE', 'AND', 'OR',
+        'NOT IN', 'IN', 'IS NOT NULL', 'IS NULL', 'NOT LIKE', 'LIKE', 'NULL', 'NOT',
+        'INNER JOIN', 'LEFT JOIN', 'NATURAL JOIN', 'RIGHT JOIN', 'JOIN', 'ON',
+        'UNION',
+        'GROUP BY', 'HAVING', 
+        'ORDER BY', 'ASC', 'DESC', 'LIMIT', 'OFFSET',
+        'INSERT', 'INTO', 'VALUES',
+        'UPDATE',
+        'COUNT', 'MAX', 'MIN', 'AVG', 'SUM',
+        'UPPER', 'LOWER',
+    ];
+
     private static ?string $expressionPattern = null;
 
     public static function isSqlFunction(string $value): bool
@@ -120,9 +134,25 @@ class Utils
     /**
      * Extrait le nom de l'alias (avec ou sans "AS")
      */
-    public static function extractAlias(string $value): string
+    public static function extractAlias(string $value): ?string
     {
-        return preg_replace('/^\s*AS\s+/i', '', trim($value));
+        $value = trim($value);
+
+        // Chercher "AS alias" à la fin de l'expression
+        if (preg_match('/\s+AS\s+([^\s]+)$/i', $value, $matches)) {
+            return trim($matches[1]);
+        }
+        
+        // Format sans AS: "... alias" (PostgreSQL style)
+        if (preg_match('/\s+([^\s]+)$/', $value, $matches)) {
+            $possibleAlias = trim($matches[1]);
+            // Vérifier que ce n'est pas un mot-clé SQL
+            if (! in_array(strtoupper($possibleAlias), static::SQL_KEYWORDS, true)) {
+                return $possibleAlias;
+            }
+        }
+        
+        return null;
     }
 
     /**
