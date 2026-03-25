@@ -266,7 +266,7 @@ class BaseCreator
         try {
             $result = $this->db->statement(sprintf(
                 $ifNotExists ? $this->createDatabaseIfStr : $this->createDatabaseStr,
-                $this->db->escapeIdentifier($dbName),
+                $this->db->escapeIdentifiers($dbName),
                 $this->charset,
                 $this->collation,
             ));

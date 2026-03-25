@@ -155,11 +155,12 @@ class MySQL extends BaseConnection
         foreach ($rows as $row) {
             $column              = new stdClass();
             $column->name        = $row->Field;
-            $column->type        = $row->Type;
             $column->nullable    = $row->Null === 'YES';
             $column->default     = $row->Default;
             $column->primary_key = $row->Key === 'PRI';
 
+            sscanf($row->Type, '%[a-z](%d)', $column->type, $column->max_length);
+            
             $columns[] = $column;
         }
 
