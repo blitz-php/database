@@ -127,19 +127,30 @@ class MySQL extends BaseConnection
         $indexes = [];
 
         foreach ($rows as $row) {
-            $index       = new stdClass();
-            $index->name = $row->Key_name;
-            $index->type = match (true) {
-                $row->Key_name === 'PRIMARY'    => 'PRIMARY',
-                $row->Index_type === 'FULLTEXT' => 'FULLTEXT',
-                isset($row->Non_unique)         => $row->Index_type === 'SPATIAL' ? 'SPATIAL' : 'INDEX',
-                default                         => 'UNIQUE',
-            };
-
-            $indexes[] = $index;
+            $indexName = $row->Key_name;
+            
+            if (! isset($indexes[$indexName])) {
+                $type = match (true) {
+                    $indexName       === 'PRIMARY'                         => 'PRIMARY',
+                    $row->Index_type === 'FULLTEXT'                        => 'FULLTEXT',
+                    $row->Index_type === 'SPATIAL'                         => 'SPATIAL',
+                    isset($row->Non_unique) && (int)$row->Non_unique === 0 => 'UNIQUE',
+                                     default                               => 'INDEX',
+                };
+                
+                $indexes[$indexName] = (object) [
+                    'name'    => $indexName,
+                    'columns' => [],
+                    'type'    => $type,
+                    'unique'  => $type === 'UNIQUE',
+                    'primary' => $type === 'PRIMARY',
+                ];
+            }
+            
+            $indexes[$indexName]->columns[] = $row->Column_name;
         }
-
-        return $indexes;
+        
+        return array_values($indexes);
     }
 
     /**
@@ -147,19 +158,42 @@ class MySQL extends BaseConnection
      */
     public function _listColumns(string $table): array
     {
-        $sql = "SHOW COLUMNS FROM {$this->escapeIdentifiers($table)}";
+        $sql = "SHOW FULL COLUMNS FROM {$this->escapeIdentifiers($table)}";
 
         $rows    = $this->query($sql)->resultObject();
         $columns = [];
 
         foreach ($rows as $row) {
-            $column              = new stdClass();
-            $column->name        = $row->Field;
-            $column->nullable    = $row->Null === 'YES';
-            $column->default     = $row->Default;
-            $column->primary_key = $row->Key === 'PRI';
-
-            sscanf($row->Type, '%[a-z](%d)', $column->type, $column->max_length);
+            $typeName = $row->Type;
+            $maxLength = null;
+            
+            if (preg_match('/^([a-z]+)(?:\((\d+)\))?/', $row->Type, $matches)) {
+                $typeName  = $matches[1];
+                $maxLength = isset($matches[2]) ? (int) $matches[2] : null;
+            }
+            
+            $autoIncrement = stripos($row->Extra, 'auto_increment') !== false;
+            
+            // Gérer la génération (virtuelle/stored)
+            $generation = null;
+            if (stripos($row->Extra, 'GENERATED') !== false) {
+                $generation = [
+                    'type'       => stripos($row->Extra, 'VIRTUAL') !== false ? 'VIRTUAL' : 'STORED',
+                    'expression' => null, // MySQL ne fournit pas l'expression via SHOW COLUMNS
+                ];
+            }
+            
+            $column                 = new stdClass();
+            $column->name           = $row->Field;
+            $column->type           = $typeName;
+            $column->type_name      = $typeName;
+            $column->nullable       = $row->Null === 'YES';
+            $column->default        = $row->Default;
+            $column->auto_increment = $autoIncrement;
+            $column->max_length     = $maxLength;
+            $column->comment        = $row->Comment ?: null;
+            $column->primary_key    = $row->Key  === 'PRI';
+            $column->generation     = $generation;
             
             $columns[] = $column;
         }

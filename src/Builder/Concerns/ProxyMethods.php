@@ -19,8 +19,8 @@ use BlitzPHP\Traits\Macroable;
  * Gère les appels aux méthodes alias via un système de proxy
  *
  * @method ConnectionInterface getConnection() Alias de db() - Récupère la connexion à la base de données
- * @method self                latest(\Closure|\BlitzPHP\Database\Builder\BaseBuilder|\BlitzPHP\Database\Query\Expression|string $column = 'created_at') Alias de orderBy() avec direction DESC - Ajoute un tri par date décroissante
- * @method self                oldest(\Closure|\BlitzPHP\Database\Builder\BaseBuilder|\BlitzPHP\Database\Query\Expression|string $column = 'created_at') Alias de orderBy() avec direction ASC - Ajoute un tri par date croissante
+ * @method static                latest(\Closure|\BlitzPHP\Database\Builder\BaseBuilder|\BlitzPHP\Database\Query\Expression|string $column = 'created_at') Alias de orderBy() avec direction DESC - Ajoute un tri par date décroissante
+ * @method static                oldest(\Closure|\BlitzPHP\Database\Builder\BaseBuilder|\BlitzPHP\Database\Query\Expression|string $column = 'created_at') Alias de orderBy() avec direction ASC - Ajoute un tri par date croissante
  * 
  * // Récupération de résultats
  * @method mixed               one(int|string $type = \PDO::FETCH_OBJ) Alias de first() - Récupère le premier résultat
@@ -28,63 +28,63 @@ use BlitzPHP\Traits\Macroable;
  * @method \BlitzPHP\Utilities\Iterable\Collection get(int|string $type = \PDO::FETCH_OBJ) Alias de collect() - Récupère tous les résultats sous forme de Collection
  * 
  * // Commandes SQL
- * @method self                order(array|string $columns, string $direction = 'ASC') Alias de orderBy() - Ajoute une clause ORDER BY
- * @method self                group(array|string $columns) Alias de groupBy() - Ajoute une clause GROUP BY
- * @method self                addSelect(array|string $columns) Alias de select() - Ajoute des colonnes à la sélection
- * @method self                selectSub(\BlitzPHP\Contracts\Database\BuilderInterface $subquery, string $as) Alias de selectSubquery() - Ajoute une sous-requête dans la sélection
- * @method self                skip(int $offset) Alias de offset() - Ajoute une clause OFFSET
- * @method self                take(int $limit) Alias de limit() - Ajoute une clause LIMIT
+ * @method static                order(array|string $columns, string $direction = 'ASC') Alias de orderBy() - Ajoute une clause ORDER BY
+ * @method static                group(array|string $columns) Alias de groupBy() - Ajoute une clause GROUP BY
+ * @method static                addSelect(array|string $columns) Alias de select() - Ajoute des colonnes à la sélection
+ * @method static                selectSub(\BlitzPHP\Contracts\Database\BuilderInterface $subquery, string $as) Alias de selectSubquery() - Ajoute une sous-requête dans la sélection
+ * @method static                skip(int $offset) Alias de offset() - Ajoute une clause OFFSET
+ * @method static                take(int $limit) Alias de limit() - Ajoute une clause LIMIT
  * 
  * // Conditions WHERE (basiques)
- * @method self                notWhere(array|string $column, mixed $operator = null, mixed $value = null, string $boolean = 'and') Alias de whereNot() - Ajoute une clause WHERE NOT
- * @method self                orNotWhere(array|string $column, mixed $operator = null, mixed $value = null) Alias de orWhereNot() - Ajoute une clause WHERE NOT avec OR
+ * @method static                notWhere(array|string $column, mixed $operator = null, mixed $value = null, string $boolean = 'and') Alias de whereNot() - Ajoute une clause WHERE NOT
+ * @method static                orNotWhere(array|string $column, mixed $operator = null, mixed $value = null) Alias de orWhereNot() - Ajoute une clause WHERE NOT avec OR
  * 
  * // Conditions WHERE IN
- * @method self                in(string $column, array|\Closure $values, string $boolean = 'and', bool $not = false) Alias de whereIn() - Ajoute une clause WHERE IN
- * @method self                notIn(string $column, array|\Closure $values, string $boolean = 'and') Alias de whereNotIn() - Ajoute une clause WHERE NOT IN
- * @method self                orIn(string $column, array|\Closure $values) Alias de orWhereIn() - Ajoute une clause WHERE IN avec OR
- * @method self                orNotIn(string $column, array|\Closure $values) Alias de orWhereNotIn() - Ajoute une clause WHERE NOT IN avec OR
+ * @method static                in(string $column, array|\Closure $values, string $boolean = 'and', bool $not = false) Alias de whereIn() - Ajoute une clause WHERE IN
+ * @method static                notIn(string $column, array|\Closure $values, string $boolean = 'and') Alias de whereNotIn() - Ajoute une clause WHERE NOT IN
+ * @method static                orIn(string $column, array|\Closure $values) Alias de orWhereIn() - Ajoute une clause WHERE IN avec OR
+ * @method static                orNotIn(string $column, array|\Closure $values) Alias de orWhereNotIn() - Ajoute une clause WHERE NOT IN avec OR
  * 
  * // Conditions WHERE LIKE
- * @method self                like(string|array $column, string $value = '', string $side = 'both', string $boolean = 'and', bool $not = false, bool $caseSensitive = false) Alias de whereLike() - Ajoute une clause WHERE LIKE
- * @method self                notLike(string|array $column, string $value = '', string $side = 'both', string $boolean = 'and', bool $caseSensitive = false) Alias de whereNotLike() - Ajoute une clause WHERE NOT LIKE
- * @method self                orLike(string|array $column, string $value = '', string $side = 'both', bool $caseSensitive = false) Alias de orWhereLike() - Ajoute une clause WHERE LIKE avec OR
- * @method self                orNotLike(string|array $column, string $value = '', string $side = 'both', bool $caseSensitive = false) Alias de orWhereNotLike() - Ajoute une clause WHERE NOT LIKE avec OR
+ * @method static                like(string|array $column, string $value = '', string $side = 'both', string $boolean = 'and', bool $not = false, bool $caseSensitive = false) Alias de whereLike() - Ajoute une clause WHERE LIKE
+ * @method static                notLike(string|array $column, string $value = '', string $side = 'both', string $boolean = 'and', bool $caseSensitive = false) Alias de whereNotLike() - Ajoute une clause WHERE NOT LIKE
+ * @method static                orLike(string|array $column, string $value = '', string $side = 'both', bool $caseSensitive = false) Alias de orWhereLike() - Ajoute une clause WHERE LIKE avec OR
+ * @method static                orNotLike(string|array $column, string $value = '', string $side = 'both', bool $caseSensitive = false) Alias de orWhereNotLike() - Ajoute une clause WHERE NOT LIKE avec OR
  * 
  * // Conditions WHERE BETWEEN
- * @method self                between(string $column, mixed $value1, mixed $value2, string $boolean = 'and', bool $not = false) Alias de whereBetween() - Ajoute une clause WHERE BETWEEN
- * @method self                notBetween(string $column, mixed $value1, mixed $value2, string $boolean = 'and') Alias de whereNotBetween() - Ajoute une clause WHERE NOT BETWEEN
- * @method self                orBetween(string $column, mixed $value1, mixed $value2) Alias de orWhereBetween() - Ajoute une clause WHERE BETWEEN avec OR
- * @method self                orNotBetween(string $column, mixed $value1, mixed $value2) Alias de orWhereNotBetween() - Ajoute une clause WHERE NOT BETWEEN avec OR
+ * @method static                between(string $column, mixed $value1, mixed $value2, string $boolean = 'and', bool $not = false) Alias de whereBetween() - Ajoute une clause WHERE BETWEEN
+ * @method static                notBetween(string $column, mixed $value1, mixed $value2, string $boolean = 'and') Alias de whereNotBetween() - Ajoute une clause WHERE NOT BETWEEN
+ * @method static                orBetween(string $column, mixed $value1, mixed $value2) Alias de orWhereBetween() - Ajoute une clause WHERE BETWEEN avec OR
+ * @method static                orNotBetween(string $column, mixed $value1, mixed $value2) Alias de orWhereNotBetween() - Ajoute une clause WHERE NOT BETWEEN avec OR
  * 
  * // Conditions WHERE COLUMN
- * @method self                notWhereColumn(array|string $first, string $operator = null, string $second = null, string $boolean = 'and') Alias de whereNotColumn() - Ajoute une clause WHERE avec comparaison de colonnes inversée
- * @method self                orNotWhereColumn(array|string $first, string $operator = null, string $second = null) Alias de orWhereNotColumn() - Ajoute une clause WHERE avec comparaison de colonnes inversée avec OR
+ * @method static                notWhereColumn(array|string $first, string $operator = null, string $second = null, string $boolean = 'and') Alias de whereNotColumn() - Ajoute une clause WHERE avec comparaison de colonnes inversée
+ * @method static                orNotWhereColumn(array|string $first, string $operator = null, string $second = null) Alias de orWhereNotColumn() - Ajoute une clause WHERE avec comparaison de colonnes inversée avec OR
  * 
  * // Conditions HAVING
- * @method self                havingIn(string $column, array|\Closure $values, string $boolean = 'and', bool $not = false) Alias de havingIn() - Ajoute une clause HAVING IN
- * @method self                havingNotIn(string $column, array|\Closure $values, string $boolean = 'and') Alias de havingNotIn() - Ajoute une clause HAVING NOT IN
- * @method self                orHavingIn(string $column, array|\Closure $values) Alias de orHavingIn() - Ajoute une clause HAVING IN avec OR
- * @method self                orHavingNotIn(string $column, array|\Closure $values) Alias de orHavingNotIn() - Ajoute une clause HAVING NOT IN avec OR
- * @method self                havingLike(string $column, string $value, string $side = 'both', string $boolean = 'and', bool $not = false, bool $caseSensitive = false) Alias de havingLike() - Ajoute une clause HAVING LIKE
- * @method self                notHavingLike(string $column, string $value, string $side = 'both', string $boolean = 'and', bool $caseSensitive = false) Alias de havingNotLike() - Ajoute une clause HAVING NOT LIKE
- * @method self                orHavingLike(string $column, string $value, string $side = 'both', bool $caseSensitive = false) Alias de orHavingLike() - Ajoute une clause HAVING LIKE avec OR
- * @method self                orHavingNotLike(string $column, string $value, string $side = 'both', bool $caseSensitive = false) Alias de orHavingNotLike() - Ajoute une clause HAVING NOT LIKE avec OR
- * @method self                havingBetween(string $column, mixed $value1, mixed $value2, string $boolean = 'and', bool $not = false) Alias de havingBetween() - Ajoute une clause HAVING BETWEEN
- * @method self                havingNotBetween(string $column, mixed $value1, mixed $value2, string $boolean = 'and') Alias de havingNotBetween() - Ajoute une clause HAVING NOT BETWEEN
- * @method self                orHavingBetween(string $column, mixed $value1, mixed $value2) Alias de orHavingBetween() - Ajoute une clause HAVING BETWEEN avec OR
- * @method self                orHavingNotBetween(string $column, mixed $value1, mixed $value2) Alias de orHavingNotBetween() - Ajoute une clause HAVING NOT BETWEEN avec OR
- * @method self                havingNull(string $column, string $boolean = 'and', bool $not = false) Alias de havingNull() - Ajoute une clause HAVING NULL
- * @method self                havingNotNull(string $column, string $boolean = 'and') Alias de havingNotNull() - Ajoute une clause HAVING NOT NULL
- * @method self                orHavingNull(string $column) Alias de orHavingNull() - Ajoute une clause HAVING NULL avec OR
- * @method self                orHavingNotNull(string $column) Alias de orHavingNotNull() - Ajoute une clause HAVING NOT NULL avec OR
+ * @method static                havingIn(string $column, array|\Closure $values, string $boolean = 'and', bool $not = false) Alias de havingIn() - Ajoute une clause HAVING IN
+ * @method static                havingNotIn(string $column, array|\Closure $values, string $boolean = 'and') Alias de havingNotIn() - Ajoute une clause HAVING NOT IN
+ * @method static                orHavingIn(string $column, array|\Closure $values) Alias de orHavingIn() - Ajoute une clause HAVING IN avec OR
+ * @method static                orHavingNotIn(string $column, array|\Closure $values) Alias de orHavingNotIn() - Ajoute une clause HAVING NOT IN avec OR
+ * @method static                havingLike(string $column, string $value, string $side = 'both', string $boolean = 'and', bool $not = false, bool $caseSensitive = false) Alias de havingLike() - Ajoute une clause HAVING LIKE
+ * @method static                notHavingLike(string $column, string $value, string $side = 'both', string $boolean = 'and', bool $caseSensitive = false) Alias de havingNotLike() - Ajoute une clause HAVING NOT LIKE
+ * @method static                orHavingLike(string $column, string $value, string $side = 'both', bool $caseSensitive = false) Alias de orHavingLike() - Ajoute une clause HAVING LIKE avec OR
+ * @method static                orHavingNotLike(string $column, string $value, string $side = 'both', bool $caseSensitive = false) Alias de orHavingNotLike() - Ajoute une clause HAVING NOT LIKE avec OR
+ * @method static                havingBetween(string $column, mixed $value1, mixed $value2, string $boolean = 'and', bool $not = false) Alias de havingBetween() - Ajoute une clause HAVING BETWEEN
+ * @method static                havingNotBetween(string $column, mixed $value1, mixed $value2, string $boolean = 'and') Alias de havingNotBetween() - Ajoute une clause HAVING NOT BETWEEN
+ * @method static                orHavingBetween(string $column, mixed $value1, mixed $value2) Alias de orHavingBetween() - Ajoute une clause HAVING BETWEEN avec OR
+ * @method static                orHavingNotBetween(string $column, mixed $value1, mixed $value2) Alias de orHavingNotBetween() - Ajoute une clause HAVING NOT BETWEEN avec OR
+ * @method static                havingNull(string $column, string $boolean = 'and', bool $not = false) Alias de havingNull() - Ajoute une clause HAVING NULL
+ * @method static                havingNotNull(string $column, string $boolean = 'and') Alias de havingNotNull() - Ajoute une clause HAVING NOT NULL
+ * @method static                orHavingNull(string $column) Alias de orHavingNull() - Ajoute une clause HAVING NULL avec OR
+ * @method static                orHavingNotNull(string $column) Alias de orHavingNotNull() - Ajoute une clause HAVING NOT NULL avec OR
  * 
  * // Tri
- * @method self                sortAsc(string|array $column) Alias de orderBy() avec direction ASC - Ajoute un tri croissant
- * @method self                sortDesc(string|array $column) Alias de orderBy() avec direction DESC - Ajoute un tri décroissant
- * @method self                sortRand(?int $digit = null) Alias de rand() - Ajoute un tri aléatoire
- * @method self                inRandomOrder(?int $digit = null) Alias de rand() - Ajoute un tri aléatoire
- * @method self                reorderDesc(?string $column = null) Alias de reorder() avec direction DESC - Réinitialise et ajoute un tri décroissant
+ * @method static                sortAsc(string|array $column) Alias de orderBy() avec direction ASC - Ajoute un tri croissant
+ * @method static                sortDesc(string|array $column) Alias de orderBy() avec direction DESC - Ajoute un tri décroissant
+ * @method static                sortRand(?int $digit = null) Alias de rand() - Ajoute un tri aléatoire
+ * @method static                inRandomOrder(?int $digit = null) Alias de rand() - Ajoute un tri aléatoire
+ * @method static                reorderDesc(?string $column = null) Alias de reorder() avec direction DESC - Réinitialise et ajoute un tri décroissant
  * 
  * // Insertions
  * @method int|string          bulkInsert(array $data, bool $ignore = false, int $chunkSize = 100) Alias de bulkInsert() - Insertion multiple

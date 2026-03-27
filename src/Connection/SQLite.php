@@ -108,13 +108,24 @@ class SQLite extends BaseConnection
         $indexes = [];
 
         foreach ($rows as $row) {
-            $index          = new stdClass();
-            $index->name    = $row->indexname;
-            $index->type    = $row->indextype;
-            $index->columns = $row->fieldname;
-        }
+            $indexName = $row->indexname;
 
-        return $indexes;
+            if (!isset($indexes[$indexName])) {
+                $type = $row->indextype;
+                
+                $indexes[$indexName] = (object) [
+                    'name'    => $indexName,
+                    'columns' => [],
+                    'type'    => $type,
+                    'unique'  => $type === 'UNIQUE',
+                    'primary' => $type === 'PRIMARY',
+                ];
+            }
+            
+            $indexes[$indexName]->columns[] = $row->fieldname;
+        }
+    
+        return array_values($indexes);
     }
 
     /**
@@ -128,14 +139,29 @@ class SQLite extends BaseConnection
         $columns = [];
 
         foreach ($rows as $row) {
-            $column              = new stdClass();
-            $column->name        = $row->name;
-            $column->type        = $row->type;
-            $column->nullable    = ! $row->notnull;
-            $column->default     = $row->dflt_value;
-            $column->primary_key = (bool) $row->pk;
-            $column->max_length  = null;
-
+            // SQLite utilise un compteur spécial pour auto_increment
+            $autoIncrement = false;
+            $generation    = null;
+            
+            // Vérifier si la colonne est AUTOINCREMENT (via la table sqlite_sequence)
+            if ($row->pk && $row->type === 'INTEGER') {
+                $seqCheck      = $this->query("SELECT name FROM sqlite_sequence WHERE name = " . $this->escape($table))->resultObject();
+                $autoIncrement = !empty($seqCheck);
+            }
+            
+            $typeName = strtolower(explode('(', $row->type)[0] ?? $row->type);
+            
+            $column                 = new stdClass();
+            $column->name           = $row->name;
+            $column->type           = $typeName;
+            $column->type_name      = $typeName;
+            $column->nullable       = !$row->notnull;
+            $column->default        = $row->dflt_value;
+            $column->auto_increment = $autoIncrement;
+            $column->primary_key    = (bool) $row->pk;
+            $column->comment        = null;              // SQLite ne supporte pas les commentaires de colonnes nativement
+            $column->generation     = $generation;       // SQLite ne supporte pas les colonnes générées avant la version 3.31.0
+            
             $columns[] = $column;
         }
 

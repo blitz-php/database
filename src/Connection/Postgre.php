@@ -99,16 +99,20 @@ class Postgre extends BaseConnection
         $indexes = [];
 
         foreach ($rows as $row) {
+            if (str_starts_with($row->indexdef, 'CREATE UNIQUE INDEX pk')) {
+                $type = 'PRIMARY';
+            } else {
+                $type = (str_starts_with($row->indexdef, 'CREATE UNIQUE')) ? 'UNIQUE' : 'INDEX';
+            }
+
+            $_columns = explode(',', preg_replace('/^.*\((.+?)\)$/', '$1', trim($row->indexdef)));
+
             $index          = new stdClass();
             $index->name    = $row->indexname;
-            $_columns       = explode(',', preg_replace('/^.*\((.+?)\)$/', '$1', trim($row->indexdef)));
             $index->columns = array_map(static fn ($v) => trim($v), $_columns);
-
-            if (str_starts_with($row->indexdef, 'CREATE UNIQUE INDEX pk')) {
-                $index->type = 'PRIMARY';
-            } else {
-                $index->type = (str_starts_with($row->indexdef, 'CREATE UNIQUE')) ? 'UNIQUE' : 'INDEX';
-            }
+            $index->type    = $type;
+            $index->unique  = $type === 'UNIQUE';
+            $index->primary = $type === 'PRIMARY';
 
             $indexes[] = $index;
         }
@@ -121,23 +125,46 @@ class Postgre extends BaseConnection
      */
     public function _listColumns(string $table): array
     {
-        $sql = 'SELECT "column_name", "data_type", "character_maximum_length", "numeric_precision", "column_default",  "is_nullable"
-			FROM "information_schema"."columns"
-			WHERE LOWER("table_name") = '
-                . $this->escape(strtolower($this->prefix . $table))
-                . ' ORDER BY "ordinal_position"';
+        $sql = 'SELECT 
+                c.column_name, 
+                c.data_type, 
+                c.character_maximum_length, 
+                c.numeric_precision, 
+                c.column_default, 
+                c.is_nullable,
+                pg_catalog.col_description(pgc.oid, c.ordinal_position) as column_comment,
+                c.is_identity,
+                c.generation_expression
+            FROM information_schema.columns c
+            LEFT JOIN pg_class pgc ON pgc.relname = ' . $this->escape(strtolower($this->prefix . $table)) . '
+            WHERE LOWER(c.table_name) = ' . $this->escape(strtolower($this->prefix . $table)) . '
+                AND c.table_schema = \'public\'
+            ORDER BY c.ordinal_position';
 
         $rows    = $this->query($sql)->resultObject();
         $columns = [];
 
         foreach ($rows as $row) {
-            $column             = new stdClass();
-            $column->name       = $row->column_name;
-            $column->type       = $row->data_type;
-            $column->nullable   = $row->is_nullable === 'YES';
-            $column->default    = $row->column_default;
-            $column->max_length = $row->character_maximum_length > 0 ? $row->character_maximum_length : $row->numeric_precision;
-
+            // Gérer la génération (GENERATED ALWAYS AS ...)
+            $generation = null;
+            if (!empty($row->generation_expression)) {
+                $generation = [
+                    'type' => $row->is_identity === 'YES' ? 'IDENTITY' : 'GENERATED',
+                    'expression' => $row->generation_expression,
+                ];
+            }
+            
+            $column                 = new stdClass();
+            $column->name           = $row->column_name;
+            $column->type           = $row->data_type;
+            $column->type_name      = $row->data_type;
+            $column->nullable       = $row->is_nullable === 'YES';
+            $column->default        = $row->column_default;
+            $column->auto_increment = $row->is_identity === 'YES';
+            $column->comment        = $row->column_comment ?: null;
+            $column->max_length     = $row->character_maximum_length > 0 ? $row->character_maximum_length : $row->numeric_precision;
+            $column->generation     = $generation;
+            
             $columns[] = $column;
         }
 

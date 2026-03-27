@@ -648,12 +648,16 @@ abstract class BaseConnection implements ConnectionInterface
     /**
      * Retourne la requête SQL pour lister les index
      *
+     * @return list<object{name: string, columns: list<string>, type: string, unique: bool, primary: bool}>
+     * 
      * @internal
      */
     abstract public function _listIndexes(string $table): array;
 
     /**
      * Retourne la requête SQL pour lister les colonnes
+     * 
+     * @return list<object{name: string, type: string, type_name: string, nullable: bool, default: mixed, auto_increment: bool, comment: string|null, generation: array{type: string, expression: string|null}|null}>
      *
      * @internal
      */
