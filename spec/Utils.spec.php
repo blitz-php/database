@@ -48,7 +48,7 @@ describe("Database / Utils", function() {
     });
 
     it(": isAlias", function() {
-        expect(Utils::isAlias('user_alias'))->toBe(true);
+        expect(Utils::isAlias('user_alias'))->toBe(false);
         expect(Utils::isAlias('AS user_alias'))->toBe(true);
         expect(Utils::isAlias('user-alias'))->toBe(false); // tiret pas autorisé
         expect(Utils::isAlias('user.alias'))->toBe(false); // point pas autorisé
@@ -56,8 +56,9 @@ describe("Database / Utils", function() {
 
     it(": extractAlias", function() {
         expect(Utils::extractAlias('AS alias'))->toBe('alias');
-        expect(Utils::extractAlias('alias'))->toBe('alias');
+        expect(Utils::extractAlias('alias'))->toBeNull();
         expect(Utils::extractAlias('  AS  alias  '))->toBe('alias');
+        expect(Utils::extractAlias('users  AS  alias  '))->toBe('alias');
     });
 
     it(": extractOperatorFromColumn", function() {

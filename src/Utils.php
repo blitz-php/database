@@ -128,7 +128,7 @@ class Utils
         $clean = static::extractAlias($value);
 
         // Un alias valide ne contient que des lettres, chiffres, underscore
-        return preg_match('/^[a-zA-Z0-9_]+$/', $clean) === 1;
+        return preg_match('/^[a-zA-Z0-9_]+$/', $clean ?? '') === 1;
     }
 
     /**
