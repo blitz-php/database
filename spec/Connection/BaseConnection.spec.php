@@ -54,8 +54,15 @@ describe("Database / Connection : BaseConnection", function() {
 
     it(": Échappement des identifiants", function() {
         expect($this->connection->escapeIdentifiers('users.id'))->toBe('`users`.`id`');
-        // expect($this->connection->escapeIdentifiers('count(*)'))->toBe('count(*)');
+        expect($this->connection->escapeIdentifiers('count(id)'))->toBe('count(`id`)');
+        expect($this->connection->escapeIdentifiers('count(users.id)'))->toBe('count(`users`.`id`)');
         expect($this->connection->escapeIdentifiers(['users.id', 'name']))->toBe(['`users`.`id`', '`name`']);
+    });
+
+    it(": Échappement des identifiants reservés", function() {
+        expect($this->connection->escapeIdentifiers('users.*'))->toBe('`users`.*');
+        expect($this->connection->escapeIdentifiers(['count(*)', 'count(users.*)']))->toBe(['count(*)', 'count(`users`.*)']);
+        expect($this->connection->escapeIdentifiers(['users.id', 'name', '*']))->toBe(['`users`.`id`', '`name`', '*']);
     });
 
     it(": Échappement des chaînes", function() {
