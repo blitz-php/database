@@ -167,7 +167,7 @@ trait DataMethods
     public function insertGetId(array $values, ?string $sequence = null)
     {
         if (is_bool($inserted = $this->insert($values))) {
-            return $inserted === true ? $this->db->lastId($this->getTable()) : null;
+            return $inserted === true ? $this->lastId($this->getTable()) : null;
         }
 
         return $inserted;
@@ -193,6 +193,14 @@ trait DataMethods
     protected function getKeyName(): string
     {
         return 'id';
+    }
+
+    /**
+     * Récupère le dernier ID généré par l'auto-incrémentation
+     */
+    public function lastId(?string $table = null): ?int
+    {
+        return $this->db->lastId($table);
     }
 
     /*

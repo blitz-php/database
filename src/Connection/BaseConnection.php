@@ -1243,7 +1243,11 @@ abstract class BaseConnection implements ConnectionInterface
     public function lastId(?string $table = null): ?int
     {
         try {
-            return (int) $this->pdo->lastInsertId($table);
+            if (-1 === $id = $this->result?->lastId() ?? -1) {
+                $id = $this->pdo->lastInsertId($table);
+            }
+            
+            return (int) $id;
         } catch (PDOException) {
             return null;
         }
