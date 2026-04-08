@@ -11,22 +11,14 @@
 
 namespace BlitzPHP\Database\Commands\Generators;
 
-use BlitzPHP\Cli\Console\Command;
-use BlitzPHP\Cli\Traits\GeneratorTrait;
+use BlitzPHP\Cli\Commands\Generators\GeneratorCommand;
 
 /**
  * Génère un fichier squelette de seeder.
  */
-class Seeder extends Command
+class Seeder extends GeneratorCommand
 {
-    use GeneratorTrait;
-
-    /**
-     * {@inheritDoc}
-     */
-    protected string $group = 'Generateurs';
-
-    /**
+	/**
      * {@inheritDoc}
      */
     protected string $name = 'make:seeder';
@@ -57,17 +49,9 @@ class Seeder extends Command
         '--force'     => 'Forcer l\'écrasement du fichier existant.',
     ];
 
-    /**
-     * {@inheritDoc}
-     */
-    public function handle()
-    {
-        $this->component    = 'Seeder';
-        $this->directory    = 'Database\Seeds';
-        $this->template     = 'seeder.tpl.php';
-        $this->templatePath = __DIR__ . '/Views';
-
-        $this->classNameLang = 'CLI.generator.className.seeder';
-        $this->generateClass($this->parameters());
-    }
+	protected string $component     = 'Seeder';
+	protected string $directory     = 'Database\Seeds';
+	protected string $template      = 'seeder.tpl.php';
+	protected string $templatePath  = __DIR__ . '/Views';
+	protected string $classNameLang = 'CLI.generator.className.seeder';
 }

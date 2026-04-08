@@ -65,15 +65,23 @@ abstract class Migration
     }
 
     /**
+     * Défini le groupe de connextion à utiliser pour la migration
+     */
+    protected function useConnection(): string
+    {
+        return 'default';
+    }
+
+    /**
      * Initialise les éléments nécessaire pour le fonctionnement de la migration
      *
      * @internal Utilisé par le Runner pour injecter la connexion et le gestionnaire de bd
      */
     public function initialize(DatabaseManager $dbManager, BaseConnection $db): self
     {
-        $this->db                     = $db;
-        $this->dbManager              = $dbManager;
-        $this->connections['default'] = $db;
+        $this->db                                  = $db;
+        $this->dbManager                           = $dbManager;
+        $this->connections[$this->useConnection()] = $db;
 
         return $this;
     }
@@ -194,7 +202,7 @@ abstract class Migration
      */
     protected function create(string $table, callable $callback, bool $ifNotExists = false): void
     {
-        $this->createOnConnection('default', $table, $callback, $ifNotExists);
+        $this->createOnConnection($this->useConnection(), $table, $callback, $ifNotExists);
     }
 
     /**
@@ -210,7 +218,7 @@ abstract class Migration
      */
     protected function alter(string $table, callable $callback): void
     {
-        $this->alterOnConnection('default', $table, $callback);
+        $this->alterOnConnection($this->useConnection(), $table, $callback);
     }
 
     /**
@@ -226,7 +234,7 @@ abstract class Migration
      */
     protected function drop(string $table, bool $ifExists = false): void
     {
-        $this->dropOnConnection('default', $table, $ifExists);
+        $this->dropOnConnection($this->useConnection(), $table, $ifExists);
     }
 
     /**
@@ -242,7 +250,7 @@ abstract class Migration
      */
     protected function rename(string $from, string $to): void
     {
-        $this->renameOnConnection('default', $from, $to);
+        $this->renameOnConnection($this->useConnection(), $from, $to);
     }
 
     /**
@@ -250,7 +258,7 @@ abstract class Migration
      */
     protected function hasTable(string $name): bool
     {
-        return $this->hasTableOnConnection('default', $name);
+        return $this->hasTableOnConnection($this->useConnection(), $name);
     }
 
     /**
@@ -258,7 +266,7 @@ abstract class Migration
      */
     protected function hasColumn(string $table, string $column): bool
     {
-        return $this->hasColumnOnConnection('default', $table, $column);
+        return $this->hasColumnOnConnection($this->useConnection(), $table, $column);
     }
 
     /**

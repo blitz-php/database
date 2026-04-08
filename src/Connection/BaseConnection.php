@@ -768,6 +768,17 @@ abstract class BaseConnection implements ConnectionInterface
             return array_map([$this, 'escapeIdentifiers'], $item);
         }
 
+        if ($item instanceof Stringable) {
+            $item = (string) $item;
+        }
+
+        $item = trim($item);
+        
+        // Vérifier d'abord si c'est un appel de fonction SQL
+        if ($processed = $this->processSqlFunctionCall($item)) {
+            return $processed;
+        }
+
         if (! isset($this->escapeCache[$item])) {
             $this->escapeCache[$item] = $this->doEscapeIdentifiers($item);
         }
@@ -777,10 +788,6 @@ abstract class BaseConnection implements ConnectionInterface
 
     protected function doEscapeIdentifiers(string $item): string
     {
-        if ($this->isReserved($item) || Utils::isSqlFunction($item)) {
-            return $item;
-        }
-
         if (str_contains($item, '.')) {
             $parts = explode('.', $item);
 
@@ -795,11 +802,114 @@ abstract class BaseConnection implements ConnectionInterface
      */
     protected function escapeIdentifier(string $item): string
     {
+        if ($this->isReserved($item) || Utils::isSqlFunction($item)) {
+            return $item;
+        }
+
         if ($this->isEscapedIdentifier($item)) {
             return $item;
         }
 
         return $this->escapeChar . $item . $this->escapeChar;
+    }
+
+    /**
+     * Traite un appel de fonction SQL et échappe ses paramètres si nécessaire
+     */
+    protected function processSqlFunctionCall(string $value): ?string
+    {
+        // Pattern pour capturer: functionName(param1, param2, ...)
+        if (preg_match('/^(\w+)\s*\((.*)\)$/', $value, $matches)) {
+            $functionName = $matches[1];
+            $parameters = $matches[2];
+            
+            if (Utils::isSqlFunction($functionName)) {
+                // Si pas de paramètres, retourner tel quel
+                if (trim($parameters) === '') {
+                    return $value;
+                }
+                
+                // Traiter chaque paramètre
+                $processedParams = [];
+                $params = $this->splitParameters($parameters);
+                
+                foreach ($params as $param) {
+                    $param = trim($param);
+                    $processedParams[] = $this->processSqlFunctionParameter($param);
+                }
+                
+                return $functionName . '(' . implode(', ', $processedParams) . ')';
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Traite un paramètre d'appel de fonction SQL
+     */
+    protected function processSqlFunctionParameter(string $param): string
+    {
+        // Si c'est un wildcard
+        if ($param === '*') {
+            return $param;
+        }
+        
+        // Si le paramètre contient un point, c'est un identifiant qualifié
+        if (str_contains($param, '.')) {
+            // Séparer les parties et échapper chaque partie individuellement
+            $parts = explode('.', $param);
+            $parts = array_map($this->escapeIdentifier(...), $parts);
+
+            return implode('.', $parts);
+        }
+        
+        // Si le paramètre est un identifiant simple
+        if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $param)) {
+            return $this->escapeIdentifier($param);
+        }
+        
+        // Si c'est un appel de fonction imbriqué
+        if (preg_match('/^(\w+)\s*\(.*\)$/', $param)) {
+            return $this->processSqlFunctionCall($param) ?? $param;
+        }
+        
+        // Sinon, garder tel quel (nombres, chaînes entre quotes, etc.)
+        return $param;
+    }
+
+    /**
+     * Sépare les paramètres d'une fonction en gérant les virgules dans les parenthèses
+     */
+    protected function splitParameters(string $parameters): array
+    {
+        $params  = [];
+        $current = '';
+        $depth   = 0;
+        $length  = strlen($parameters);
+        
+        for ($i = 0; $i < $length; $i++) {
+            $char = $parameters[$i];
+            
+            if ($char === '(') {
+                $depth++;
+                $current .= $char;
+            } elseif ($char === ')') {
+                $depth--;
+                $current .= $char;
+            } elseif ($char === ',' && $depth === 0) {
+                $params[] = trim($current);
+                $current = '';
+            } else {
+                $current .= $char;
+            }
+        }
+        
+        if (trim($current) !== '') {
+            $params[] = trim($current);
+        }
+        
+        return $params;
     }
 
     /**
@@ -1133,7 +1243,11 @@ abstract class BaseConnection implements ConnectionInterface
     public function lastId(?string $table = null): ?int
     {
         try {
-            return (int) $this->pdo->lastInsertId($table);
+            if (-1 === $id = $this->result?->lastId() ?? -1) {
+                $id = $this->pdo->lastInsertId($table);
+            }
+            
+            return (int) $id;
         } catch (PDOException) {
             return null;
         }

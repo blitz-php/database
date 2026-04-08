@@ -241,10 +241,10 @@ abstract class Model implements RepositoryInterface
         $key = $alias ?: $table;
 
         if (! isset($this->builders[$key])) {
-            $this->builders[$key] = $this->db->table($table);
+            $this->builders[$key] = $this->db->newQuery();
         }
 
-        $this->currentBuilder = $this->builders[$key]->reset();
+        $this->currentBuilder = $this->builders[$key]->table($table);
         $this->currentAlias   = $key;
 
         return $this;
@@ -267,6 +267,10 @@ abstract class Model implements RepositoryInterface
             // Si aucun builder actif, utiliser la table par défaut
             if ($this->currentBuilder === null) {
                 $this->table($this->table);
+            }
+
+            if ($this->currentBuilder->getTable() === '') {
+                $this->currentBuilder->table($this->table);
             }
 
             return $this->currentBuilder;
@@ -650,6 +654,18 @@ abstract class Model implements RepositoryInterface
     }
 
     /**
+     * Récupère le dernier ID inséré
+     */
+    public function lastInsertId(): int|string
+    {
+        if ($this->lastInsertId === 0) {
+            $this->lastInsertId = $this->db->lastId();
+        }
+
+        return $this->lastInsertId;
+    }
+
+    /**
      * Active temporairement les soft deletes
      */
     public function withDeleted(bool $enabled = true): static
@@ -931,7 +947,13 @@ abstract class Model implements RepositoryInterface
             return true;
         }
 
-        return isset($this->builder()->{$name});
+        try {
+             return isset($this->builder()->{$name});
+        } catch (DatabaseException) {
+            $this->currentBuilder = null; // Réinitialiser le builder actuel en cas d'erreur
+            $this->currentAlias   = null;
+            return false;
+        }
     }
 
     /**
