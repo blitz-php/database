@@ -11,8 +11,7 @@
 
 namespace BlitzPHP\Database\Commands\Generators;
 
-use BlitzPHP\Cli\Console\Command;
-use BlitzPHP\Cli\Traits\GeneratorTrait;
+use BlitzPHP\Cli\Commands\Generators\GeneratorCommand;
 use InvalidArgumentException;
 
 /**
@@ -21,15 +20,8 @@ use InvalidArgumentException;
  * Analyse le nom de la migration pour déterminer automatiquement
  * l'action (create/modify) et la table concernée.
  */
-class Migration extends Command
+class Migration extends GeneratorCommand
 {
-    use GeneratorTrait;
-
-    /**
-     * {@inheritDoc}
-     */
-    protected string $group = 'Générateurs';
-
     /**
      * {@inheritDoc}
      */
@@ -61,6 +53,11 @@ class Migration extends Command
         '--suffix'    => 'Ajoute "Migration" au nom de la classe (par exemple, User => UserMigration)',
     ];
 
+	protected string $component     = 'Migration';
+	protected string $directory     = 'Database\Migrations';
+	protected string $template      = 'migration.tpl.php';
+	protected string $templatePath  = __DIR__ . '/Views';
+
     /**
      * Mots-clés pour les actions de création
      */
@@ -81,27 +78,6 @@ class Migration extends Command
      * Mots-clés pour les actions de suppression
      */
     protected array $dropKeywords = ['drop', 'delete', 'remove'];
-
-    /**
-     * {@inheritDoc}
-     */
-    public function handle()
-    {
-        $this->component    = 'Migration';
-        $this->directory    = 'Database\Migrations';
-        $this->template     = 'migration.tpl.php';
-        $this->templatePath = __DIR__ . '/Views';
-
-        try {
-            $this->generateClass($this->parameters());
-
-            return EXIT_SUCCESS;
-        } catch (InvalidArgumentException $e) {
-            $this->error($e->getMessage());
-
-            return EXIT_ERROR;
-        }
-    }
 
     /**
      * Prépare les options et effectue les remplacements nécessaires.
