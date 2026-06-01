@@ -742,12 +742,9 @@ trait CoreMethods
 
     /**
      * Ajoute une clause HAVING BETWEEN
-     *
-     * @param mixed $value1
-     * @param mixed $value2
      */
-    public function havingBetween(string $column, $value1, $value2, string $boolean = 'and', bool $not = false): static
-    {
+    public function havingBetween(string $column, mixed $value1, mixed $value2, string $boolean = 'and', bool $not = false): static
+	{
         return $this->addCondition('havings', 'between', [
             'column'  => $column,
             'values'  => [$value1, $value2],
@@ -758,33 +755,24 @@ trait CoreMethods
 
     /**
      * Ajoute une clause HAVING NOT BETWEEN
-     *
-     * @param mixed $value1
-     * @param mixed $value2
      */
-    public function havingNotBetween(string $column, $value1, $value2, string $boolean = 'and'): static
+    public function havingNotBetween(string $column, mixed $value1, mixed $value2, string $boolean = 'and'): static
     {
         return $this->havingBetween($column, $value1, $value2, $boolean, true);
     }
 
     /**
      * Ajoute une clause HAVING BETWEEN avec OR
-     *
-     * @param mixed $value1
-     * @param mixed $value2
      */
-    public function orHavingBetween(string $column, $value1, $value2): static
+    public function orHavingBetween(string $column, mixed $value1, mixed $value2): static
     {
         return $this->havingBetween($column, $value1, $value2, 'or');
     }
 
     /**
      * Ajoute une clause HAVING NOT BETWEEN avec OR
-     *
-     * @param mixed $value1
-     * @param mixed $value2
      */
-    public function orHavingNotBetween(string $column, $value1, $value2): static
+    public function orHavingNotBetween(string $column, mixed $value1, mixed $value2): static
     {
         return $this->havingNotBetween($column, $value1, $value2, 'or');
     }
