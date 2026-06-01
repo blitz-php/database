@@ -961,9 +961,9 @@ abstract class Model implements RepositoryInterface
      */
     public function __call(string $name, array $arguments)
     {
-        // Méthodes du Query Builder
-        if (method_exists($this->builder(), $name)) {
-            $result = $this->builder()->{$name}(...$arguments);
+		// Méthodes du Query Builder
+		try {
+			$result = $this->builder()->{$name}(...$arguments);
 
             // Si le résultat est une instance du builder, retourner $this pour la fluidité
             if ($result instanceof BaseBuilder) {
@@ -971,13 +971,13 @@ abstract class Model implements RepositoryInterface
             }
 
             return $result;
-        }
-
-        // Méthodes de la connexion
-        if (method_exists($this->db, $name)) {
-            return $this->db->{$name}(...$arguments);
-        }
-
-        throw new BadMethodCallException("Method {$name} not found in " . static::class);
+		} catch (BadMethodCallException) {
+			// Méthodes de la connexion
+			try {
+				return $this->db->{$name}(...$arguments);
+			} catch (BadMethodCallException) {
+				throw new BadMethodCallException("Method {$name} not found in " . static::class);
+			}
+		}
     }
 }

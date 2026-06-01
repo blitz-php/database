@@ -61,24 +61,6 @@ use BlitzPHP\Traits\Macroable;
  * @method static                notWhereColumn(array|string $first, string $operator = null, string $second = null, string $boolean = 'and') Alias de whereNotColumn() - Ajoute une clause WHERE avec comparaison de colonnes inversée
  * @method static                orNotWhereColumn(array|string $first, string $operator = null, string $second = null) Alias de orWhereNotColumn() - Ajoute une clause WHERE avec comparaison de colonnes inversée avec OR
  * 
- * // Conditions HAVING
- * @method static                havingIn(string $column, array|\Closure $values, string $boolean = 'and', bool $not = false) Alias de havingIn() - Ajoute une clause HAVING IN
- * @method static                havingNotIn(string $column, array|\Closure $values, string $boolean = 'and') Alias de havingNotIn() - Ajoute une clause HAVING NOT IN
- * @method static                orHavingIn(string $column, array|\Closure $values) Alias de orHavingIn() - Ajoute une clause HAVING IN avec OR
- * @method static                orHavingNotIn(string $column, array|\Closure $values) Alias de orHavingNotIn() - Ajoute une clause HAVING NOT IN avec OR
- * @method static                havingLike(string $column, string $value, string $side = 'both', string $boolean = 'and', bool $not = false, bool $caseSensitive = false) Alias de havingLike() - Ajoute une clause HAVING LIKE
- * @method static                notHavingLike(string $column, string $value, string $side = 'both', string $boolean = 'and', bool $caseSensitive = false) Alias de havingNotLike() - Ajoute une clause HAVING NOT LIKE
- * @method static                orHavingLike(string $column, string $value, string $side = 'both', bool $caseSensitive = false) Alias de orHavingLike() - Ajoute une clause HAVING LIKE avec OR
- * @method static                orHavingNotLike(string $column, string $value, string $side = 'both', bool $caseSensitive = false) Alias de orHavingNotLike() - Ajoute une clause HAVING NOT LIKE avec OR
- * @method static                havingBetween(string $column, mixed $value1, mixed $value2, string $boolean = 'and', bool $not = false) Alias de havingBetween() - Ajoute une clause HAVING BETWEEN
- * @method static                havingNotBetween(string $column, mixed $value1, mixed $value2, string $boolean = 'and') Alias de havingNotBetween() - Ajoute une clause HAVING NOT BETWEEN
- * @method static                orHavingBetween(string $column, mixed $value1, mixed $value2) Alias de orHavingBetween() - Ajoute une clause HAVING BETWEEN avec OR
- * @method static                orHavingNotBetween(string $column, mixed $value1, mixed $value2) Alias de orHavingNotBetween() - Ajoute une clause HAVING NOT BETWEEN avec OR
- * @method static                havingNull(string $column, string $boolean = 'and', bool $not = false) Alias de havingNull() - Ajoute une clause HAVING NULL
- * @method static                havingNotNull(string $column, string $boolean = 'and') Alias de havingNotNull() - Ajoute une clause HAVING NOT NULL
- * @method static                orHavingNull(string $column) Alias de orHavingNull() - Ajoute une clause HAVING NULL avec OR
- * @method static                orHavingNotNull(string $column) Alias de orHavingNotNull() - Ajoute une clause HAVING NOT NULL avec OR
- * 
  * // Tri
  * @method static                sortAsc(string|array $column) Alias de orderBy() avec direction ASC - Ajoute un tri croissant
  * @method static                sortDesc(string|array $column) Alias de orderBy() avec direction DESC - Ajoute un tri décroissant
@@ -134,24 +116,6 @@ trait ProxyMethods
         'orNotBetween'      => 'orWhereNotBetween',
         'notWhereColumn'    => 'whereNotColumn',
         'orNotWhereColumn'  => 'orWhereNotColumn',
-
-        // Conditions HAVING
-        'havingIn'          => 'havingIn',
-        'havingNotIn'       => 'havingNotIn',
-        'orHavingIn'        => 'orHavingIn',
-        'orHavingNotIn'     => 'orHavingNotIn',
-        'havingLike'        => 'havingLike',
-        'notHavingLike'     => 'havingNotLike',
-        'orHavingLike'      => 'orHavingLike',
-        'orHavingNotLike'   => 'orHavingNotLike',
-        'havingBetween'     => 'havingBetween',
-        'havingNotBetween'  => 'havingNotBetween',
-        'orHavingBetween'   => 'orHavingBetween',
-        'orHavingNotBetween'=> 'orHavingNotBetween',
-        'havingNull'        => 'havingNull',
-        'havingNotNull'     => 'havingNotNull',
-        'orHavingNull'      => 'orHavingNull',
-        'orHavingNotNull'   => 'orHavingNotNull',
 
         // Tri
         'sortAsc'           => 'orderBy',
