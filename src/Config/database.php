@@ -41,9 +41,7 @@ return [
         /** @var string */
         'database' => env('db.default.database', 'test'),
         /**
-         * @var 'auto'|bool
-         *
-         * Si défini sur 'auto', alors vaudra true en developpement et false en production
+         * @var bool
          */
         'debug' => ! on_prod(),
         /** @var string */
