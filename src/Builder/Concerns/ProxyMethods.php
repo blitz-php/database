@@ -50,6 +50,10 @@ use BlitzPHP\Traits\Macroable;
  * @method static                notLike(string|array $column, string $value = '', string $side = 'both', string $boolean = 'and', bool $caseSensitive = false) Alias de whereNotLike() - Ajoute une clause WHERE NOT LIKE
  * @method static                orLike(string|array $column, string $value = '', string $side = 'both', bool $caseSensitive = false) Alias de orWhereLike() - Ajoute une clause WHERE LIKE avec OR
  * @method static                orNotLike(string|array $column, string $value = '', string $side = 'both', bool $caseSensitive = false) Alias de orWhereNotLike() - Ajoute une clause WHERE NOT LIKE avec OR
+ * @method static                likeAny(array $columns, string $value, string $boolean = 'and', bool $not = false, bool $caseSensitive = false, string $side = 'both') Alias de whereLikeAny - Ajoute une clause WHERE LIKE sur plusieurs colonnes avec OR
+ * @method static                notLikeAny(array $columns, string $value, string $boolean = 'and', bool $caseSensitive = false, string $side = 'both') Alias de whereNotLikeAny - Ajoute une clause WHERE NOT LIKE ANY sur plusieurs colonnes
+ * @method static                orLikeAny(array $columns, string $value, bool $caseSensitive = false, string $side = 'both') Alias de orWhereLikeAny - Ajoute une clause WHERE LIKE ANY avec OR
+ * @method static                orNotLikeAny(array $columns, string $value, bool $caseSensitive = false, string $side = 'both') Alias de orWhereNotLikeAny - Ajoute une clause WHERE NOT LIKE ANY avec OR
  * 
  * // Conditions WHERE BETWEEN
  * @method static                between(string $column, mixed $value1, mixed $value2, string $boolean = 'and', bool $not = false) Alias de whereBetween() - Ajoute une clause WHERE BETWEEN
@@ -110,6 +114,10 @@ trait ProxyMethods
         'notLike'           => 'whereNotLike',
         'orLike'            => 'orWhereLike',
         'orNotLike'         => 'orWhereNotLike',
+        'likeAny'           => 'whereLikeAny',
+        'notLikeAny'        => 'whereNotLikeAny',
+        'orLikeAny'         => 'orWhereLikeAny',
+        'orNotLikeAny'      => 'orWhereNotLikeAny',
         'between'           => 'whereBetween',
         'notBetween'        => 'whereNotBetween',
         'orBetween'         => 'orWhereBetween',

@@ -432,6 +432,84 @@ trait CoreMethods
     }
 
     /**
+     * Ajoute une clause WHERE LIKE sur plusieurs colonnes avec OR
+     * 
+     * @param string[] $columns Liste des colonnes à rechercher
+     * 
+     * @example
+     * // WHERE active = 1 AND (title LIKE '%term%' OR body LIKE '%term%')
+     * $builder->where('active', 1)->whereLikeAny(['title', 'body'], 'term');
+     * 
+     * // WHERE active = 1 OR (title LIKE 'term%' OR body LIKE 'term%')
+     * $builder->where('active', 1)->orWhereLikeAny(['title', 'body'], 'term');
+     */
+    public function whereLikeAny(array $columns, string $value, string $boolean = 'and', bool $not = false, bool $caseSensitive = false, string $side = 'both'): static 
+    {
+        if ($columns === []) {
+            throw new InvalidArgumentException('La liste des colonnes ne peut pas être vide.');
+        }
+
+        $value = match ($side) {
+            'before' => "%{$value}",
+            'after'  => "{$value}%",
+            'both'   => "%{$value}%",
+            default  => $value,
+        };
+
+        $operator = $not ? 'NOT LIKE' : 'LIKE';
+
+        if ($caseSensitive && $this->db->getDriver() === 'pgsql') {
+            $operator = $not ? 'NOT ILIKE' : 'ILIKE';
+        } elseif ($caseSensitive && $this->db->getDriver() === 'mysql') {
+            $operator .= ' BINARY';
+        }
+
+        $this->whereNested(function($query) use ($columns, $value, $operator) {
+            $first = true;
+            foreach ($columns as $column) {
+                if ($first) {
+                    $query->where($column, $operator, $value);
+                    $first = false;
+                } else {
+                    $query->orWhere($column, $operator, $value);
+                }
+            }
+        }, $boolean);
+
+        return $this;
+    }
+
+    /**
+     * Ajoute une clause WHERE NOT LIKE ANY sur plusieurs colonnes
+     * 
+     * @param string[] $columns Liste des colonnes à rechercher
+     */
+    public function whereNotLikeAny(array $columns, string $value, string $boolean = 'and', bool $caseSensitive = false, string $side = 'both'): static 
+    {
+        return $this->whereLikeAny($columns, $value, $boolean, true, $caseSensitive, $side);
+    }
+
+    /**
+     * Ajoute une clause WHERE LIKE ANY avec OR
+     * 
+     * @param string[] $columns Liste des colonnes à rechercher
+     */
+    public function orWhereLikeAny(array $columns, string $value, bool $caseSensitive = false, string $side = 'both'): static 
+    {
+        return $this->whereLikeAny($columns, $value, 'or', false, $caseSensitive, $side);
+    }
+
+    /**
+     * Ajoute une clause WHERE NOT LIKE ANY avec OR
+     * 
+     * @param string[] $columns Liste des colonnes à rechercher
+     */
+    public function orWhereNotLikeAny(array $columns, string $value, bool $caseSensitive = false, string $side = 'both'): static 
+    {
+        return $this->whereLikeAny($columns, $value, 'or', true, $caseSensitive, $side);
+    }
+    
+    /**
      * Ajoute une clause WHERE EXISTS
      */
     public function whereExists(Closure $callback, string $boolean = 'and', bool $not = false): static

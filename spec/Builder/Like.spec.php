@@ -79,4 +79,29 @@ describe("Database / Query Builder : Recherche", function() {
         $builder->like('test.field', 'string');
         expect($builder->sql())->toBe('SELECT * FROM db_test AS t WHERE t.field LIKE \'%string%\'');
     });
+
+    it(': LikeAny', function() {
+        $builder = $this->builder->from('posts');
+        $builder->where('active', 1)->likeAny(['title', 'body', 'summary'], 'term');
+
+        expect($builder->sql())->toBe('SELECT * FROM posts WHERE active = 1 AND (title LIKE \'%term%\' OR body LIKE \'%term%\' OR summary LIKE \'%term%\')');
+        
+        
+        $builder = $this->builder->from('posts');
+        $builder->where('active', 1)->orLikeAny(['title', 'body', 'summary'], 'term');
+
+        expect($builder->sql())->toBe('SELECT * FROM posts WHERE active = 1 OR (title LIKE \'%term%\' OR body LIKE \'%term%\' OR summary LIKE \'%term%\')');
+        
+        
+        $builder = $this->builder->from('posts');
+        $builder->where('active', 1)->notLikeAny(['title', 'body', 'summary'], 'term');
+
+        expect($builder->sql())->toBe('SELECT * FROM posts WHERE active = 1 AND (title NOT LIKE \'%term%\' OR body NOT LIKE \'%term%\' OR summary NOT LIKE \'%term%\')');
+        
+        
+        $builder = $this->builder->from('posts');
+        $builder->where('active', 1)->orNotLikeAny(['title', 'body', 'summary'], 'term');
+
+        expect($builder->sql())->toBe('SELECT * FROM posts WHERE active = 1 OR (title NOT LIKE \'%term%\' OR body NOT LIKE \'%term%\' OR summary NOT LIKE \'%term%\')');
+    });
 });
