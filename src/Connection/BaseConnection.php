@@ -773,7 +773,13 @@ abstract class BaseConnection implements ConnectionInterface
         }
 
         $item = trim($item);
-        
+
+		// Vérifier si c'est une sous requête du genre: (SELECT ***)
+		// Les sous-requêtes peuvent être vues comme des expressions brutes
+		if (Utils::isRawExpression($item)) {
+			return $item;
+		}
+
         // Vérifier d'abord si c'est un appel de fonction SQL
         if ($processed = $this->processSqlFunctionCall($item)) {
             return $processed;

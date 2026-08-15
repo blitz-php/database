@@ -61,7 +61,9 @@ trait BuildsQueries
      */
     public function forPage(int $page, int $perPage = 15): static
     {
-        return $this->offset(($page - 1) * $perPage)->limit($perPage);
+		$this->offset(($page - 1) * $perPage)->limit($perPage);
+
+		return $this;
     }
 
     /**
@@ -69,7 +71,7 @@ trait BuildsQueries
      *
      * Pagination avec curseur (pour les grandes tables)
      */
-    public function forPageBeforeId(int $perPage = 15, ?int $lastId = 0, string $column = 'id'): self
+    public function forPageBeforeId(int $perPage = 15, ?int $lastId = 0, string $column = 'id'): static
     {
         $this->orders = $this->removeExistingOrdersFor($column);
 
@@ -79,7 +81,9 @@ trait BuildsQueries
             $this->where($column, '<', $lastId);
         }
 
-        return $this->orderBy($column, 'DESC')->limit($perPage);
+        $this->orderBy($column, 'DESC')->limit($perPage);
+
+		return $this;
     }
 
     /**
@@ -87,7 +91,7 @@ trait BuildsQueries
      *
      * Pagination avec curseur (pour les grandes tables)
      */
-    public function forPageAfterId(int $perPage = 15, ?int $lastId = 0, string $column = 'id'): self
+    public function forPageAfterId(int $perPage = 15, ?int $lastId = 0, string $column = 'id'): static
     {
         $this->orders = $this->removeExistingOrdersFor($column);
 
@@ -97,7 +101,9 @@ trait BuildsQueries
             $this->where($column, '>', $lastId);
         }
 
-        return $this->orderBy($column, 'ASC')->limit($perPage);
+        $this->orderBy($column, 'ASC')->limit($perPage);
+
+		return $this;
     }
 
     /**

@@ -350,8 +350,8 @@ class BaseBuilder implements BuilderInterface
             $columns = func_get_arg(0);
         }
 
-        if ($columns === '' || $columns === []) {
-            $columns = ['*'];
+        if ($columns === '' || $columns === ['*']) {
+            $columns = [];
         }
 
         if (is_string($columns)) {
