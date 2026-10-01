@@ -30,7 +30,10 @@ class QueryException extends PDOException
     {
         parent::__construct('', 0, $previous);
 
-        $this->code    = $previous->getCode();
+        if (is_int($previous->getCode())) {
+            $this->code = $previous->getCode();
+        }
+        
         $this->message = $this->formatMessage($connectionName, $sql, $bindings, $previous);
 
         if ($previous instanceof PDOException) {

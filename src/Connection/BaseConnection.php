@@ -773,11 +773,23 @@ abstract class BaseConnection implements ConnectionInterface
         }
 
         $item = trim($item);
-        
+
         // Vérifier d'abord si c'est un appel de fonction SQL
         if ($processed = $this->processSqlFunctionCall($item)) {
             return $processed;
         }
+
+        // Gérer le cas particulier des wildcards (table.*)
+        if (str_ends_with($item, '.*')) {
+            $table = substr($item, 0, -2);
+            return $this->escapeIdentifier($table) . '.*';
+        }
+
+		// Vérifier si c'est une sous requête du genre: (SELECT ***)
+		// Les sous-requêtes peuvent être vues comme des expressions brutes
+		if (Utils::isRawExpression($item)) {
+			return $item;
+		}
 
         if (! isset($this->escapeCache[$item])) {
             $this->escapeCache[$item] = $this->doEscapeIdentifiers($item);
