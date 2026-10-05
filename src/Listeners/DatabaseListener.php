@@ -54,7 +54,7 @@ class DatabaseListener implements EventListenerInterface
                     return $group;
                 }
 
-                $output = str_ireplace('pdo', '', $config['driver']) . '/' . $config['host'];
+                $output = str_ireplace('pdo', '', $config['driver']) . '/' . ($config['hostname'] ?? $config['host']);
 
                 if (! empty($config['port'])) {
                     $output .= ':' . $config['port'];
