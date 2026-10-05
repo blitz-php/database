@@ -764,12 +764,26 @@ abstract class Model implements RepositoryInterface
      */
     protected function freshTimestamp(): int|string
     {
-        $now = Date::now();
+        return $this->timeToDate(Date::now());
+    }
 
+    /**
+     * Convertit la valeur Date en chaîne en utilisant $this->dateFormat.
+     *
+     * Les formats disponibles sont :
+     * - 'int' - Stocke la date sous la forme d'un horodatage entier
+     * - 'datetime' - Stocke les données au format datetime SQL
+     * - 'date' - Stocke la date (uniquement) au format de date SQL.
+     *
+     * @return int|string
+     */
+    protected function timeToDate(Date $date): int|string
+    {
         return match ($this->dateFormat) {
-            'int'   => $now->getTimestamp(),
-            'date'  => $now->format('Y-m-d'),
-            default => $now->format('Y-m-d H:i:s'),
+            'int'      => $date->getTimestamp(),
+            'date'     => $date->format('Y-m-d'),
+            'datetime' => $date->format('Y-m-d H:i:s'),
+            default    => (string) $date,
         };
     }
 
@@ -851,7 +865,8 @@ abstract class Model implements RepositoryInterface
             $properties = [];
 
             foreach ($props as $prop) {
-                $properties[$prop->getName()] = $prop->getValue($object);
+                $value = $prop->getValue($object);
+                $properties[$prop->getName()] = $value instanceof Date ? $this->timeToDate($value) : $value;
             }
         }
 

@@ -181,6 +181,12 @@ class BaseBuilder implements BuilderInterface
         $this->compiler = $this->createCompiler();
     }
 
+    
+    public function __clone(): void
+    {
+        $this->bindings = clone $this->bindings;
+    }
+
     /**
      * Methode magique pour recupere une valeur interne du Builder
      *
