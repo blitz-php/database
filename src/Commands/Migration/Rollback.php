@@ -35,6 +35,7 @@ class Rollback extends DatabaseCommand
      */
     protected array $options = [
         '-g, --group'         => 'Groupe de base de données à utiliser',
+        '-n, --namespace'     => 'Namespace spécifique à annuler',
         '-b, --batch'         => 'Numéro de lot cible (ex: 3 pour revenir au lot #3, -2 pour revenir de 2 lots)',
         '--all'               => 'Annuler toutes les migrations',
         '--show-stats'        => 'Afficher les statistiques de l\'opération',
@@ -55,8 +56,9 @@ class Rollback extends DatabaseCommand
 
         $this->eol()->info('Recherche des migrations à annuler...');
 
-        $group = $this->option('group', config('database.connection', 'default'));
-        $batch = $this->option('all') ? 0 : $this->option('batch', 1);
+        $group     = $this->option('group', config('database.connection', 'default'));
+        $namespace = $this->option('namespace');
+        $batch     = $this->option('all') ? 0 : $this->option('batch', 1);
 
         if (is_string($batch) && ! preg_match('/^-?\d+$/', $batch)) {
             $this->error('Le numéro de lot doit être un entier.');
@@ -65,7 +67,7 @@ class Rollback extends DatabaseCommand
         }
         $batch = (int) $batch;
 
-        $runner = $this->runner('ALL', $group);
+        $runner = $this->runner($namespace ?? 'ALL', $group);
 
         $rolledBack = 0;
         $errorCount = 0;
