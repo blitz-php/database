@@ -742,11 +742,11 @@ class BaseBuilder implements BuilderInterface
 
 		foreach ($updateColumns as $updateColumn) {
 			foreach ($chunk as $row) {
-				$value = $row[$updateColumn];
+				$bindings[] = $row[$column];
+				$value      = $row[$updateColumn];
 				if (!($value instanceof Expression) && $value !== null) {
 					$bindings[] = $value;
 				}
-				$bindings[] = $row[$column];
 			}
 		}
 
